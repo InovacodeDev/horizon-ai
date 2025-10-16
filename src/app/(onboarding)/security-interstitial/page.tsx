@@ -8,6 +8,8 @@ import { Shield } from "lucide-react";
 export default function SecurityInterstitialPage() {
   const router = useRouter();
   const [bankName, setBankName] = useState("your bank");
+  const [bankId, setBankId] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     // Get selected bank from session storage
@@ -15,17 +17,55 @@ export default function SecurityInterstitialPage() {
     if (selectedBankData) {
       const bank = JSON.parse(selectedBankData);
       setBankName(bank.name);
+      setBankId(bank.id);
     } else {
       // If no bank selected, redirect back to selection
       router.push("/select-bank");
     }
   }, [router]);
 
-  const handleContinue = () => {
-    // TODO: In task 7.1, this will initiate the Open Finance OAuth flow
-    // For now, we'll just show a placeholder
-    alert("Open Finance integration will be implemented in task 7.1");
-    // router.push('/dashboard'); // Will be implemented later
+  const handleContinue = async () => {
+    if (!bankId) {
+      alert("Please select a bank first");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Call the Open Finance connect endpoint
+      const response = await fetch("/api/v1/of/connect", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          institution: bankId,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to initiate connection");
+      }
+
+      const data = await response.json();
+
+      // Redirect to Open Finance OAuth page
+      if (data.redirectUrl) {
+        window.location.href = data.redirectUrl;
+      } else {
+        throw new Error("No redirect URL received");
+      }
+    } catch (error) {
+      console.error("Connection error:", error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Failed to connect to bank. Please try again."
+      );
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -56,9 +96,10 @@ export default function SecurityInterstitialPage() {
         {/* Continue Button */}
         <Button
           onClick={handleContinue}
-          className="w-full max-w-sm h-10 bg-primary text-on-primary hover:bg-primary/90 rounded-full text-sm font-medium transition-all duration-200 hover:shadow-lg active:scale-[0.98]"
+          disabled={isLoading}
+          className="w-full max-w-sm h-10 bg-primary text-on-primary hover:bg-primary/90 rounded-full text-sm font-medium transition-all duration-200 hover:shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Continue
+          {isLoading ? "Connecting..." : "Continue"}
         </Button>
 
         {/* Back Link */}

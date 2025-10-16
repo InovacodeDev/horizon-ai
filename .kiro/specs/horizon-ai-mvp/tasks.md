@@ -153,8 +153,8 @@
   - Testar acessibilidade (contraste, navegação por teclado)
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.8_
 
-- [ ] 7. Implementar integração com Open Finance
-- [ ] 7.1 Criar endpoint de inicialização de conexão
+- [x] 7. Implementar integração com Open Finance
+- [x] 7.1 Criar endpoint de inicialização de conexão
   - Criar src/app/api/v1/of/connect/route.ts
   - Implementar validação de institution com Zod
   - Iniciar fluxo OAuth com API do Open Finance
@@ -162,7 +162,7 @@
   - Implementar tratamento de erros
   - _Requirements: 2.4, 5.2_
 
-- [ ] 7.2 Criar endpoint de troca de código
+- [x] 7.2 Criar endpoint de troca de código
   - Criar src/app/api/v1/of/exchange/route.ts
   - Receber código de autorização do callback
   - Trocar código por access token na API do Open Finance
@@ -171,7 +171,7 @@
   - Iniciar sincronização inicial de dados
   - _Requirements: 2.5, 2.6, 5.2_
 
-- [ ] 7.3 Implementar sincronização inicial de dados
+- [x] 7.3 Implementar sincronização inicial de dados
   - Criar src/lib/of/sync.ts com função syncConnection
   - Buscar contas (accounts) da instituição
   - Buscar transações dos últimos 90 dias
@@ -180,7 +180,7 @@
   - Atualizar lastSyncAt na conexão
   - _Requirements: 2.6, 4.1, 3.3_
 
-- [ ] 7.4 Implementar callback handler
+- [x] 7.4 Implementar callback handler
   - Criar src/app/of/callback/page.tsx
   - Capturar código de autorização da URL
   - Chamar endpoint /api/v1/of/exchange
