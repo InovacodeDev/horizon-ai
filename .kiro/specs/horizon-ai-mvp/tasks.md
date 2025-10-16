@@ -197,8 +197,8 @@
   - Testar sincronização de dados
   - _Requirements: 2.4, 2.5, 2.6, 2.7, 2.8, 5.2_
 
-- [ ] 8. Implementar dashboard consolidado
-- [ ] 8.1 Criar endpoint de dashboard
+- [x] 8. Implementar dashboard consolidado
+- [x] 8.1 Criar endpoint de dashboard
   - Criar src/app/api/v1/dashboard/route.ts
   - Buscar todas as contas do usuário com saldos
   - Calcular saldo consolidado total
@@ -208,7 +208,7 @@
   - Retornar dados estruturados
   - _Requirements: 3.1, 3.2, 5.6, 6.1_
 
-- [ ] 8.2 Criar componente de saldo consolidado
+- [x] 8.2 Criar componente de saldo consolidado
   - Criar src/components/dashboard/ConsolidatedBalance.tsx
   - Exibir saldo total de todas as contas
   - Exibir breakdown por tipo de conta
@@ -216,7 +216,7 @@
   - Implementar loading state
   - _Requirements: 3.1, 7.1_
 
-- [ ] 8.3 Criar componente de feed de transações
+- [x] 8.3 Criar componente de feed de transações
   - Criar src/components/dashboard/TransactionFeed.tsx
   - Exibir lista cronológica de transações
   - Implementar infinite scroll com paginação
@@ -224,7 +224,7 @@
   - Implementar deduplicação de pagamentos de cartão
   - _Requirements: 3.2, 3.3, 3.4_
 
-- [ ] 8.4 Criar componente de lista de contas
+- [x] 8.4 Criar componente de lista de contas
   - Criar src/components/dashboard/AccountList.tsx
   - Exibir todas as contas conectadas
   - Mostrar saldo individual e última sincronização
@@ -232,7 +232,7 @@
   - Implementar botão de desconexão
   - _Requirements: 3.7_
 
-- [ ] 8.5 Criar página do dashboard
+- [x] 8.5 Criar página do dashboard
   - Criar src/app/(app)/dashboard/page.tsx
   - Usar useQuery do TanStack Query para buscar dados
   - Compor componentes (ConsolidatedBalance, TransactionFeed, AccountList)
