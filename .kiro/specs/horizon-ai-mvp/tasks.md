@@ -26,14 +26,14 @@
   - Criar TypeScript types em src/lib/db/types.ts
   - _Requirements: 1.2, 4.1, 5.6, 6.5_
 
-- [ ] 4. Implementar sistema de autenticação
-- [ ] 4.1 Criar utilitários de autenticação
+- [x] 4. Implementar sistema de autenticação
+- [x] 4.1 Criar utilitários de autenticação
   - Criar src/lib/auth/tokens.ts com funções generateAccessToken e generateRefreshToken
   - Criar src/lib/auth/password.ts com funções hashPassword e verifyPassword usando bcryptjs
   - Criar src/lib/auth/cookies.ts com funções para serializar cookies seguros
   - _Requirements: 1.2, 5.1_
 
-- [ ] 4.2 Implementar endpoint de registro
+- [x] 4.2 Implementar endpoint de registro
   - Criar src/app/api/v1/auth/register/route.ts
   - Implementar validação com Zod (email, password min 8 chars, firstName)
   - Verificar email duplicado e retornar 409 se existir
@@ -42,7 +42,7 @@
   - Retornar 201 Created em sucesso
   - _Requirements: 1.1, 1.2, 1.3, 5.1_
 
-- [ ] 4.3 Implementar endpoint de login
+- [x] 4.3 Implementar endpoint de login
   - Criar src/app/api/v1/auth/login/route.ts
   - Implementar validação com Zod (email, password)
   - Buscar usuário por email e verificar senha com bcrypt.compare
@@ -52,7 +52,7 @@
   - Retornar 200 OK com dados públicos do usuário
   - _Requirements: 1.4, 1.5, 1.6, 5.4_
 
-- [ ] 4.4 Implementar endpoint de refresh
+- [x] 4.4 Implementar endpoint de refresh
   - Criar src/app/api/v1/auth/refresh/route.ts
   - Ler Refresh Token do cookie
   - Validar token e buscar no banco
@@ -61,7 +61,7 @@
   - Enviar novos tokens como cookies
   - _Requirements: 1.7, 1.8_
 
-- [ ] 4.5 Implementar middleware de autenticação
+- [x] 4.5 Implementar middleware de autenticação
   - Criar src/middleware.ts
   - Verificar Access Token em rotas protegidas
   - Se expirado, tentar refresh automático
@@ -78,8 +78,8 @@
   - Testar refresh com token inválido
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6_
 
-- [ ] 5. Implementar páginas de autenticação no frontend
-- [ ] 5.1 Criar página de registro
+- [x] 5. Implementar páginas de autenticação no frontend
+- [x] 5.1 Criar página de registro
   - Criar src/app/(auth)/register/page.tsx
   - Implementar formulário com react-hook-form e Zod
   - Usar componentes Shadcn/UI (Input, Button, Label)
@@ -89,7 +89,7 @@
   - Garantir acessibilidade (labels, ordem de foco)
   - _Requirements: 1.1, 7.5, 7.3, 7.4_
 
-- [ ] 5.2 Criar página de login
+- [x] 5.2 Criar página de login
   - Criar src/app/(auth)/login/page.tsx
   - Implementar formulário com react-hook-form e Zod
   - Usar componentes Shadcn/UI
@@ -98,7 +98,7 @@
   - Redirecionar para /onboarding/welcome em sucesso
   - _Requirements: 1.4, 7.5, 7.3, 7.4_
 
-- [ ] 5.3 Configurar TanStack Query Provider
+- [x] 5.3 Configurar TanStack Query Provider
   - Criar src/lib/react-query/provider.tsx
   - Configurar QueryClient com retry logic para erros 401
   - Implementar handleAuthError para refresh automático
