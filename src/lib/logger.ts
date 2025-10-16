@@ -134,7 +134,11 @@ class Logger {
     }
   ): void {
     const level: LogLevel = context.statusCode >= 500 ? "error" : "info";
-    this[level](message, context);
+    if (level === "error") {
+      this.error(message, undefined, context);
+    } else {
+      this.info(message, context);
+    }
   }
 }
 

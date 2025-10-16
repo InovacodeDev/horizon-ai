@@ -415,22 +415,22 @@
   - Adicionar contexto útil aos logs (userId, requestId)
   - _Requirements: 8.7_
 
-- [ ] 15. Documentação e finalização
-- [ ] 15.1 Criar documentação do projeto
+- [x] 15. Documentação e finalização
+- [x] 15.1 Criar documentação do projeto
   - Atualizar README.md com instruções de setup
   - Documentar estrutura de pastas
   - Documentar variáveis de ambiente necessárias
   - Criar guia de contribuição
   - _Requirements: 9.7_
 
-- [ ] 15.2 Criar documentação da API
+- [x] 15.2 Criar documentação da API
   - Documentar todos os endpoints com exemplos
   - Incluir schemas de request/response
   - Documentar códigos de erro
   - Gerar documentação OpenAPI/Swagger
   - _Requirements: 9.7_
 
-- [ ] 15.3 Preparar para produção
+- [x] 15.3 Preparar para produção
   - Revisar todas as variáveis de ambiente
   - Configurar domínio customizado na Vercel
   - Configurar SSL/TLS

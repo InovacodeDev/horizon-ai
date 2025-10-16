@@ -18,12 +18,14 @@ export default function NotFound() {
         </div>
 
         <div className="flex gap-3">
-          <Button asChild className="flex-1">
-            <Link href="/">Voltar ao início</Link>
-          </Button>
-          <Button asChild variant="outline" className="flex-1">
-            <Link href="/dashboard">Ir para o Dashboard</Link>
-          </Button>
+          <Link href="/" className="flex-1">
+            <Button className="w-full">Voltar ao início</Button>
+          </Link>
+          <Link href="/dashboard" className="flex-1">
+            <Button variant="outline" className="w-full">
+              Ir para o Dashboard
+            </Button>
+          </Link>
         </div>
       </Card>
     </div>
