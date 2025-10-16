@@ -18,40 +18,37 @@ O sistema operacional das finanças da família moderna brasileira.
 ### Pré-requisitos
 
 - Node.js 20+
-- pnpm (recomendado) ou npm
-- PostgreSQL database (Supabase)
+- pnpm 9+
+- Conta Supabase (para banco de dados PostgreSQL)
+- Git
 
-### Instalação
-
-1. Clone o repositório
-2. Instale as dependências:
+### Setup Rápido
 
 ```bash
+# 1. Clone e instale dependências
 pnpm install
-```
 
-3. Configure as variáveis de ambiente:
+# 2. Configure ambiente (gera secrets automaticamente)
+./scripts/setup-env.sh
 
-```bash
-cp .env.example .env.local
-```
+# 3. Adicione suas credenciais Supabase ao .env
+# DATABASE_URL e DIRECT_DATABASE_URL
 
-Preencha as variáveis no arquivo `.env.local`.
-
-4. Gere e aplique as migrações do banco:
-
-```bash
-pnpm db:generate
+# 4. Sincronize schema do banco
 pnpm db:push
-```
 
-5. Inicie o servidor de desenvolvimento:
-
-```bash
+# 5. Inicie o servidor
 pnpm dev
 ```
 
 Abra [http://localhost:3000](http://localhost:3000) no seu navegador.
+
+### Documentação Completa
+
+- 📖 [Quick Start Guide](./docs/quick-start.md) - Setup detalhado passo a passo
+- 🏗️ [Infrastructure Setup](./docs/infrastructure-setup.md) - Configuração Supabase, Vercel e CI/CD
+- ✅ [Deployment Checklist](./docs/deployment-checklist.md) - Checklist para deploy em produção
+- 📋 [Setup Guide](./SETUP.md) - Guia de configuração adicional
 
 ## Scripts Disponíveis
 

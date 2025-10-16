@@ -1,0 +1,44 @@
+name: Validate PR
+
+on:
+  pull_request:
+    branches: ["main"]
+  push:
+    branches: ["main"]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run linting
+        run: pnpm lint
+
+      - name: Run type checking
+        run: pnpm typecheck
+
+      - name: Build project
+        run: pnpm build
+        env:
+          # Provide dummy env vars for build
+          DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
+          JWT_ACCESS_SECRET: dummy-access-secret-for-build
+          JWT_REFRESH_SECRET: dummy-refresh-secret-for-build
+          ENCRYPTION_KEY: dummy-encryption-key-32-chars!!

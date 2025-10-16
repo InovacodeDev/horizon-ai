@@ -10,7 +10,7 @@
   - Configurar Husky e lint-staged para qualidade de código
   - _Requirements: 8.1, 8.2, 9.1, 9.2, 9.6_
 
-- [ ] 2. Configurar infraestrutura e banco de dados
+- [x] 2. Configurar infraestrutura e banco de dados
   - Provisionar banco PostgreSQL no Supabase
   - Configurar integração Vercel + Supabase
   - Configurar variáveis de ambiente na Vercel
