@@ -297,7 +297,7 @@
   - Testar sincronização on-demand
   - _Requirements: 4.2, 4.3, 4.4, 4.5, 4.6, 4.7_
 
-- [ ] 10. Implementar categorização automática de transações
+- [x] 10. Implementar categorização automática de transações
   - Criar src/lib/categorization/auto-categorize.ts
   - Implementar regras baseadas em descrição (ex: "UBER" → "Transporte")
   - Criar mapeamento de palavras-chave para categorias

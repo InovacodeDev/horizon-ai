@@ -1,6 +1,6 @@
 import { createId } from "@paralleldrive/cuid2";
 import { supabaseAdmin } from "@/lib/db/supabase";
-import { categorizeTransaction } from "./categorization";
+import { categorizeTransaction } from "@/lib/categorization/auto-categorize";
 
 interface OpenFinanceAccount {
   accountId: string;
