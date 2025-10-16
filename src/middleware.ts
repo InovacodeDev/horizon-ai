@@ -15,6 +15,9 @@ const protectedRoutes = [
 // Define auth routes that should redirect to dashboard if already authenticated
 const authRoutes = ["/login", "/register"];
 
+// Define public routes that don't require authentication
+const publicRoutes = ["/"];
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -161,6 +164,11 @@ export async function middleware(request: NextRequest) {
   // Handle auth routes (login, register)
   if (isAuthRoute && isAccessTokenValid && userId) {
     // User is already authenticated, redirect to dashboard
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  // Handle root route - redirect authenticated users to dashboard
+  if (pathname === "/" && isAccessTokenValid && userId) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 

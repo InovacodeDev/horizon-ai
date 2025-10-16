@@ -12,6 +12,7 @@ interface FadeThroughProps extends Omit<HTMLMotionProps<"div">, "children"> {
  * Fade Through Animation
  * Used for list items entering the screen with a staggered effect
  * Duration: 150ms (Short), with slight upward movement
+ * Optimized for hardware acceleration using CSS transforms
  */
 export function FadeThrough({
   children,
@@ -32,6 +33,18 @@ export function FadeThrough({
         duration: 0.15, // Short duration (150ms)
         delay,
         ease: [0.4, 0, 0.2, 1], // Standard easing
+      }}
+      style={{
+        // Use will-change only during animation
+        willChange: "transform, opacity",
+      }}
+      onAnimationComplete={(definition) => {
+        // Remove will-change after animation completes to free resources
+        // The definition parameter is the target element
+        const element = definition as unknown as HTMLElement;
+        if (element && element.style) {
+          element.style.willChange = "auto";
+        }
       }}
       {...props}
     >

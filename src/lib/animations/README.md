@@ -57,6 +57,67 @@ import { FadeThroughList } from "@/lib/animations";
 
 - `staggerDelay`: number - Delay between each item (default: 0.05s)
 
+### StaggerContainer
+
+Automatically staggers the animation of child elements. Used for lists and grids where items should animate in sequence.
+
+```tsx
+import { StaggerContainer, StaggerItem } from "@/lib/animations";
+
+<StaggerContainer staggerDelay={0.1}>
+  {items.map((item) => (
+    <StaggerItem key={item.id}>
+      <Card {...item} />
+    </StaggerItem>
+  ))}
+</StaggerContainer>;
+```
+
+**Props:**
+
+- `staggerDelay`: number - Delay between each child animation (default: 0.1s)
+- `delayChildren`: number - Initial delay before first child animates (default: 0s)
+- Duration: 400ms per item
+- Easing: Standard
+
+### useScrollAnimation
+
+Hook for scroll-triggered animations using Intersection Observer.
+
+```tsx
+import { useScrollAnimation, scrollAnimationVariants } from "@/lib/animations";
+
+function ScrollSection() {
+  const { ref, isInView } = useScrollAnimation({ once: true });
+
+  return (
+    <motion.div
+      ref={ref}
+      initial="hidden"
+      animate={isInView ? "visible" : "hidden"}
+      variants={scrollAnimationVariants.fadeInUp}
+    >
+      Content appears when scrolled into view
+    </motion.div>
+  );
+}
+```
+
+**Options:**
+
+- `once`: boolean - Only trigger animation once (default: true)
+- `margin`: string - Margin around viewport for triggering (default: "-100px")
+- `amount`: number | "some" | "all" - Amount of element visible to trigger (default: 0)
+
+**Available Variants:**
+
+- `fadeIn` - Simple fade in
+- `fadeInUp` - Fade in with upward movement
+- `fadeInDown` - Fade in with downward movement
+- `fadeInLeft` - Fade in from left
+- `fadeInRight` - Fade in from right
+- `scaleIn` - Fade in with scale effect
+
 ### Ripple Effect
 
 Buttons and interactive elements automatically include ripple effects. The ripple is managed through the `useRipple` hook.

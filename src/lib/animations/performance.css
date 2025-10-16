@@ -1,0 +1,74 @@
+/**
+ * Animation Performance Optimizations
+ * 
+ * These CSS rules ensure animations run at 60fps by:
+ * 1. Using only GPU-accelerated properties (transform, opacity)
+ * 2. Applying will-change strategically
+ * 3. Forcing hardware acceleration with translateZ(0)
+ */
+
+/* Base optimization for all animated elements */
+[data-animated] {
+  /* Force hardware acceleration */
+  transform: translateZ(0);
+  /* Prevent subpixel rendering issues */
+  backface-visibility: hidden;
+  /* Improve text rendering during animations */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Apply will-change only during animation */
+[data-animated].animating {
+  will-change: transform, opacity;
+}
+
+/* Remove will-change after animation */
+[data-animated]:not(.animating) {
+  will-change: auto;
+}
+
+/* Optimize Framer Motion elements */
+[data-framer-motion] {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Prevent layout shifts during animations */
+.motion-safe {
+  /* Only animate transform and opacity */
+  transition-property: transform, opacity;
+  /* Use hardware-accelerated properties */
+  transform: translateZ(0);
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  [data-animated],
+  [data-framer-motion],
+  .motion-safe {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Performance hints for scroll-triggered animations */
+.scroll-animation {
+  /* Contain layout and paint for better performance */
+  contain: layout paint;
+  /* Use content-visibility for off-screen elements */
+  content-visibility: auto;
+}
+
+/* Optimize stagger animations */
+.stagger-container {
+  /* Contain layout changes within container */
+  contain: layout;
+}
+
+.stagger-item {
+  /* Force hardware acceleration for each item */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}

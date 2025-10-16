@@ -1,0 +1,13 @@
+export { Header } from "./Header";
+export { HeroSection } from "./HeroSection";
+export { FeaturesSection } from "./FeaturesSection";
+export { FeatureCard } from "./FeatureCard";
+export { BenefitsSection } from "./BenefitsSection";
+export { BenefitItem } from "./BenefitItem";
+export { HowItWorksSection } from "./HowItWorksSection";
+export { Step } from "./Step";
+export { PricingSection } from "./PricingSection";
+export { PricingCard } from "./PricingCard";
+export { SocialProofSection } from "./SocialProofSection";
+export { Testimonial } from "./Testimonial";
+export { Footer } from "./Footer";

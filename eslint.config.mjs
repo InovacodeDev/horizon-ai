@@ -15,6 +15,22 @@ const compat = new FlatCompat({
 export default defineConfig([
   {
     extends: compat.extends("next/core-web-vitals", "next/typescript"),
+    rules: {
+      "@next/next/no-html-link-for-pages": "off",
+      "no-unused-vars": ["error", {
+            "vars": "all",
+            "args": "after-used",
+            "caughtErrors": "all",
+            "ignoreRestSiblings": false,
+            "ignoreUsingDeclarations": false,
+            "reportUsedIgnorePattern": false
+        }]
+    },
+    settings: {
+      next: {
+        rootDir: ["src/*"],
+      },
+    },
   },
   {
     ignores: [
@@ -31,6 +47,13 @@ export default defineConfig([
       "README.md",
       "tsconfig.json",
       "tsconfig.node.json",
+      "*.test.tsx",
+      "*.test.ts",
+      "*.test.js",
+      "*.test.jsx",
+      "*.config.js",
+      "*.config.cjs",
+      "*.setup.ts",
       "next.config.js",
       "next-env.d.ts",
       "next-sitemap.config.js",
