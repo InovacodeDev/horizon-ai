@@ -9,6 +9,12 @@ import {
   serializeRefreshTokenCookie,
 } from "@/lib/auth/cookies";
 import { hashPassword } from "@/lib/auth/password";
+import {
+  authRateLimiter,
+  getClientIp,
+  checkRateLimit,
+} from "@/lib/utils/rate-limiter";
+import { logAuditEvent, getClientInfo } from "@/lib/audit/logger";
 
 // Validation schema
 const loginSchema = z.object({
@@ -18,10 +24,20 @@ const loginSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // Apply rate limiting by IP
+    const clientIp = getClientIp(request);
+    const rateLimitResponse = await checkRateLimit(authRateLimiter, clientIp);
+    if (rateLimitResponse) {
+      return rateLimitResponse;
+    }
+
     const body = await request.json();
 
     // Validate input
     const validated = loginSchema.parse(body);
+
+    // Get client info for audit logging
+    const { ipAddress, userAgent } = getClientInfo(request);
 
     // Find user by email
     const { data: user, error: userError } = await supabaseAdmin
@@ -31,6 +47,15 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (userError || !user) {
+      // Log failed login attempt
+      await logAuditEvent({
+        eventType: "LOGIN_FAILURE",
+        eventDescription: "Invalid email",
+        ipAddress,
+        userAgent,
+        metadata: { email: validated.email },
+      });
+
       return NextResponse.json(
         { error: "Invalid credentials" },
         { status: 401 }
@@ -44,6 +69,16 @@ export async function POST(request: NextRequest) {
     );
 
     if (!isValidPassword) {
+      // Log failed login attempt
+      await logAuditEvent({
+        userId: user.id,
+        eventType: "LOGIN_FAILURE",
+        eventDescription: "Invalid password",
+        ipAddress,
+        userAgent,
+        metadata: { email: validated.email },
+      });
+
       return NextResponse.json(
         { error: "Invalid credentials" },
         { status: 401 }
@@ -107,6 +142,15 @@ export async function POST(request: NextRequest) {
       "Set-Cookie",
       serializeRefreshTokenCookie(refreshToken)
     );
+
+    // Log successful login
+    await logAuditEvent({
+      userId: user.id,
+      eventType: "LOGIN_SUCCESS",
+      eventDescription: "User logged in successfully",
+      ipAddress,
+      userAgent,
+    });
 
     return response;
   } catch (error) {

@@ -4,7 +4,7 @@ import { getUserIdFromRequest } from "@/lib/auth/get-user";
 import { supabaseAdmin } from "@/lib/db/supabase";
 import { syncConnection } from "@/lib/of/sync";
 import { getValidAccessToken } from "@/lib/of/tokens";
-import { isRateLimited, getRateLimitResetTime } from "@/lib/utils/rate-limiter";
+import { syncRateLimiter, checkRateLimit } from "@/lib/utils/rate-limiter";
 import { invalidateDashboardCache } from "@/lib/cache/redis";
 
 // Validation schema
@@ -23,27 +23,12 @@ export async function POST(request: NextRequest) {
     const validated = syncSchema.parse(body);
 
     // Check rate limit (1 sync per minute per connection)
-    const rateLimitKey = `sync:${validated.connectionId}`;
-    const rateLimitWindow = 60 * 1000; // 1 minute
-    const rateLimitMax = 1;
-
-    if (isRateLimited(rateLimitKey, rateLimitMax, rateLimitWindow)) {
-      const resetIn = getRateLimitResetTime(rateLimitKey);
-      const resetInSeconds = Math.ceil(resetIn / 1000);
-
-      return NextResponse.json(
-        {
-          error: "Rate limit exceeded",
-          message: `Please wait ${resetInSeconds} seconds before syncing again`,
-          retryAfter: resetInSeconds,
-        },
-        {
-          status: 429,
-          headers: {
-            "Retry-After": resetInSeconds.toString(),
-          },
-        }
-      );
+    const rateLimitResponse = await checkRateLimit(
+      syncRateLimiter,
+      validated.connectionId
+    );
+    if (rateLimitResponse) {
+      return rateLimitResponse;
     }
 
     // Fetch connection and verify ownership

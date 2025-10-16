@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAccessToken } from "@/lib/auth/tokens";
 import { parseCookies } from "@/lib/auth/cookies";
+import { apiRateLimiter, checkRateLimit } from "@/lib/utils/rate-limiter";
+import { logAuditEvent, getClientInfo } from "@/lib/audit/logger";
 
 // Define protected routes that require authentication
 const protectedRoutes = [
@@ -15,6 +17,37 @@ const authRoutes = ["/login", "/register"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Apply rate limiting to API routes (excluding auth endpoints which have their own rate limiting)
+  if (
+    pathname.startsWith("/api/v1/") &&
+    !pathname.startsWith("/api/v1/auth/")
+  ) {
+    // Get cookies to extract userId for rate limiting
+    const cookieHeader = request.headers.get("cookie");
+    const cookies = parseCookies(cookieHeader);
+    const accessToken = cookies.accessToken;
+
+    let rateLimitKey = request.headers.get("x-forwarded-for") || "anonymous";
+
+    // If user is authenticated, use userId for rate limiting
+    if (accessToken) {
+      try {
+        const payload = verifyAccessToken(accessToken);
+        rateLimitKey = payload.userId;
+      } catch (error) {
+        // Use IP if token is invalid
+      }
+    }
+
+    const rateLimitResponse = await checkRateLimit(
+      apiRateLimiter,
+      rateLimitKey
+    );
+    if (rateLimitResponse) {
+      return rateLimitResponse;
+    }
+  }
 
   // Check if the route is protected
   const isProtectedRoute = protectedRoutes.some((route) =>
@@ -109,6 +142,17 @@ export async function middleware(request: NextRequest) {
     }
 
     // If we reach here, authentication failed - redirect to login
+    // Log unauthorized access attempt
+    const { ipAddress, userAgent } = getClientInfo(request);
+    await logAuditEvent({
+      eventType: "UNAUTHORIZED_ACCESS",
+      eventDescription: `Attempted to access protected route: ${pathname}`,
+      ipAddress,
+      userAgent,
+      resourceType: "route",
+      resourceId: pathname,
+    });
+
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);

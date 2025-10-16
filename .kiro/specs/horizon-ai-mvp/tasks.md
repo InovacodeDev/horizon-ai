@@ -335,22 +335,22 @@
   - Identificar e otimizar gargalos
   - _Requirements: 6.1, 6.2_
 
-- [ ] 12. Implementar segurança adicional
-- [ ] 12.1 Implementar rate limiting
+- [x] 12. Implementar segurança adicional
+- [x] 12.1 Implementar rate limiting
   - Adicionar rate limiting em endpoints de autenticação
   - Usar Vercel Edge Config ou Upstash Rate Limit
   - Limitar tentativas de login (5 por minuto por IP)
   - Limitar requisições de API (100 por minuto por usuário)
   - _Requirements: 5.8_
 
-- [ ] 12.2 Implementar auditoria de segurança
+- [x] 12.2 Implementar auditoria de segurança
   - Criar tabela audit_logs para eventos importantes
   - Registrar tentativas de login (sucesso e falha)
   - Registrar acessos não autorizados
   - Registrar mudanças em dados sensíveis
   - _Requirements: 5.8_
 
-- [ ] 12.3 Configurar CORS e headers de segurança
+- [x] 12.3 Configurar CORS e headers de segurança
   - Configurar CORS para origens específicas
   - Adicionar headers de segurança (CSP, X-Frame-Options, etc.)
   - Configurar no next.config.js

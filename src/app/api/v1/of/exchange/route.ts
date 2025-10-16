@@ -6,6 +6,7 @@ import { supabaseAdmin } from "@/lib/db/supabase";
 import { encryptToken } from "@/lib/of/encryption";
 import { syncConnection } from "@/lib/of/sync";
 import { invalidateDashboardCache } from "@/lib/cache/redis";
+import { logAuditEvent, getClientInfo } from "@/lib/audit/logger";
 
 // Validation schema
 const exchangeSchema = z.object({
@@ -130,6 +131,19 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Log connection creation
+    const { ipAddress, userAgent } = getClientInfo(request);
+    await logAuditEvent({
+      userId,
+      eventType: "CONNECTION_CREATED",
+      eventDescription: `Connected to ${getInstitutionName(stateData.institution)}`,
+      ipAddress,
+      userAgent,
+      resourceType: "connection",
+      resourceId: connectionId,
+      metadata: { institution: stateData.institution },
+    });
 
     // Start initial sync in the background
     // Note: In production, this should be done via a job queue

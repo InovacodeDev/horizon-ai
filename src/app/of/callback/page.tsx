@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { LoadingState, ErrorState } from "@/components/states";
 
-export default function OpenFinanceCallbackPage() {
+function CallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
@@ -100,5 +100,21 @@ export default function OpenFinanceCallbackPage() {
         <LoadingState message="Conectando sua conta... Estamos estabelecendo uma conexão segura com seu banco e sincronizando seus dados." />
       </div>
     </div>
+  );
+}
+
+export default function OpenFinanceCallbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <div className="max-w-md w-full">
+            <LoadingState message="Carregando..." />
+          </div>
+        </div>
+      }
+    >
+      <CallbackContent />
+    </Suspense>
   );
 }

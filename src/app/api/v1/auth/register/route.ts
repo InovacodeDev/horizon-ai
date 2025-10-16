@@ -3,6 +3,12 @@ import { z } from "zod";
 import { createId } from "@paralleldrive/cuid2";
 import { supabaseAdmin } from "@/lib/db/supabase";
 import { hashPassword } from "@/lib/auth/password";
+import {
+  authRateLimiter,
+  getClientIp,
+  checkRateLimit,
+} from "@/lib/utils/rate-limiter";
+import { logAuditEvent, getClientInfo } from "@/lib/audit/logger";
 
 // Validation schema
 const registerSchema = z.object({
@@ -14,10 +20,20 @@ const registerSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // Apply rate limiting by IP
+    const clientIp = getClientIp(request);
+    const rateLimitResponse = await checkRateLimit(authRateLimiter, clientIp);
+    if (rateLimitResponse) {
+      return rateLimitResponse;
+    }
+
     const body = await request.json();
 
     // Validate input
     const validated = registerSchema.parse(body);
+
+    // Get client info for audit logging
+    const { ipAddress, userAgent } = getClientInfo(request);
 
     // Check if email already exists
     const { data: existingUser } = await supabaseAdmin
@@ -58,6 +74,16 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Log successful registration
+    await logAuditEvent({
+      userId: newUser.id,
+      eventType: "REGISTER",
+      eventDescription: "New user registered",
+      ipAddress,
+      userAgent,
+      metadata: { email: newUser.email },
+    });
 
     return NextResponse.json(
       {
