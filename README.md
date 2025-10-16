@@ -46,17 +46,36 @@ Abra [http://localhost:3000](http://localhost:3000) no seu navegador.
 ### Documentação Completa
 
 - 📖 [Quick Start Guide](./docs/quick-start.md) - Setup detalhado passo a passo
+- 🗄️ [Supabase Setup Guide](./docs/supabase-setup.md) - Guia completo do Supabase CLI e migrations
+- 💡 [Supabase Examples](./docs/supabase-examples.md) - Exemplos práticos de uso do Supabase
+- 🔄 [Supabase Migration Guide](./docs/supabase-migration.md) - Migração do Drizzle para Supabase
 - 🏗️ [Infrastructure Setup](./docs/infrastructure-setup.md) - Configuração Supabase, Vercel e CI/CD
 - ✅ [Deployment Checklist](./docs/deployment-checklist.md) - Checklist para deploy em produção
 - 📋 [Setup Guide](./SETUP.md) - Guia de configuração adicional
 
 ## Scripts Disponíveis
 
+### Desenvolvimento
+
 - `pnpm dev` - Inicia o servidor de desenvolvimento
 - `pnpm build` - Cria a build de produção
 - `pnpm start` - Inicia o servidor de produção
 - `pnpm lint` - Executa o linter
 - `pnpm typecheck` - Verifica os tipos TypeScript
+
+### Banco de Dados (Supabase CLI)
+
+- `pnpm db:start` - Inicia o Supabase local
+- `pnpm db:stop` - Para o Supabase local
+- `pnpm db:status` - Verifica o status do Supabase local
+- `pnpm db:reset` - Reseta o banco de dados local
+- `pnpm db:migration:new <name>` - Cria uma nova migration
+- `pnpm db:migration:list` - Lista todas as migrations
+- `pnpm db:push` - Aplica migrations no banco remoto
+- `pnpm db:pull` - Puxa o schema do banco remoto
+- `pnpm db:diff` - Mostra diferenças entre local e remoto
+- `pnpm db:types` - Gera tipos TypeScript do schema local
+- `pnpm db:types:remote` - Gera tipos TypeScript do schema remoto
 
 ## Estrutura do Projeto
 

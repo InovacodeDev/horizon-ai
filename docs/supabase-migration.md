@@ -131,12 +131,14 @@ const { error } = await supabase
 
 ## Applying Migrations
 
-To apply the migrations to your Supabase database:
+### Option 1: Using Supabase CLI (Recommended)
 
-1. Install Supabase CLI:
+1. Install Supabase CLI (see [Supabase Setup Guide](./supabase-setup.md) for detailed instructions):
 
    ```bash
-   npm install -g supabase
+   brew install supabase/tap/supabase  # macOS
+   # or
+   npm install -g supabase  # Cross-platform
    ```
 
 2. Link your project:
@@ -145,12 +147,40 @@ To apply the migrations to your Supabase database:
    supabase link --project-ref your-project-ref
    ```
 
-3. Apply migrations:
+3. Apply migrations using the npm script:
    ```bash
-   supabase db push
+   pnpm db:push
    ```
 
-Alternatively, you can copy the SQL from `supabase/migrations/20241016000000_initial_schema.sql` and run it directly in the Supabase SQL Editor.
+### Option 2: Manual SQL Execution
+
+Copy the SQL from `supabase/migrations/20241016000000_initial_schema.sql` and run it directly in the Supabase SQL Editor at https://app.supabase.com/project/your-project/editor
+
+## Available Scripts
+
+The following npm scripts are available for database management:
+
+### Local Development
+
+- `pnpm db:start` - Start Supabase local development environment
+- `pnpm db:stop` - Stop Supabase local environment
+- `pnpm db:status` - Check status of local services
+- `pnpm db:reset` - Reset local database and reapply all migrations
+
+### Migrations
+
+- `pnpm db:migration:new <name>` - Create a new migration file
+- `pnpm db:migration:list` - List all migrations and their status
+- `pnpm db:push` - Apply local migrations to remote database
+- `pnpm db:pull` - Pull schema from remote database
+- `pnpm db:diff` - Show differences between local and remote schemas
+
+### Type Generation
+
+- `pnpm db:types` - Generate TypeScript types from local schema
+- `pnpm db:types:remote` - Generate TypeScript types from remote schema
+
+For detailed instructions on using these scripts, see the [Supabase Setup Guide](./supabase-setup.md).
 
 ## Benefits of This Migration
 

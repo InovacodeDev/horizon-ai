@@ -127,8 +127,11 @@ apps/backend/uploads/
 apps/backend/logs/
 *.log
 
-# Drizzle
-drizzle/
+# Supabase
+.branches/
+.temp/
+supabase/.branches/
+supabase/.temp/
 
 # Testing
 coverage/
