@@ -363,15 +363,15 @@
   - Testar tentativas de bypass de autorização
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8_
 
-- [ ] 13. Implementar componentes de UI do Design System
-- [ ] 13.1 Instalar e configurar componentes Shadcn/UI
+- [x] 13. Implementar componentes de UI do Design System
+- [x] 13.1 Instalar e configurar componentes Shadcn/UI
   - Instalar componentes necessários: Button, Input, Label, Card, Dialog, Toast
   - Configurar tema com cores do Design System (Primary: #0D47A1, Secondary: #4CAF50)
   - Configurar tipografia (Figtree)
   - Configurar shape tokens (corner radius)
   - _Requirements: 7.1, 9.2_
 
-- [ ] 13.2 Criar componentes customizados
+- [x] 13.2 Criar componentes customizados
   - Criar BankListItem conforme blueprint.md
   - Criar LoadingSpinner com animação
   - Criar ErrorMessage component
@@ -379,7 +379,7 @@
   - Garantir acessibilidade em todos os componentes
   - _Requirements: 7.1, 7.3, 7.4_
 
-- [ ] 13.3 Implementar animações e transições
+- [x] 13.3 Implementar animações e transições
   - Configurar motion tokens (duration, easing)
   - Implementar Shared Axis transition entre telas
   - Implementar Fade Through para listas
