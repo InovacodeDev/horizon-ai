@@ -1,5 +1,6 @@
 import { createId } from "@paralleldrive/cuid2";
 import { supabaseAdmin } from "@/lib/db/supabase";
+import { logger } from "@/lib/logger";
 
 export type AuditEventType =
   | "LOGIN_SUCCESS"
@@ -30,6 +31,16 @@ export interface AuditLogEntry {
  */
 export async function logAuditEvent(entry: AuditLogEntry): Promise<void> {
   try {
+    // Log to structured logger first
+    logger.info("Audit event", {
+      userId: entry.userId,
+      eventType: entry.eventType,
+      eventDescription: entry.eventDescription,
+      ipAddress: entry.ipAddress,
+      resourceType: entry.resourceType,
+      resourceId: entry.resourceId,
+    });
+
     // Use type assertion since audit_logs table isn't in generated types yet
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabaseAdmin as any).from("audit_logs").insert({
@@ -45,11 +56,17 @@ export async function logAuditEvent(entry: AuditLogEntry): Promise<void> {
     });
 
     if (error) {
-      console.error("Failed to log audit event:", error);
+      logger.error("Failed to log audit event to database", error as Error, {
+        userId: entry.userId,
+        eventType: entry.eventType,
+      });
     }
   } catch (error) {
     // Don't throw errors from audit logging to avoid breaking the main flow
-    console.error("Error logging audit event:", error);
+    logger.error("Error logging audit event", error as Error, {
+      userId: entry.userId,
+      eventType: entry.eventType,
+    });
   }
 }
 
@@ -95,7 +112,7 @@ export async function getUserAuditLogs(
     .range(offset, offset + limit - 1);
 
   if (error) {
-    console.error("Error fetching audit logs:", error);
+    logger.error("Error fetching audit logs", error as Error, { userId });
     return [];
   }
 
@@ -119,7 +136,9 @@ export async function getAuditLogsByEventType(
     .range(offset, offset + limit - 1);
 
   if (error) {
-    console.error("Error fetching audit logs:", error);
+    logger.error("Error fetching audit logs by event type", error as Error, {
+      eventType,
+    });
     return [];
   }
 
@@ -151,7 +170,10 @@ export async function getFailedLoginAttempts(
   const { data, error } = await query;
 
   if (error) {
-    console.error("Error fetching failed login attempts:", error);
+    logger.error("Error fetching failed login attempts", error as Error, {
+      ipAddress,
+      timeWindowMinutes,
+    });
     return [];
   }
 

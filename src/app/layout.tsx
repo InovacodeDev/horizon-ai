@@ -3,6 +3,7 @@ import { Figtree } from "next/font/google";
 import "./globals.css";
 import { ReactQueryProvider } from "@/lib/react-query/provider";
 import { Toaster } from "@/components/ui/sonner";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const figtree = Figtree({
   subsets: ["latin"],
@@ -23,8 +24,10 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body className={`${figtree.variable} font-sans antialiased`}>
-        <ReactQueryProvider>{children}</ReactQueryProvider>
-        <Toaster />
+        <ErrorBoundary>
+          <ReactQueryProvider>{children}</ReactQueryProvider>
+          <Toaster />
+        </ErrorBoundary>
       </body>
     </html>
   );

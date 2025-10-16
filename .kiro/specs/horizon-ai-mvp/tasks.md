@@ -393,22 +393,22 @@
   - Testar com leitor de tela
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.8_
 
-- [ ] 14. Implementar tratamento de erros global
-- [ ] 14.1 Criar error boundaries
+- [x] 14. Implementar tratamento de erros global
+- [x] 14.1 Criar error boundaries
   - Criar src/components/ErrorBoundary.tsx
   - Implementar fallback UI para erros não tratados
   - Registrar erros para debugging
   - Adicionar no layout principal
   - _Requirements: 7.5_
 
-- [ ] 14.2 Criar páginas de erro customizadas
+- [x] 14.2 Criar páginas de erro customizadas
   - Criar src/app/error.tsx para erros gerais
   - Criar src/app/not-found.tsx para 404
   - Usar linguagem clara e empática
   - Fornecer ações de recuperação
   - _Requirements: 7.5_
 
-- [ ] 14.3 Implementar logging estruturado
+- [x] 14.3 Implementar logging estruturado
   - Criar src/lib/logger.ts
   - Implementar níveis de log (error, warn, info, debug)
   - Integrar com serviço de logging (Vercel Logs ou Sentry)
