@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/db/supabase";
 import { getUserIdFromRequest } from "@/lib/auth/get-user";
+import { getCached, setCached, CACHE_KEYS, CACHE_TTL } from "@/lib/cache/redis";
 
 // Validation schema for query parameters
 const dashboardQuerySchema = z.object({
-  page: z.coerce.number().int().positive().default(1),
+  cursor: z.string().optional(), // Cursor for pagination (transaction ID)
   limit: z.coerce.number().int().positive().max(100).default(30),
 });
 
@@ -17,13 +18,20 @@ export async function GET(request: NextRequest) {
     // Parse and validate query parameters
     const searchParams = request.nextUrl.searchParams;
     const queryParams = dashboardQuerySchema.parse({
-      page: searchParams.get("page") || "1",
+      cursor: searchParams.get("cursor") || undefined,
       limit: searchParams.get("limit") || "30",
     });
 
-    const offset = (queryParams.page - 1) * queryParams.limit;
+    // Try to get cached dashboard data (only for initial load without cursor)
+    if (!queryParams.cursor) {
+      const cachedData = await getCached(CACHE_KEYS.DASHBOARD(userId));
+      if (cachedData) {
+        return NextResponse.json(cachedData, { status: 200 });
+      }
+    }
 
-    // Fetch all accounts for the user with balances
+    // Fetch all accounts for the user with balances (optimized with specific fields)
+    const accountsStartTime = Date.now();
     const { data: accounts, error: accountsError } = await supabaseAdmin
       .from("accounts")
       .select(
@@ -45,6 +53,12 @@ export async function GET(request: NextRequest) {
       )
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
+
+    if (process.env.NODE_ENV === "development") {
+      console.log(
+        `[PERF] Accounts query took ${Date.now() - accountsStartTime}ms`
+      );
+    }
 
     if (accountsError) {
       console.error("Error fetching accounts:", accountsError);
@@ -70,11 +84,14 @@ export async function GET(request: NextRequest) {
       {} as Record<string, number>
     );
 
-    // Fetch recent transactions (last 30 days)
+    // Fetch recent transactions (last 30 days) with cursor-based pagination
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const { data: transactions, error: transactionsError } = await supabaseAdmin
+    const transactionsStartTime = Date.now();
+
+    // Build query with cursor-based pagination
+    let transactionsQuery = supabaseAdmin
       .from("transactions")
       .select(
         `
@@ -92,12 +109,42 @@ export async function GET(request: NextRequest) {
             institution_name
           )
         )
-      `
+      `,
+        { count: "exact" }
       )
       .eq("user_id", userId)
       .gte("transaction_date", thirtyDaysAgo.toISOString())
       .order("transaction_date", { ascending: false })
-      .range(offset, offset + queryParams.limit - 1);
+      .order("id", { ascending: false }) // Secondary sort for stable pagination
+      .limit(queryParams.limit + 1); // Fetch one extra to determine if there are more
+
+    // Apply cursor if provided
+    if (queryParams.cursor) {
+      // Fetch the cursor transaction to get its date
+      const { data: cursorTransaction } = await supabaseAdmin
+        .from("transactions")
+        .select("transaction_date, id")
+        .eq("id", queryParams.cursor)
+        .single();
+
+      if (cursorTransaction) {
+        transactionsQuery = transactionsQuery.or(
+          `transaction_date.lt.${cursorTransaction.transaction_date},and(transaction_date.eq.${cursorTransaction.transaction_date},id.lt.${queryParams.cursor})`
+        );
+      }
+    }
+
+    const {
+      data: transactionsData,
+      error: transactionsError,
+      count: totalTransactions,
+    } = await transactionsQuery;
+
+    if (process.env.NODE_ENV === "development") {
+      console.log(
+        `[PERF] Transactions query took ${Date.now() - transactionsStartTime}ms`
+      );
+    }
 
     if (transactionsError) {
       console.error("Error fetching transactions:", transactionsError);
@@ -107,16 +154,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get total count of transactions for pagination
-    const { count: totalTransactions, error: countError } = await supabaseAdmin
-      .from("transactions")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .gte("transaction_date", thirtyDaysAgo.toISOString());
+    // Check if there are more results
+    const hasMore = transactionsData.length > queryParams.limit;
+    const transactions = hasMore
+      ? transactionsData.slice(0, queryParams.limit)
+      : transactionsData;
 
-    if (countError) {
-      console.error("Error counting transactions:", countError);
-    }
+    // Get the next cursor (last transaction ID)
+    const nextCursor =
+      hasMore && transactions.length > 0
+        ? transactions[transactions.length - 1].id
+        : null;
 
     // Format response
     const response = {
@@ -151,15 +199,23 @@ export async function GET(request: NextRequest) {
           institutionName: transaction.accounts.connections.institution_name,
         })),
         pagination: {
-          page: queryParams.page,
+          cursor: queryParams.cursor || null,
+          nextCursor,
           limit: queryParams.limit,
           total: totalTransactions || 0,
-          hasMore:
-            totalTransactions !== null &&
-            offset + queryParams.limit < totalTransactions,
+          hasMore,
         },
       },
     };
+
+    // Cache the response (only for initial load without cursor)
+    if (!queryParams.cursor) {
+      await setCached(
+        CACHE_KEYS.DASHBOARD(userId),
+        response,
+        CACHE_TTL.DASHBOARD
+      );
+    }
 
     return NextResponse.json(response, { status: 200 });
   } catch (error) {

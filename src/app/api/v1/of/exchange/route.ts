@@ -5,6 +5,7 @@ import { getUserIdFromRequest } from "@/lib/auth/get-user";
 import { supabaseAdmin } from "@/lib/db/supabase";
 import { encryptToken } from "@/lib/of/encryption";
 import { syncConnection } from "@/lib/of/sync";
+import { invalidateDashboardCache } from "@/lib/cache/redis";
 
 // Validation schema
 const exchangeSchema = z.object({
@@ -132,8 +133,12 @@ export async function POST(request: NextRequest) {
 
     // Start initial sync in the background
     // Note: In production, this should be done via a job queue
-    syncConnection(connectionId, userId, tokenData.access_token, null).catch(
-      (error) => {
+    syncConnection(connectionId, userId, tokenData.access_token, null)
+      .then(() => {
+        // Invalidate dashboard cache after successful sync
+        invalidateDashboardCache(userId);
+      })
+      .catch((error) => {
         console.error("Initial sync failed:", error);
         // Update connection status to ERROR
         supabaseAdmin
@@ -141,8 +146,7 @@ export async function POST(request: NextRequest) {
           .update({ status: "ERROR" })
           .eq("id", connectionId)
           .then();
-      }
-    );
+      });
 
     return NextResponse.json(
       {

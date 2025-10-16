@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/lib/db/supabase";
 import { syncConnection } from "@/lib/of/sync";
 import { getValidAccessToken } from "@/lib/of/tokens";
 import { isRateLimited, getRateLimitResetTime } from "@/lib/utils/rate-limiter";
+import { invalidateDashboardCache } from "@/lib/cache/redis";
 
 // Validation schema
 const syncSchema = z.object({
@@ -98,6 +99,9 @@ export async function POST(request: NextRequest) {
       accessToken,
       connection.last_sync_at
     );
+
+    // Invalidate dashboard cache after successful sync
+    await invalidateDashboardCache(userId);
 
     return NextResponse.json(
       {

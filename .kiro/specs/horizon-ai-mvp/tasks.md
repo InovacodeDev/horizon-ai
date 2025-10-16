@@ -305,8 +305,8 @@
   - Permitir que usuário corrija categorias (futuro)
   - _Requirements: 3.3_
 
-- [ ] 11. Implementar otimizações de performance
-- [ ] 11.1 Configurar Redis cache
+- [x] 11. Implementar otimizações de performance
+- [x] 11.1 Configurar Redis cache
   - Configurar conexão com Upstash Redis
   - Criar src/lib/cache/redis.ts com funções get/set
   - Implementar cache de dashboard (5 min TTL)
@@ -314,14 +314,14 @@
   - Implementar invalidação de cache após sincronização
   - _Requirements: 6.5_
 
-- [ ] 11.2 Adicionar indexes ao banco de dados
+- [x] 11.2 Adicionar indexes ao banco de dados
   - Criar migration com indexes em transactions(user_id, transaction_date DESC)
   - Criar index em accounts(user_id)
   - Criar index em connections(user_id, status)
   - Executar migration no banco
   - _Requirements: 6.5_
 
-- [ ] 11.3 Otimizar queries do dashboard
+- [x] 11.3 Otimizar queries do dashboard
   - Implementar paginação eficiente com cursor
   - Usar select específico em vez de select \*
   - Implementar eager loading de relacionamentos
