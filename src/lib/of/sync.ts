@@ -19,20 +19,30 @@ interface OpenFinanceTransaction {
   date: string;
 }
 
+export interface SyncResult {
+  accountsUpdated: number;
+  transactionsAdded: number;
+  lastSyncAt: string;
+}
+
 /**
  * Sync connection data from Open Finance API
- * Fetches accounts and transactions for the last 90 days
+ * Fetches accounts and transactions since last sync (or last 90 days for initial sync)
  */
 export async function syncConnection(
   connectionId: string,
   userId: string,
-  accessToken: string
-): Promise<void> {
+  accessToken: string,
+  lastSyncAt?: string | null
+): Promise<SyncResult> {
   const apiUrl = process.env.OPEN_FINANCE_API_URL;
 
   if (!apiUrl) {
     throw new Error("Open Finance API URL not configured");
   }
+
+  let accountsUpdated = 0;
+  let transactionsAdded = 0;
 
   try {
     // Fetch accounts from Open Finance API
@@ -52,32 +62,70 @@ export async function syncConnection(
     const accountsData: { data: OpenFinanceAccount[] } =
       await accountsResponse.json();
 
-    // Store accounts in database
+    // Determine date range for transactions
+    const fromDate = lastSyncAt ? new Date(lastSyncAt) : new Date();
+    if (!lastSyncAt) {
+      fromDate.setDate(fromDate.getDate() - 90); // Initial sync: last 90 days
+    }
+
+    // Get existing accounts for this connection
+    const { data: existingAccounts } = await supabaseAdmin
+      .from("accounts")
+      .select("id, external_id")
+      .eq("connection_id", connectionId);
+
+    const existingAccountMap = new Map(
+      existingAccounts?.map((acc) => [acc.external_id, acc.id]) || []
+    );
+
+    // Update or insert accounts
     for (const account of accountsData.data) {
-      const accountId = createId();
+      const existingAccountId = existingAccountMap.get(account.accountId);
 
-      const { error: accountError } = await supabaseAdmin
-        .from("accounts")
-        .insert({
-          id: accountId,
-          connection_id: connectionId,
-          user_id: userId,
-          external_id: account.accountId,
-          account_type: account.type,
-          account_number: account.number || null,
-          balance: account.balance,
-          currency: account.currency,
-          name: account.name || null,
-        });
+      if (existingAccountId) {
+        // Update existing account
+        const { error: updateError } = await supabaseAdmin
+          .from("accounts")
+          .update({
+            balance: account.balance,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existingAccountId);
 
-      if (accountError) {
-        console.error("Error storing account:", accountError);
-        continue; // Continue with other accounts
+        if (!updateError) {
+          accountsUpdated++;
+        } else {
+          console.error("Error updating account:", updateError);
+        }
+      } else {
+        // Insert new account
+        const accountId = createId();
+        const { error: accountError } = await supabaseAdmin
+          .from("accounts")
+          .insert({
+            id: accountId,
+            connection_id: connectionId,
+            user_id: userId,
+            external_id: account.accountId,
+            account_type: account.type,
+            account_number: account.number || null,
+            balance: account.balance,
+            currency: account.currency,
+            name: account.name || null,
+          });
+
+        if (!accountError) {
+          existingAccountMap.set(account.accountId, accountId);
+          accountsUpdated++;
+        } else {
+          console.error("Error storing account:", accountError);
+          continue;
+        }
       }
 
-      // Fetch transactions for this account (last 90 days)
-      const fromDate = new Date();
-      fromDate.setDate(fromDate.getDate() - 90);
+      // Fetch transactions for this account
+      const accountId = existingAccountMap.get(account.accountId);
+      if (!accountId) continue;
 
       const transactionsResponse = await fetch(
         `${apiUrl}/accounts/${account.accountId}/transactions?fromDate=${fromDate.toISOString().split("T")[0]}`,
@@ -99,8 +147,23 @@ export async function syncConnection(
       const transactionsData: { data: OpenFinanceTransaction[] } =
         await transactionsResponse.json();
 
-      // Store transactions in database
+      // Get existing transaction IDs to avoid duplicates
+      const { data: existingTransactions } = await supabaseAdmin
+        .from("transactions")
+        .select("external_id")
+        .eq("account_id", accountId);
+
+      const existingTransactionIds = new Set(
+        existingTransactions?.map((t) => t.external_id) || []
+      );
+
+      // Store new transactions
       for (const transaction of transactionsData.data) {
+        // Skip if transaction already exists
+        if (existingTransactionIds.has(transaction.transactionId)) {
+          continue;
+        }
+
         const category = categorizeTransaction(transaction.description);
 
         const { error: transactionError } = await supabaseAdmin
@@ -117,18 +180,20 @@ export async function syncConnection(
             transaction_date: transaction.date,
           });
 
-        if (transactionError) {
+        if (!transactionError) {
+          transactionsAdded++;
+        } else {
           console.error("Error storing transaction:", transactionError);
-          // Continue with other transactions
         }
       }
     }
 
     // Update connection's last sync timestamp
+    const now = new Date().toISOString();
     const { error: updateError } = await supabaseAdmin
       .from("connections")
       .update({
-        last_sync_at: new Date().toISOString(),
+        last_sync_at: now,
         status: "ACTIVE",
       })
       .eq("id", connectionId);
@@ -136,6 +201,12 @@ export async function syncConnection(
     if (updateError) {
       console.error("Error updating connection sync time:", updateError);
     }
+
+    return {
+      accountsUpdated,
+      transactionsAdded,
+      lastSyncAt: now,
+    };
   } catch (error) {
     console.error("Sync error:", error);
     throw error;

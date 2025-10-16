@@ -46,14 +46,29 @@ export function AccountList({ accounts, isLoading = false }: AccountListProps) {
 
       if (!response.ok) {
         const error = await response.json();
+
+        // Handle rate limit error with custom message
+        if (response.status === 429) {
+          throw new Error(
+            error.message || "Aguarde antes de sincronizar novamente"
+          );
+        }
+
         throw new Error(error.error || "Failed to sync account");
       }
 
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      toast.success("Conta sincronizada com sucesso!");
+
+      // Show detailed success message
+      const message =
+        data.transactionsAdded > 0
+          ? `${data.transactionsAdded} nova(s) transação(ões) sincronizada(s)!`
+          : "Conta sincronizada! Nenhuma transação nova.";
+
+      toast.success(message);
     },
     onError: (error: Error) => {
       toast.error(error.message || "Erro ao sincronizar conta");

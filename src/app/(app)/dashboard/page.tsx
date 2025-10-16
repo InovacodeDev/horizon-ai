@@ -1,7 +1,8 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { ConsolidatedBalance } from "@/components/dashboard/ConsolidatedBalance";
 import { TransactionFeed } from "@/components/dashboard/TransactionFeed";
 import { AccountList } from "@/components/dashboard/AccountList";
@@ -61,6 +62,7 @@ async function fetchDashboard(): Promise<DashboardData> {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const {
     data: dashboard,
@@ -76,6 +78,43 @@ export default function DashboardPage() {
     refetchInterval: 60 * 60 * 1000, // Auto-refresh every hour
   });
 
+  // Auto-sync connections if last sync was more than 1 hour ago
+  useEffect(() => {
+    if (!dashboard?.accounts) return;
+
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+
+    // Find accounts that need syncing
+    const accountsToSync = dashboard.accounts.filter((account) => {
+      if (account.status !== "ACTIVE") return false;
+      if (!account.lastSync) return true; // Never synced
+
+      const lastSyncDate = new Date(account.lastSync);
+      return lastSyncDate < oneHourAgo;
+    });
+
+    // Trigger sync for each account (rate limiting will be handled by the API)
+    accountsToSync.forEach((account) => {
+      fetch("/api/v1/of/sync", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ connectionId: account.connectionId }),
+      })
+        .then((response) => {
+          if (response.ok) {
+            console.log(`Auto-synced connection ${account.connectionId}`);
+            // Invalidate dashboard query to refresh data
+            queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+          }
+        })
+        .catch((error) => {
+          console.error("Auto-sync failed:", error);
+        });
+    });
+  }, [dashboard?.accounts, queryClient]);
+
   if (isLoading) {
     return <LoadingState message="Carregando seu dashboard..." />;
   }
@@ -83,9 +122,13 @@ export default function DashboardPage() {
   if (isError) {
     return (
       <ErrorState
-        error={error as Error}
+        title="Erro ao carregar dashboard"
+        message={
+          error instanceof Error
+            ? error.message
+            : "Não foi possível carregar o dashboard"
+        }
         onRetry={() => refetch()}
-        message="Não foi possível carregar o dashboard"
       />
     );
   }

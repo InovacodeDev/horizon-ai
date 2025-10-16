@@ -7,11 +7,35 @@ import { FlatCompat } from "@eslint/eslintrc";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const compat = new FlatCompat({
-    baseDirectory: __dirname,
-    recommendedConfig: js.configs.recommended,
-    allConfig: js.configs.all
+  baseDirectory: __dirname,
+  recommendedConfig: js.configs.recommended,
+  allConfig: js.configs.all,
 });
 
-export default defineConfig([{
+export default defineConfig([
+  {
     extends: compat.extends("next/core-web-vitals", "next/typescript"),
-}]);
+  },
+  {
+    ignores: [
+      ".next/",
+      "out/",
+      "dist/",
+      "node_modules/",
+      "eslint.config.mjs",
+      "pnpm-lock.yaml",
+      "package.json",
+      "package-lock.json",
+      "yarn.lock",
+      "pnpm-workspace.yaml",
+      "README.md",
+      "tsconfig.json",
+      "tsconfig.node.json",
+      "next.config.js",
+      "next-env.d.ts",
+      "next-sitemap.config.js",
+      "next.config.mjs",
+      "next-env.d.ts",
+    ],
+  },
+]);

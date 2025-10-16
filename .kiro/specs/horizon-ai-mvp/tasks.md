@@ -249,8 +249,8 @@
   - Testar performance de carregamento
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
 
-- [ ] 9. Implementar sistema de sincronização periódica
-- [ ] 9.1 Criar endpoint de sincronização
+- [x] 9. Implementar sistema de sincronização periódica
+- [x] 9.1 Criar endpoint de sincronização
   - Criar src/app/api/v1/of/sync/route.ts
   - Receber connectionId como parâmetro
   - Validar que conexão pertence ao usuário
@@ -259,7 +259,7 @@
   - Retornar número de itens sincronizados
   - _Requirements: 4.2, 4.3, 5.6_
 
-- [ ] 9.2 Implementar job de sincronização periódica
+- [x] 9.2 Implementar job de sincronização periódica
   - Criar src/lib/jobs/sync-job.ts
   - Buscar todas as conexões ativas
   - Para cada conexão, executar sincronização
@@ -268,13 +268,13 @@
   - Registrar logs de sincronização
   - _Requirements: 4.2, 4.6_
 
-- [ ] 9.3 Configurar cron job ou webhook
+- [x] 9.3 Configurar cron job ou webhook
   - Configurar Vercel Cron Job para executar a cada 6 horas
   - Ou implementar endpoint /api/cron/sync para ser chamado externamente
   - Implementar autenticação do cron (secret token)
   - _Requirements: 4.2_
 
-- [ ] 9.4 Implementar renovação automática de tokens
+- [x] 9.4 Implementar renovação automática de tokens
   - Criar função renewOpenFinanceToken em src/lib/of/tokens.ts
   - Detectar tokens expirados durante sincronização
   - Tentar renovar usando refresh token do Open Finance
@@ -282,7 +282,7 @@
   - Se falhar, marcar conexão como EXPIRED e notificar usuário
   - _Requirements: 4.4, 4.5_
 
-- [ ] 9.5 Implementar sincronização on-demand
+- [x] 9.5 Implementar sincronização on-demand
   - Adicionar botão "Sync Now" no dashboard
   - Implementar rate limiting (1 sync por minuto por conexão)
   - Disparar sincronização ao abrir app se > 1 hora desde última

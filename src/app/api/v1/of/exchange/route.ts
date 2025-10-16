@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
 
     // Start initial sync in the background
     // Note: In production, this should be done via a job queue
-    syncConnection(connectionId, userId, tokenData.access_token).catch(
+    syncConnection(connectionId, userId, tokenData.access_token, null).catch(
       (error) => {
         console.error("Initial sync failed:", error);
         // Update connection status to ERROR
