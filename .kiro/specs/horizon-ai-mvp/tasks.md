@@ -2,11 +2,11 @@
 
 - [x] 1. Setup do projeto e configuração inicial
   - Criar projeto Next.js 15 com TypeScript, ESLint, Tailwind CSS e App Router
-  - Instalar dependências principais (Drizzle ORM, autenticação, TanStack Query, Zustand)
+  - Instalar dependências principais (Supabase client, autenticação, TanStack Query, Zustand)
   - Configurar Shadcn/UI com Design System (cores, tipografia, shape)
-  - Configurar Drizzle ORM e criar arquivo drizzle.config.ts
+  - Configurar Supabase client
   - Criar arquivo .env.example com variáveis necessárias
-  - Adicionar scripts ao package.json (db:generate, db:push, db:studio, typecheck)
+  - Adicionar scripts ao package.json (typecheck)
   - Configurar Husky e lint-staged para qualidade de código
   - _Requirements: 8.1, 8.2, 9.1, 9.2, 9.6_
 
@@ -17,11 +17,13 @@
   - Criar pipeline de CI/CD no GitHub Actions (.github/workflows/validate.yml)
   - _Requirements: 8.3, 8.4, 8.6_
 
-- [ ] 3. Implementar schema do banco de dados
-  - Criar arquivo src/lib/db/schema.ts com todas as tabelas (users, refreshTokens, connections, accounts, transactions)
+- [x] 3. Implementar schema do banco de dados
+  - Criar migration SQL em supabase/migrations/ com todas as tabelas (users, refreshTokens, connections, accounts, transactions)
   - Definir enums (userRole, accountType, transactionType, connectionStatus)
   - Adicionar indexes para performance (userId, transactionDate)
-  - Executar pnpm db:push para sincronizar schema com banco
+  - Configurar Row Level Security (RLS) policies
+  - Criar Supabase client em src/lib/db/supabase.ts
+  - Criar TypeScript types em src/lib/db/types.ts
   - _Requirements: 1.2, 4.1, 5.6, 6.5_
 
 - [ ] 4. Implementar sistema de autenticação
@@ -36,7 +38,7 @@
   - Implementar validação com Zod (email, password min 8 chars, firstName)
   - Verificar email duplicado e retornar 409 se existir
   - Gerar hash da senha com bcrypt (salt round 12)
-  - Inserir usuário no banco usando Drizzle ORM
+  - Inserir usuário no banco usando Supabase client
   - Retornar 201 Created em sucesso
   - _Requirements: 1.1, 1.2, 1.3, 5.1_
 

@@ -7,7 +7,7 @@ O sistema operacional das finanças da família moderna brasileira.
 - **Framework**: Next.js 15 (App Router)
 - **Linguagem**: TypeScript 5.5+ (strict mode)
 - **Estilização**: Tailwind CSS + Shadcn/UI
-- **Banco de Dados**: PostgreSQL (Supabase) + Drizzle ORM
+- **Banco de Dados**: PostgreSQL (Supabase) com Supabase Client
 - **Cache**: Redis (Upstash)
 - **Autenticação**: JWT (custom implementation)
 - **State Management**: TanStack Query + Zustand
@@ -57,9 +57,6 @@ Abra [http://localhost:3000](http://localhost:3000) no seu navegador.
 - `pnpm start` - Inicia o servidor de produção
 - `pnpm lint` - Executa o linter
 - `pnpm typecheck` - Verifica os tipos TypeScript
-- `pnpm db:generate` - Gera migrações do Drizzle
-- `pnpm db:push` - Aplica migrações no banco
-- `pnpm db:studio` - Abre o Drizzle Studio
 
 ## Estrutura do Projeto
 
