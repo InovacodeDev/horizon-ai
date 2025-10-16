@@ -76,7 +76,7 @@ export default function LoginPage() {
     mutationFn: loginUser,
     onSuccess: () => {
       // Redirect to onboarding welcome page on success
-      router.push("/onboarding/welcome");
+      router.push("/welcome");
     },
     onError: (error: ErrorResponse) => {
       // Handle server errors

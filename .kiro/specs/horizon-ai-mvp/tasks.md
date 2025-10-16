@@ -113,8 +113,8 @@
   - Testar acessibilidade com leitor de tela
   - _Requirements: 7.3, 7.4, 7.5_
 
-- [ ] 6. Implementar fluxo de onboarding
-- [ ] 6.1 Criar tela de boas-vindas
+- [x] 6. Implementar fluxo de onboarding
+- [x] 6.1 Criar tela de boas-vindas
   - Criar src/app/(onboarding)/welcome/page.tsx
   - Implementar layout conforme blueprint.md (Material Design 3)
   - Usar microcopy definida (onboarding.title, onboarding.body, onboarding.cta)
@@ -123,7 +123,7 @@
   - Implementar animações Shared Axis (300-400ms)
   - _Requirements: 2.1, 7.1, 7.6, 7.7, 7.8_
 
-- [ ] 6.2 Criar tela de seleção de banco
+- [x] 6.2 Criar tela de seleção de banco
   - Criar src/app/(onboarding)/select-bank/page.tsx
   - Implementar barra de busca no topo
   - Criar lista de bancos principais (Itaú, Bradesco, Santander, BB, Nubank, Inter)
@@ -132,14 +132,14 @@
   - Implementar busca/filtro de bancos
   - _Requirements: 2.2, 7.1, 7.6, 7.7_
 
-- [ ] 6.3 Criar tela intersticial de segurança
+- [x] 6.3 Criar tela intersticial de segurança
   - Criar componente SecurityInterstitial
   - Exibir mensagem explicando redirecionamento seguro
   - Enfatizar que "Horizon AI nunca verá sua senha"
   - Implementar botão "Continue" para prosseguir
   - _Requirements: 2.3, 7.5_
 
-- [ ] 6.4 Implementar estados de loading e erro
+- [x] 6.4 Implementar estados de loading e erro
   - Criar componente LoadingState com progress indicator
   - Criar componente ErrorState com mensagem e ações de recuperação
   - Criar componente SuccessToast para confirmações
