@@ -31,7 +31,7 @@ const buttonVariants = cva(
   [
     // Base styles
     "relative inline-flex items-center justify-center gap-2",
-    "whitespace-nowrap overflow-hidden",
+    "whitespace-nowrap overflow-hidden rounded-[0.5rem]",
     // MD3 Typography - Label Large
     "font-[family-name:var(--md-sys-typescale-label-large-font)]",
     "text-[length:var(--md-sys-typescale-label-large-size)]",
