@@ -26,11 +26,11 @@ export function Step({ number, icon, title, description, index }: StepProps) {
     >
       <div className="relative mb-6">
         {/* MD3 Primary container with icon */}
-        <div className="w-20 h-20 rounded-full bg-[hsl(var(--md-sys-color-primary))] flex items-center justify-center text-[hsl(var(--md-sys-color-on-primary))] shadow-lg">
+        <div className="w-20 h-20 rounded-full bg-[hsl(var(--md-sys-color-primary))] flex items-center justify-center text-[hsl(var(--md-sys-color-on-primary))] shadow-[var(--md-sys-elevation-level2)]">
           {icon}
         </div>
         {/* MD3 Tertiary badge with step number */}
-        <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-[hsl(var(--md-sys-color-tertiary))] flex items-center justify-center text-[hsl(var(--md-sys-color-on-tertiary))] text-sm font-bold shadow-md">
+        <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-[hsl(var(--md-sys-color-tertiary))] flex items-center justify-center text-[hsl(var(--md-sys-color-on-tertiary))] text-sm font-bold shadow-[var(--md-sys-elevation-level1)]">
           {number}
         </div>
       </div>

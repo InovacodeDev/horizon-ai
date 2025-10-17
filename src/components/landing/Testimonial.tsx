@@ -21,7 +21,7 @@ export function Testimonial({ quote, author, role, index }: TestimonialProps) {
         delay: index * 0.1,
         ease: [0.4, 0, 0.2, 1],
       }}
-      className="bg-[hsl(var(--md-sys-color-surface))] rounded-[var(--radius-m)] p-6 shadow-md"
+      className="bg-[hsl(var(--md-sys-color-surface))] rounded-[var(--md-sys-shape-corner-medium)] p-6 shadow-[var(--md-sys-elevation-level1)]"
     >
       <Quote className="w-8 h-8 text-[hsl(var(--md-sys-color-primary))] mb-4" />
       {/* MD3 Body Large Typography */}
