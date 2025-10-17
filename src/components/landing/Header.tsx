@@ -36,7 +36,7 @@ export function Header() {
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden p-2 text-[hsl(var(--md-sys-color-on-background))] hover:bg-[hsl(var(--md-sys-color-on-background))]/8 rounded-lg transition-colors"
+            className="md:hidden p-2 text-[hsl(var(--md-sys-color-on-background))] hover:bg-[hsl(var(--md-sys-color-on-background)/0.08)] rounded-[var(--md-sys-shape-corner-medium)] transition-colors duration-[var(--md-sys-motion-duration-short2)] ease-[var(--md-sys-motion-easing-standard)]"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Toggle menu"
           >

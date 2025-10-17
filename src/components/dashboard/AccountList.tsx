@@ -187,7 +187,7 @@ export function AccountList({ accounts, isLoading = false }: AccountListProps) {
             {accounts.map((account) => (
               <div
                 key={account.id}
-                className="border border-[hsl(var(--md-sys-color-outline))]/20 rounded-lg p-4 hover:bg-[hsl(var(--md-sys-color-surface-variant))]/10 transition-colors"
+                className="border border-[hsl(var(--md-sys-color-outline))]/20 rounded-[var(--md-sys-shape-corner-medium)] p-4 hover:bg-[hsl(var(--md-sys-color-on-surface)/0.08)] transition-colors duration-[var(--md-sys-motion-duration-short2)] ease-[var(--md-sys-motion-easing-standard)]"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-3 flex-1 min-w-0">
