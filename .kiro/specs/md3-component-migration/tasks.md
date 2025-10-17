@@ -287,7 +287,7 @@
   - Test accessibility attributes (role="menu", role="menuitem", aria-haspopup)
   - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 10.1, 10.2_
 
-- [ ] 18. Implement Tabs component
+- [x] 18. Implement Tabs component
   - Create tabs base using Base UI Tabs primitive
   - Implement primary variant (filled active indicator)
   - Implement secondary variant (underline active indicator)
@@ -300,7 +300,7 @@
   - Support disabled tabs
   - _Requirements: 1.1, 12.1, 12.2, 12.3, 12.4, 12.5_
 
-- [ ] 18.1 Write unit tests for Tabs component
+- [x] 18.1 Write unit tests for Tabs component
   - Test tab selection and onChange callback
   - Test primary and secondary variants
   - Test keyboard navigation
