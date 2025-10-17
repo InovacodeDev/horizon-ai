@@ -38,15 +38,16 @@ export function PricingSection() {
   ];
 
   return (
-    <section className="py-24 px-6 bg-background">
+    <section className="py-24 px-6 bg-[hsl(var(--md-sys-color-background))]">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-on-surface mb-4">
+          {/* MD3 Display Small Typography */}
+          <h2 className="font-[family-name:var(--md-sys-typescale-display-small-font)] text-[length:var(--md-sys-typescale-display-small-size)] leading-[var(--md-sys-typescale-display-small-line-height)] font-[number:var(--md-sys-typescale-display-small-weight)] tracking-[var(--md-sys-typescale-display-small-tracking)] text-[hsl(var(--md-sys-color-on-surface))] mb-4">
             Escolha o plano ideal para você
           </h2>
-          <p className="text-lg text-on-surface-variant max-w-2xl mx-auto">
-            Comece gratuitamente e faça upgrade quando precisar de recursos
-            avançados
+          {/* MD3 Body Large Typography */}
+          <p className="font-[family-name:var(--md-sys-typescale-body-large-font)] text-[length:var(--md-sys-typescale-body-large-size)] leading-[var(--md-sys-typescale-body-large-line-height)] font-[number:var(--md-sys-typescale-body-large-weight)] tracking-[var(--md-sys-typescale-body-large-tracking)] text-[hsl(var(--md-sys-color-on-surface-variant))] max-w-2xl mx-auto">
+            Comece gratuitamente e faça upgrade quando precisar de recursos avançados
           </p>
         </div>
 

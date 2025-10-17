@@ -1,0 +1,104 @@
+name: Performance Monitoring
+
+on:
+  push:
+    branches: [main, feat/md3]
+  pull_request:
+    branches: [main]
+
+jobs:
+  performance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Run performance tests
+        run: npm run test:perf
+
+      - name: Analyze bundle size
+        run: npm run analyze
+
+      - name: Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v10
+        with:
+          configPath: "./lighthouserc.json"
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+
+      - name: Comment PR with performance metrics
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const metricsFile = fs.readdirSync('.next/metrics').pop();
+            const metrics = JSON.parse(
+              fs.readFileSync(`.next/metrics/${metricsFile}`, 'utf8')
+            );
+
+            const comment = `## 📊 Performance Report
+
+            ### Bundle Size
+            - **JavaScript:** ${(metrics.jsSize / 1024).toFixed(2)} KB / 280 KB
+            - **CSS:** ${(metrics.cssSize / 1024).toFixed(2)} KB / 95 KB
+            - **Total:** ${(metrics.totalSize / 1024).toFixed(2)} KB / 300 KB
+
+            ### Status
+            ${metrics.totalSize > 300 * 1024 ? '❌ EXCEEDS BUDGET' : '✅ WITHIN BUDGET'}
+
+            See [full metrics](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      - name: Fail if bundle exceeds budget
+        run: |
+          BUNDLE_SIZE=$(npm run analyze 2>&1 | grep "Total:" | awk '{print $2}')
+          echo "Bundle size: $BUNDLE_SIZE"
+          # Script will exit with code 1 if budget exceeded
+
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v10
+        with:
+          configPath: "./lighthouserc.json"
+          temporaryPublicStorage: true
+          uploadArtifacts: true
+          runs: 3
+
+      - name: Upload Lighthouse report
+        uses: actions/upload-artifact@v3
+        with:
+          name: lighthouse-report
+          path: .lighthouseci

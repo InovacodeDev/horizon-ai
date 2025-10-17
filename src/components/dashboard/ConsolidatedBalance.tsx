@@ -24,12 +24,7 @@ const accountTypeColors: Record<string, string> = {
   INVESTMENT: "bg-chart-2",
 };
 
-export function ConsolidatedBalance({
-  total,
-  currency,
-  byType,
-  isLoading = false,
-}: ConsolidatedBalanceProps) {
+export function ConsolidatedBalance({ total, currency, byType, isLoading = false }: ConsolidatedBalanceProps) {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
@@ -53,15 +48,22 @@ export function ConsolidatedBalance({
   }
 
   return (
-    <Card>
+    <Card variant="elevated">
       <CardHeader>
-        <CardTitle>Saldo Consolidado</CardTitle>
+        {/* MD3 Headline Small Typography */}
+        <CardTitle className="font-[family-name:var(--md-sys-typescale-headline-small-font)] text-[length:var(--md-sys-typescale-headline-small-size)] leading-[var(--md-sys-typescale-headline-small-line-height)] font-[number:var(--md-sys-typescale-headline-small-weight)] tracking-[var(--md-sys-typescale-headline-small-tracking)] text-[hsl(var(--md-sys-color-on-surface))]">
+          Saldo Consolidado
+        </CardTitle>
       </CardHeader>
       <CardContent>
         {/* Total Balance */}
         <div className="mb-6">
-          <p className="text-sm text-on-surface-variant mb-2">Saldo Total</p>
-          <p className="text-4xl font-bold text-on-surface">
+          {/* MD3 Body Medium Typography */}
+          <p className="font-[family-name:var(--md-sys-typescale-body-medium-font)] text-[length:var(--md-sys-typescale-body-medium-size)] leading-[var(--md-sys-typescale-body-medium-line-height)] font-[number:var(--md-sys-typescale-body-medium-weight)] tracking-[var(--md-sys-typescale-body-medium-tracking)] text-[hsl(var(--md-sys-color-on-surface-variant))] mb-2">
+            Saldo Total
+          </p>
+          {/* MD3 Display Medium Typography */}
+          <p className="font-[family-name:var(--md-sys-typescale-display-medium-font)] text-[length:var(--md-sys-typescale-display-medium-size)] leading-[var(--md-sys-typescale-display-medium-line-height)] font-[number:var(--md-sys-typescale-display-medium-weight)] tracking-[var(--md-sys-typescale-display-medium-tracking)] text-[hsl(var(--md-sys-color-on-surface))]">
             {formatCurrency(total)}
           </p>
         </div>
@@ -69,7 +71,8 @@ export function ConsolidatedBalance({
         {/* Breakdown by Account Type */}
         {Object.keys(byType).length > 0 && (
           <div className="space-y-4">
-            <p className="text-sm font-medium text-on-surface-variant">
+            {/* MD3 Title Small Typography */}
+            <p className="font-[family-name:var(--md-sys-typescale-title-small-font)] text-[length:var(--md-sys-typescale-title-small-size)] leading-[var(--md-sys-typescale-title-small-line-height)] font-[number:var(--md-sys-typescale-title-small-weight)] tracking-[var(--md-sys-typescale-title-small-tracking)] text-[hsl(var(--md-sys-color-on-surface-variant))]">
               Por Tipo de Conta
             </p>
             <div className="space-y-3">
@@ -77,13 +80,15 @@ export function ConsolidatedBalance({
                 <div key={type} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div
-                      className={`w-3 h-3 rounded-full ${accountTypeColors[type] || "bg-muted"}`}
+                      className={`w-3 h-3 rounded-full ${accountTypeColors[type] || "bg-[hsl(var(--md-sys-color-outline))]"}`}
                     />
-                    <span className="text-sm text-on-surface">
+                    {/* MD3 Body Small Typography */}
+                    <span className="font-[family-name:var(--md-sys-typescale-body-small-font)] text-[length:var(--md-sys-typescale-body-small-size)] leading-[var(--md-sys-typescale-body-small-line-height)] font-[number:var(--md-sys-typescale-body-small-weight)] tracking-[var(--md-sys-typescale-body-small-tracking)] text-[hsl(var(--md-sys-color-on-surface))]">
                       {accountTypeLabels[type] || type}
                     </span>
                   </div>
-                  <span className="text-sm font-medium text-on-surface">
+                  {/* MD3 Label Medium Typography */}
+                  <span className="font-[family-name:var(--md-sys-typescale-label-medium-font)] text-[length:var(--md-sys-typescale-label-medium-size)] leading-[var(--md-sys-typescale-label-medium-line-height)] font-[number:var(--md-sys-typescale-label-medium-weight)] tracking-[var(--md-sys-typescale-label-medium-tracking)] text-[hsl(var(--md-sys-color-on-surface))]">
                     {formatCurrency(balance)}
                   </span>
                 </div>

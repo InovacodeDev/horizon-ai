@@ -10,12 +10,7 @@ interface BenefitItemProps {
   index: number;
 }
 
-export function BenefitItem({
-  icon,
-  title,
-  description,
-  index,
-}: BenefitItemProps) {
+export function BenefitItem({ icon, title, description, index }: BenefitItemProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
@@ -28,12 +23,19 @@ export function BenefitItem({
       }}
       className="flex flex-col md:flex-row items-start gap-4"
     >
-      <div className="flex-shrink-0 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+      {/* MD3 Icon container with primary state layer */}
+      <div className="flex-shrink-0 w-12 h-12 rounded-full bg-[hsl(var(--md-sys-color-primary))] flex items-center justify-center text-[hsl(var(--md-sys-color-on-primary))]">
         {icon}
       </div>
       <div>
-        <h3 className="text-xl font-semibold text-on-surface mb-2">{title}</h3>
-        <p className="text-on-surface-variant leading-relaxed">{description}</p>
+        {/* MD3 Headline Small Typography */}
+        <h3 className="font-[family-name:var(--md-sys-typescale-headline-small-font)] text-[length:var(--md-sys-typescale-headline-small-size)] leading-[var(--md-sys-typescale-headline-small-line-height)] font-[number:var(--md-sys-typescale-headline-small-weight)] tracking-[var(--md-sys-typescale-headline-small-tracking)] text-[hsl(var(--md-sys-color-on-surface))] mb-2">
+          {title}
+        </h3>
+        {/* MD3 Body Medium Typography */}
+        <p className="font-[family-name:var(--md-sys-typescale-body-medium-font)] text-[length:var(--md-sys-typescale-body-medium-size)] leading-[var(--md-sys-typescale-body-medium-line-height)] font-[number:var(--md-sys-typescale-body-medium-weight)] tracking-[var(--md-sys-typescale-body-medium-tracking)] text-[hsl(var(--md-sys-color-on-surface-variant))]">
+          {description}
+        </p>
       </div>
     </motion.div>
   );

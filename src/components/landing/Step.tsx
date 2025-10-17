@@ -25,15 +25,23 @@ export function Step({ number, icon, title, description, index }: StepProps) {
       className="relative flex flex-col items-center text-center"
     >
       <div className="relative mb-6">
-        <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center text-primary-foreground shadow-lg">
+        {/* MD3 Primary container with icon */}
+        <div className="w-20 h-20 rounded-full bg-[hsl(var(--md-sys-color-primary))] flex items-center justify-center text-[hsl(var(--md-sys-color-on-primary))] shadow-lg">
           {icon}
         </div>
-        <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground text-sm font-bold shadow-md">
+        {/* MD3 Tertiary badge with step number */}
+        <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-[hsl(var(--md-sys-color-tertiary))] flex items-center justify-center text-[hsl(var(--md-sys-color-on-tertiary))] text-sm font-bold shadow-md">
           {number}
         </div>
       </div>
-      <h3 className="text-xl font-semibold text-on-surface mb-3">{title}</h3>
-      <p className="text-on-surface-variant max-w-xs">{description}</p>
+      {/* MD3 Headline Small Typography */}
+      <h3 className="font-[family-name:var(--md-sys-typescale-headline-small-font)] text-[length:var(--md-sys-typescale-headline-small-size)] leading-[var(--md-sys-typescale-headline-small-line-height)] font-[number:var(--md-sys-typescale-headline-small-weight)] tracking-[var(--md-sys-typescale-headline-small-tracking)] text-[hsl(var(--md-sys-color-on-surface))] mb-3">
+        {title}
+      </h3>
+      {/* MD3 Body Medium Typography */}
+      <p className="font-[family-name:var(--md-sys-typescale-body-medium-font)] text-[length:var(--md-sys-typescale-body-medium-size)] leading-[var(--md-sys-typescale-body-medium-line-height)] font-[number:var(--md-sys-typescale-body-medium-weight)] tracking-[var(--md-sys-typescale-body-medium-tracking)] text-[hsl(var(--md-sys-color-on-surface-variant))] max-w-xs">
+        {description}
+      </p>
     </motion.div>
   );
 }

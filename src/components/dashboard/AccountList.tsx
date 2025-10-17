@@ -49,9 +49,7 @@ export function AccountList({ accounts, isLoading = false }: AccountListProps) {
 
         // Handle rate limit error with custom message
         if (response.status === 429) {
-          throw new Error(
-            error.message || "Aguarde antes de sincronizar novamente"
-          );
+          throw new Error(error.message || "Aguarde antes de sincronizar novamente");
         }
 
         throw new Error(error.error || "Failed to sync account");
@@ -155,13 +153,16 @@ export function AccountList({ accounts, isLoading = false }: AccountListProps) {
 
   if (isLoading) {
     return (
-      <Card>
+      <Card variant="elevated">
         <CardHeader>
-          <CardTitle>Contas Conectadas</CardTitle>
+          {/* MD3 Headline Small Typography */}
+          <CardTitle className="font-[family-name:var(--md-sys-typescale-headline-small-font)] text-[length:var(--md-sys-typescale-headline-small-size)] leading-[var(--md-sys-typescale-headline-small-line-height)] font-[number:var(--md-sys-typescale-headline-small-weight)] tracking-[var(--md-sys-typescale-headline-small-tracking)] text-[hsl(var(--md-sys-color-on-surface))]">
+            Contas Conectadas
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            <Loader2 className="w-8 h-8 text-[hsl(var(--md-sys-color-primary))] animate-spin" />
           </div>
         </CardContent>
       </Card>
@@ -169,13 +170,16 @@ export function AccountList({ accounts, isLoading = false }: AccountListProps) {
   }
 
   return (
-    <Card>
+    <Card variant="elevated">
       <CardHeader>
-        <CardTitle>Contas Conectadas</CardTitle>
+        {/* MD3 Headline Small Typography */}
+        <CardTitle className="font-[family-name:var(--md-sys-typescale-headline-small-font)] text-[length:var(--md-sys-typescale-headline-small-size)] leading-[var(--md-sys-typescale-headline-small-line-height)] font-[number:var(--md-sys-typescale-headline-small-weight)] tracking-[var(--md-sys-typescale-headline-small-tracking)] text-[hsl(var(--md-sys-color-on-surface))]">
+          Contas Conectadas
+        </CardTitle>
       </CardHeader>
       <CardContent>
         {accounts.length === 0 ? (
-          <p className="text-sm text-on-surface-variant text-center py-8">
+          <p className="font-[family-name:var(--md-sys-typescale-body-medium-font)] text-[length:var(--md-sys-typescale-body-medium-size)] leading-[var(--md-sys-typescale-body-medium-line-height)] font-[number:var(--md-sys-typescale-body-medium-weight)] tracking-[var(--md-sys-typescale-body-medium-tracking)] text-[hsl(var(--md-sys-color-on-surface-variant))] text-center py-8">
             Nenhuma conta conectada ainda.
           </p>
         ) : (
@@ -183,36 +187,40 @@ export function AccountList({ accounts, isLoading = false }: AccountListProps) {
             {accounts.map((account) => (
               <div
                 key={account.id}
-                className="border border-outline/20 rounded-lg p-4 hover:bg-surface-variant/10 transition-colors"
+                className="border border-[hsl(var(--md-sys-color-outline))]/20 rounded-lg p-4 hover:bg-[hsl(var(--md-sys-color-surface-variant))]/10 transition-colors"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-3 flex-1 min-w-0">
                     {/* Institution Icon */}
-                    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Building2 className="w-6 h-6 text-primary" />
+                    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-[hsl(var(--md-sys-color-primary))]/10 flex items-center justify-center">
+                      <Building2 className="w-6 h-6 text-[hsl(var(--md-sys-color-primary))]" />
                     </div>
 
                     {/* Account Details */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-sm font-semibold text-on-surface truncate">
+                        {/* MD3 Title Small Typography */}
+                        <h3 className="font-[family-name:var(--md-sys-typescale-title-small-font)] text-[length:var(--md-sys-typescale-title-small-size)] leading-[var(--md-sys-typescale-title-small-line-height)] font-[number:var(--md-sys-typescale-title-small-weight)] tracking-[var(--md-sys-typescale-title-small-tracking)] text-[hsl(var(--md-sys-color-on-surface))] truncate">
                           {account.institutionName}
                         </h3>
+                        {/* MD3 Label Small Typography */}
                         <span
-                          className={`text-xs font-medium ${getStatusColor(account.status)}`}
+                          className={`font-[family-name:var(--md-sys-typescale-label-small-font)] text-[length:var(--md-sys-typescale-label-small-size)] leading-[var(--md-sys-typescale-label-small-line-height)] font-[number:var(--md-sys-typescale-label-small-weight)] tracking-[var(--md-sys-typescale-label-small-tracking)] ${getStatusColor(account.status)}`}
                         >
                           {getStatusLabel(account.status)}
                         </span>
                       </div>
-                      <p className="text-xs text-on-surface-variant mb-2">
-                        {accountTypeLabels[account.accountType] ||
-                          account.accountType}
+                      {/* MD3 Body Small Typography */}
+                      <p className="font-[family-name:var(--md-sys-typescale-body-small-font)] text-[length:var(--md-sys-typescale-body-small-size)] leading-[var(--md-sys-typescale-body-small-line-height)] font-[number:var(--md-sys-typescale-body-small-weight)] tracking-[var(--md-sys-typescale-body-small-tracking)] text-[hsl(var(--md-sys-color-on-surface-variant))] mb-2">
+                        {accountTypeLabels[account.accountType] || account.accountType}
                         {account.accountNumber && ` • ${account.accountNumber}`}
                       </p>
-                      <p className="text-lg font-bold text-on-surface">
+                      {/* MD3 Display Small Typography */}
+                      <p className="font-[family-name:var(--md-sys-typescale-display-small-font)] text-[length:var(--md-sys-typescale-display-small-size)] leading-[var(--md-sys-typescale-display-small-line-height)] font-[number:var(--md-sys-typescale-display-small-weight)] tracking-[var(--md-sys-typescale-display-small-tracking)] text-[hsl(var(--md-sys-color-on-surface))]">
                         {formatCurrency(account.balance, account.currency)}
                       </p>
-                      <p className="text-xs text-on-surface-variant mt-1">
+                      {/* MD3 Label Small Typography */}
+                      <p className="font-[family-name:var(--md-sys-typescale-label-small-font)] text-[length:var(--md-sys-typescale-label-small-size)] leading-[var(--md-sys-typescale-label-small-line-height)] font-[number:var(--md-sys-typescale-label-small-weight)] tracking-[var(--md-sys-typescale-label-small-tracking)] text-[hsl(var(--md-sys-color-on-surface-variant))] mt-1">
                         Última sincronização: {formatLastSync(account.lastSync)}
                       </p>
                     </div>
@@ -221,13 +229,10 @@ export function AccountList({ accounts, isLoading = false }: AccountListProps) {
                   {/* Action Buttons */}
                   <div className="flex flex-col gap-2 ml-4">
                     <Button
-                      variant="outline"
-                      size="sm"
+                      variant="outlined"
+                      size="small"
                       onClick={() => syncMutation.mutate(account.connectionId)}
-                      disabled={
-                        syncMutation.isPending ||
-                        account.status === "DISCONNECTED"
-                      }
+                      disabled={syncMutation.isPending || account.status === "DISCONNECTED"}
                       className="w-full"
                     >
                       {syncMutation.isPending ? (
@@ -240,16 +245,11 @@ export function AccountList({ accounts, isLoading = false }: AccountListProps) {
                       )}
                     </Button>
                     <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        disconnectMutation.mutate(account.connectionId)
-                      }
-                      disabled={
-                        disconnectMutation.isPending ||
-                        account.status === "DISCONNECTED"
-                      }
-                      className="w-full text-error hover:text-error"
+                      variant="outlined"
+                      size="small"
+                      onClick={() => disconnectMutation.mutate(account.connectionId)}
+                      disabled={disconnectMutation.isPending || account.status === "DISCONNECTED"}
+                      className="w-full text-[hsl(var(--md-sys-color-error))]"
                     >
                       {disconnectMutation.isPending ? (
                         <Loader2 className="w-4 h-4 animate-spin" />

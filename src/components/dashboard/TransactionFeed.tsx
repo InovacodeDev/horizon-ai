@@ -44,21 +44,12 @@ async function fetchTransactions({ pageParam = 1 }) {
 export function TransactionFeed({ initialData }: TransactionFeedProps) {
   const observerTarget = useRef<HTMLDivElement>(null);
 
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoading,
-    isError,
-  } = useInfiniteQuery({
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError } = useInfiniteQuery({
     queryKey: ["transactions"],
     queryFn: fetchTransactions,
     initialPageParam: 1,
     getNextPageParam: (lastPage) => {
-      return lastPage.pagination.hasMore
-        ? lastPage.pagination.page + 1
-        : undefined;
+      return lastPage.pagination.hasMore ? lastPage.pagination.page + 1 : undefined;
     },
   });
 
@@ -122,10 +113,7 @@ export function TransactionFeed({ initialData }: TransactionFeedProps) {
       if (seen.has(key)) {
         const existing = seen.get(key)!;
         // Prefer CREDIT_CARD type over CHECKING for deduplication
-        if (
-          transaction.accountType === "CREDIT_CARD" &&
-          existing.accountType !== "CREDIT_CARD"
-        ) {
+        if (transaction.accountType === "CREDIT_CARD" && existing.accountType !== "CREDIT_CARD") {
           seen.set(key, transaction);
         }
       } else {
@@ -138,13 +126,16 @@ export function TransactionFeed({ initialData }: TransactionFeedProps) {
 
   if (isLoading) {
     return (
-      <Card>
+      <Card variant="elevated">
         <CardHeader>
-          <CardTitle>Transações Recentes</CardTitle>
+          {/* MD3 Headline Small Typography */}
+          <CardTitle className="font-[family-name:var(--md-sys-typescale-headline-small-font)] text-[length:var(--md-sys-typescale-headline-small-size)] leading-[var(--md-sys-typescale-headline-small-line-height)] font-[number:var(--md-sys-typescale-headline-small-weight)] tracking-[var(--md-sys-typescale-headline-small-tracking)] text-[hsl(var(--md-sys-color-on-surface))]">
+            Transações Recentes
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            <Loader2 className="w-8 h-8 text-[hsl(var(--md-sys-color-primary))] animate-spin" />
           </div>
         </CardContent>
       </Card>
@@ -153,12 +144,16 @@ export function TransactionFeed({ initialData }: TransactionFeedProps) {
 
   if (isError) {
     return (
-      <Card>
+      <Card variant="elevated">
         <CardHeader>
-          <CardTitle>Transações Recentes</CardTitle>
+          {/* MD3 Headline Small Typography */}
+          <CardTitle className="font-[family-name:var(--md-sys-typescale-headline-small-font)] text-[length:var(--md-sys-typescale-headline-small-size)] leading-[var(--md-sys-typescale-headline-small-line-height)] font-[number:var(--md-sys-typescale-headline-small-weight)] tracking-[var(--md-sys-typescale-headline-small-tracking)] text-[hsl(var(--md-sys-color-on-surface))]">
+            Transações Recentes
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-error text-center py-8">
+          {/* MD3 Body Medium Typography */}
+          <p className="font-[family-name:var(--md-sys-typescale-body-medium-font)] text-[length:var(--md-sys-typescale-body-medium-size)] leading-[var(--md-sys-typescale-body-medium-line-height)] font-[number:var(--md-sys-typescale-body-medium-weight)] tracking-[var(--md-sys-typescale-body-medium-tracking)] text-[hsl(var(--md-sys-color-error))] text-center py-8">
             Erro ao carregar transações. Tente novamente.
           </p>
         </CardContent>
@@ -170,13 +165,16 @@ export function TransactionFeed({ initialData }: TransactionFeedProps) {
   const deduplicatedTransactions = deduplicateTransactions(allTransactions);
 
   return (
-    <Card>
+    <Card variant="elevated">
       <CardHeader>
-        <CardTitle>Transações Recentes</CardTitle>
+        {/* MD3 Headline Small Typography */}
+        <CardTitle className="font-[family-name:var(--md-sys-typescale-headline-small-font)] text-[length:var(--md-sys-typescale-headline-small-size)] leading-[var(--md-sys-typescale-headline-small-line-height)] font-[number:var(--md-sys-typescale-headline-small-weight)] tracking-[var(--md-sys-typescale-headline-small-tracking)] text-[hsl(var(--md-sys-color-on-surface))]">
+          Transações Recentes
+        </CardTitle>
       </CardHeader>
       <CardContent>
         {deduplicatedTransactions.length === 0 ? (
-          <p className="text-sm text-on-surface-variant text-center py-8">
+          <p className="font-[family-name:var(--md-sys-typescale-body-medium-font)] text-[length:var(--md-sys-typescale-body-medium-size)] leading-[var(--md-sys-typescale-body-medium-line-height)] font-[number:var(--md-sys-typescale-body-medium-weight)] tracking-[var(--md-sys-typescale-body-medium-tracking)] text-[hsl(var(--md-sys-color-on-surface-variant))] text-center py-8">
             Nenhuma transação encontrada nos últimos 30 dias.
           </p>
         ) : (
@@ -184,39 +182,41 @@ export function TransactionFeed({ initialData }: TransactionFeedProps) {
             {deduplicatedTransactions.map((transaction) => (
               <div
                 key={transaction.id}
-                className="flex items-center justify-between py-3 px-2 hover:bg-surface-variant/10 rounded-lg transition-colors"
+                className="flex items-center justify-between py-3 px-2 hover:bg-[hsl(var(--md-sys-color-surface-variant))]/10 rounded-lg transition-colors"
               >
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   {/* Transaction Icon */}
                   <div
                     className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
                       transaction.type === "CREDIT"
-                        ? "bg-secondary/10"
-                        : "bg-error/10"
+                        ? "bg-[hsl(var(--md-sys-color-secondary))]/10"
+                        : "bg-[hsl(var(--md-sys-color-error))]/10"
                     }`}
                   >
                     {transaction.type === "CREDIT" ? (
-                      <ArrowDownRight className="w-5 h-5 text-secondary" />
+                      <ArrowDownRight className="w-5 h-5 text-[hsl(var(--md-sys-color-secondary))]" />
                     ) : (
-                      <ArrowUpRight className="w-5 h-5 text-error" />
+                      <ArrowUpRight className="w-5 h-5 text-[hsl(var(--md-sys-color-error))]" />
                     )}
                   </div>
 
                   {/* Transaction Details */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-on-surface truncate">
+                    {/* MD3 Body Medium Typography */}
+                    <p className="font-[family-name:var(--md-sys-typescale-body-medium-font)] text-[length:var(--md-sys-typescale-body-medium-size)] leading-[var(--md-sys-typescale-body-medium-line-height)] font-[number:var(--md-sys-typescale-body-medium-weight)] tracking-[var(--md-sys-typescale-body-medium-tracking)] text-[hsl(var(--md-sys-color-on-surface))] truncate">
                       {transaction.description}
                     </p>
                     <div className="flex items-center gap-2 mt-1">
-                      <p className="text-xs text-on-surface-variant">
+                      {/* MD3 Body Small Typography */}
+                      <p className="font-[family-name:var(--md-sys-typescale-body-small-font)] text-[length:var(--md-sys-typescale-body-small-size)] leading-[var(--md-sys-typescale-body-small-line-height)] font-[number:var(--md-sys-typescale-body-small-weight)] tracking-[var(--md-sys-typescale-body-small-tracking)] text-[hsl(var(--md-sys-color-on-surface-variant))]">
                         {transaction.institutionName}
                       </p>
                       {transaction.category && (
                         <>
-                          <span className="text-xs text-on-surface-variant">
+                          <span className="font-[family-name:var(--md-sys-typescale-body-small-font)] text-[hsl(var(--md-sys-color-on-surface-variant))]">
                             •
                           </span>
-                          <p className="text-xs text-on-surface-variant">
+                          <p className="font-[family-name:var(--md-sys-typescale-body-small-font)] text-[length:var(--md-sys-typescale-body-small-size)] leading-[var(--md-sys-typescale-body-small-line-height)] font-[number:var(--md-sys-typescale-body-small-weight)] tracking-[var(--md-sys-typescale-body-small-tracking)] text-[hsl(var(--md-sys-color-on-surface-variant))]">
                             {transaction.category}
                           </p>
                         </>
@@ -226,17 +226,19 @@ export function TransactionFeed({ initialData }: TransactionFeedProps) {
 
                   {/* Amount and Date */}
                   <div className="flex-shrink-0 text-right">
+                    {/* MD3 Label Medium Typography */}
                     <p
-                      className={`text-sm font-semibold ${
+                      className={`font-[family-name:var(--md-sys-typescale-label-medium-font)] text-[length:var(--md-sys-typescale-label-medium-size)] leading-[var(--md-sys-typescale-label-medium-line-height)] font-[number:var(--md-sys-typescale-label-medium-weight)] tracking-[var(--md-sys-typescale-label-medium-tracking)] ${
                         transaction.type === "CREDIT"
-                          ? "text-secondary"
-                          : "text-on-surface"
+                          ? "text-[hsl(var(--md-sys-color-secondary))]"
+                          : "text-[hsl(var(--md-sys-color-on-surface))]"
                       }`}
                     >
                       {transaction.type === "CREDIT" ? "+" : "-"}
                       {formatCurrency(Math.abs(transaction.amount))}
                     </p>
-                    <p className="text-xs text-on-surface-variant mt-1">
+                    {/* MD3 Label Small Typography */}
+                    <p className="font-[family-name:var(--md-sys-typescale-label-small-font)] text-[length:var(--md-sys-typescale-label-small-size)] leading-[var(--md-sys-typescale-label-small-line-height)] font-[number:var(--md-sys-typescale-label-small-weight)] tracking-[var(--md-sys-typescale-label-small-tracking)] text-[hsl(var(--md-sys-color-on-surface-variant))] mt-1">
                       {formatDate(transaction.date)}
                     </p>
                   </div>
@@ -248,7 +250,7 @@ export function TransactionFeed({ initialData }: TransactionFeedProps) {
             <div ref={observerTarget} className="py-4">
               {isFetchingNextPage && (
                 <div className="flex justify-center">
-                  <Loader2 className="w-6 h-6 text-primary animate-spin" />
+                  <Loader2 className="w-6 h-6 text-[hsl(var(--md-sys-color-primary))] animate-spin" />
                 </div>
               )}
             </div>
@@ -256,11 +258,7 @@ export function TransactionFeed({ initialData }: TransactionFeedProps) {
             {/* Load more button (fallback) */}
             {hasNextPage && !isFetchingNextPage && (
               <div className="flex justify-center pt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => fetchNextPage()}
-                  disabled={isFetchingNextPage}
-                >
+                <Button variant="outlined" onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
                   Carregar mais
                 </Button>
               </div>
