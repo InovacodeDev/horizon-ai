@@ -1,0 +1,31 @@
+/**
+ * Material Design 3 Elevation System
+ * Defines shadow levels for depth and hierarchy
+ */
+
+@layer tokens {
+  :root {
+    /* Elevation Level 0 - No elevation */
+    --md-sys-elevation-level0: none;
+
+    /* Elevation Level 1 - Subtle elevation for cards, chips */
+    --md-sys-elevation-level1:
+      0px 1px 2px 0px hsl(var(--md-sys-color-shadow) / 0.3), 0px 1px 3px 1px hsl(var(--md-sys-color-shadow) / 0.15);
+
+    /* Elevation Level 2 - Medium elevation for menus, search bars */
+    --md-sys-elevation-level2:
+      0px 1px 2px 0px hsl(var(--md-sys-color-shadow) / 0.3), 0px 2px 6px 2px hsl(var(--md-sys-color-shadow) / 0.15);
+
+    /* Elevation Level 3 - High elevation for dialogs, snackbars */
+    --md-sys-elevation-level3:
+      0px 1px 3px 0px hsl(var(--md-sys-color-shadow) / 0.3), 0px 4px 8px 3px hsl(var(--md-sys-color-shadow) / 0.15);
+
+    /* Elevation Level 4 - Higher elevation for navigation drawers */
+    --md-sys-elevation-level4:
+      0px 2px 3px 0px hsl(var(--md-sys-color-shadow) / 0.3), 0px 6px 10px 4px hsl(var(--md-sys-color-shadow) / 0.15);
+
+    /* Elevation Level 5 - Highest elevation for modal dialogs */
+    --md-sys-elevation-level5:
+      0px 4px 4px 0px hsl(var(--md-sys-color-shadow) / 0.3), 0px 8px 12px 6px hsl(var(--md-sys-color-shadow) / 0.15);
+  }
+}

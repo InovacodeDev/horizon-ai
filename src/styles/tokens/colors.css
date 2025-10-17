@@ -1,0 +1,120 @@
+/**
+ * Material Design 3 Color System
+ * Defines color roles for light and dark themes
+ */
+
+@layer tokens {
+  :root {
+    /* Primary */
+    --md-sys-color-primary: 103 80% 40%;
+    --md-sys-color-on-primary: 0 0% 100%;
+    --md-sys-color-primary-container: 103 100% 90%;
+    --md-sys-color-on-primary-container: 103 100% 10%;
+
+    /* Secondary */
+    --md-sys-color-secondary: 98 39% 49%;
+    --md-sys-color-on-secondary: 0 0% 100%;
+    --md-sys-color-secondary-container: 98 100% 90%;
+    --md-sys-color-on-secondary-container: 98 100% 10%;
+
+    /* Tertiary */
+    --md-sys-color-tertiary: 45 100% 51%;
+    --md-sys-color-on-tertiary: 0 0% 0%;
+    --md-sys-color-tertiary-container: 45 100% 90%;
+    --md-sys-color-on-tertiary-container: 45 100% 13%;
+
+    /* Error */
+    --md-sys-color-error: 0 72% 51%;
+    --md-sys-color-on-error: 0 0% 100%;
+    --md-sys-color-error-container: 0 100% 95%;
+    --md-sys-color-on-error-container: 0 100% 13%;
+
+    /* Surface */
+    --md-sys-color-surface: 0 0% 99%;
+    --md-sys-color-on-surface: 0 0% 11%;
+    --md-sys-color-surface-variant: 220 9% 92%;
+    --md-sys-color-on-surface-variant: 220 9% 29%;
+    --md-sys-color-surface-container-lowest: 0 0% 100%;
+    --md-sys-color-surface-container-low: 220 100% 98%;
+    --md-sys-color-surface-container: 220 100% 96%;
+    --md-sys-color-surface-container-high: 220 100% 94%;
+    --md-sys-color-surface-container-highest: 220 100% 92%;
+
+    /* Outline */
+    --md-sys-color-outline: 220 9% 46%;
+    --md-sys-color-outline-variant: 220 9% 80%;
+
+    /* Background */
+    --md-sys-color-background: 0 0% 99%;
+    --md-sys-color-on-background: 0 0% 11%;
+
+    /* Surface Tint */
+    --md-sys-color-surface-tint: var(--md-sys-color-primary);
+
+    /* Inverse */
+    --md-sys-color-inverse-surface: 0 0% 18%;
+    --md-sys-color-inverse-on-surface: 0 0% 95%;
+    --md-sys-color-inverse-primary: 103 100% 80%;
+
+    /* Scrim */
+    --md-sys-color-scrim: 0 0% 0%;
+    --md-sys-color-shadow: 0 0% 0%;
+  }
+
+  .dark {
+    /* Primary */
+    --md-sys-color-primary: 103 100% 80%;
+    --md-sys-color-on-primary: 103 100% 20%;
+    --md-sys-color-primary-container: 103 100% 30%;
+    --md-sys-color-on-primary-container: 103 100% 90%;
+
+    /* Secondary */
+    --md-sys-color-secondary: 98 100% 80%;
+    --md-sys-color-on-secondary: 98 100% 20%;
+    --md-sys-color-secondary-container: 98 100% 30%;
+    --md-sys-color-on-secondary-container: 98 100% 90%;
+
+    /* Tertiary */
+    --md-sys-color-tertiary: 45 100% 80%;
+    --md-sys-color-on-tertiary: 45 100% 20%;
+    --md-sys-color-tertiary-container: 45 100% 30%;
+    --md-sys-color-on-tertiary-container: 45 100% 90%;
+
+    /* Error */
+    --md-sys-color-error: 0 100% 80%;
+    --md-sys-color-on-error: 0 100% 20%;
+    --md-sys-color-error-container: 0 100% 30%;
+    --md-sys-color-on-error-container: 0 100% 90%;
+
+    /* Surface */
+    --md-sys-color-surface: 0 0% 11%;
+    --md-sys-color-on-surface: 0 0% 90%;
+    --md-sys-color-surface-variant: 220 9% 20%;
+    --md-sys-color-on-surface-variant: 220 9% 74%;
+    --md-sys-color-surface-container-lowest: 0 0% 8%;
+    --md-sys-color-surface-container-low: 0 0% 14%;
+    --md-sys-color-surface-container: 0 0% 17%;
+    --md-sys-color-surface-container-high: 0 0% 22%;
+    --md-sys-color-surface-container-highest: 0 0% 27%;
+
+    /* Outline */
+    --md-sys-color-outline: 220 9% 60%;
+    --md-sys-color-outline-variant: 220 9% 30%;
+
+    /* Background */
+    --md-sys-color-background: 0 0% 11%;
+    --md-sys-color-on-background: 0 0% 90%;
+
+    /* Surface Tint */
+    --md-sys-color-surface-tint: var(--md-sys-color-primary);
+
+    /* Inverse */
+    --md-sys-color-inverse-surface: 0 0% 90%;
+    --md-sys-color-inverse-on-surface: 0 0% 18%;
+    --md-sys-color-inverse-primary: 103 80% 40%;
+
+    /* Scrim */
+    --md-sys-color-scrim: 0 0% 0%;
+    --md-sys-color-shadow: 0 0% 0%;
+  }
+}

@@ -13,33 +13,55 @@ export function EmptyDashboard({ onConnectBank }: EmptyDashboardProps) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: [0.4, 0.0, 0.2, 1] }}
-      className="min-h-screen bg-surface flex items-center justify-center p-6"
+      transition={{
+        duration: 0.4,
+        ease: [0.2, 0, 0, 1], // MD3 emphasized easing
+      }}
+      className="min-h-screen flex items-center justify-center p-6"
+      style={{
+        backgroundColor: "hsl(var(--md-sys-color-surface))",
+      }}
     >
       <div className="w-full max-w-[560px] text-center">
         <div className="mb-8">
-          {/* Icon */}
-          <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-primary/10 flex items-center justify-center">
-            <Building2 className="w-12 h-12 text-primary" />
+          {/* Icon with MD3 Primary Container */}
+          <div
+            className="w-24 h-24 mx-auto mb-6 rounded-full flex items-center justify-center"
+            style={{
+              backgroundColor: "hsl(var(--md-sys-color-primary-container) / 0.3)",
+            }}
+          >
+            <Building2 className="w-12 h-12" style={{ color: "hsl(var(--md-sys-color-primary))" }} />
           </div>
 
-          {/* Title */}
-          <h1 className="text-[28px] leading-9 font-semibold text-on-surface mb-3">
+          {/* Title - MD3 Headline Medium */}
+          <h1
+            className="mb-3"
+            style={{
+              fontSize: "var(--md-sys-typescale-headline-medium-size)",
+              lineHeight: "var(--md-sys-typescale-headline-medium-line-height)",
+              fontWeight: "600",
+              color: "hsl(var(--md-sys-color-on-surface))",
+            }}
+          >
             Conecte sua primeira conta
           </h1>
 
-          {/* Description */}
-          <p className="text-base leading-6 text-on-surface-variant">
-            Conecte sua primeira conta para começar a ver seus dados financeiros
-            consolidados em um só lugar.
+          {/* Description - MD3 Body Large */}
+          <p
+            style={{
+              fontSize: "var(--md-sys-typescale-body-large-size)",
+              lineHeight: "var(--md-sys-typescale-body-large-line-height)",
+              fontWeight: "var(--md-sys-typescale-body-large-weight)",
+              color: "hsl(var(--md-sys-color-on-surface-variant))",
+            }}
+          >
+            Conecte sua primeira conta para começar a ver seus dados financeiros consolidados em um só lugar.
           </p>
         </div>
 
-        {/* CTA Button */}
-        <Button
-          onClick={onConnectBank}
-          className="w-full max-w-xs h-10 bg-primary text-on-primary hover:bg-primary/90 rounded-full text-sm font-medium transition-all duration-200 hover:shadow-lg active:scale-[0.98]"
-        >
+        {/* CTA Button - MD3 Filled Button */}
+        <Button onClick={onConnectBank} variant="filled" className="w-full max-w-xs">
           Conectar conta
         </Button>
       </div>

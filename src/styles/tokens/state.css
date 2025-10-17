@@ -1,0 +1,18 @@
+/**
+ * Material Design 3 State Layer System
+ * Defines opacity values for interactive states
+ */
+
+@layer tokens {
+  :root {
+    /* State Layer Opacity Values */
+    --md-sys-state-hover-opacity: 0.08;
+    --md-sys-state-focus-opacity: 0.12;
+    --md-sys-state-pressed-opacity: 0.12;
+    --md-sys-state-dragged-opacity: 0.16;
+
+    /* Disabled State */
+    --md-sys-state-disabled-content-opacity: 0.38;
+    --md-sys-state-disabled-container-opacity: 0.12;
+  }
+}
