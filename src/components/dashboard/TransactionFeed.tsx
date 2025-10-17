@@ -182,7 +182,7 @@ export function TransactionFeed({ initialData }: TransactionFeedProps) {
             {deduplicatedTransactions.map((transaction) => (
               <div
                 key={transaction.id}
-                className="flex items-center justify-between py-3 px-2 hover:bg-[hsl(var(--md-sys-color-surface-variant))]/10 rounded-lg transition-colors"
+                className="flex items-center justify-between py-3 px-2 hover:bg-[hsl(var(--md-sys-color-surface-variant))]/10 rounded-[var(--md-sys-shape-corner-small)] transition-colors duration-[var(--md-sys-motion-duration-short2)] ease-[var(--md-sys-motion-easing-standard)]"
               >
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   {/* Transaction Icon */}

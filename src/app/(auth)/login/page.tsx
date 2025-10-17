@@ -9,13 +9,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 // Validation schema matching the API
 const loginSchema = z.object({
@@ -98,9 +92,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-2xl font-bold">Entrar</CardTitle>
-          <CardDescription>
-            Entre na sua conta para acessar suas finanças
-          </CardDescription>
+          <CardDescription>Entre na sua conta para acessar suas finanças</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -117,11 +109,7 @@ export default function LoginPage() {
                 aria-describedby={errors.email ? "email-error" : undefined}
               />
               {errors.email && (
-                <p
-                  id="email-error"
-                  className="text-sm text-red-600"
-                  role="alert"
-                >
+                <p id="email-error" className="text-sm text-red-600" role="alert">
                   {errors.email.message}
                 </p>
               )}
@@ -137,16 +125,10 @@ export default function LoginPage() {
                 autoComplete="current-password"
                 {...register("password")}
                 aria-invalid={errors.password ? "true" : "false"}
-                aria-describedby={
-                  errors.password ? "password-error" : undefined
-                }
+                aria-describedby={errors.password ? "password-error" : undefined}
               />
               {errors.password && (
-                <p
-                  id="password-error"
-                  className="text-sm text-red-600"
-                  role="alert"
-                >
+                <p id="password-error" className="text-sm text-red-600" role="alert">
                   {errors.password.message}
                 </p>
               )}
@@ -154,30 +136,20 @@ export default function LoginPage() {
 
             {/* Server Error */}
             {serverError && (
-              <div
-                className="rounded-md bg-red-50 p-3 text-sm text-red-800"
-                role="alert"
-              >
+              <div className="rounded-md bg-red-50 p-3 text-sm text-red-800" role="alert">
                 {serverError}
               </div>
             )}
 
             {/* Submit Button */}
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={mutation.isPending}
-            >
+            <Button type="submit" className="w-full my-16" disabled={mutation.isPending}>
               {mutation.isPending ? "Entrando..." : "Entrar"}
             </Button>
 
             {/* Register Link */}
-            <p className="text-center text-sm text-gray-600">
+            <p className="text-center text-sm text-gray-600 pb-16">
               Não tem uma conta?{" "}
-              <a
-                href="/register"
-                className="font-medium text-blue-600 hover:text-blue-500"
-              >
+              <a href="/register" className="font-medium text-blue-600 hover:text-blue-500">
                 Criar conta
               </a>
             </p>

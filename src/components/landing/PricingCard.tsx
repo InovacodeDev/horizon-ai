@@ -33,7 +33,7 @@ export function PricingCard({ plan, price, features, highlighted = false, ctaTex
         interactive={false}
         className={`h-full ${highlighted ? "ring-2 ring-[hsl(var(--md-sys-color-primary))]" : ""}`}
       >
-        <CardContent className="flex flex-col h-full pt-8">
+        <CardContent className="flex flex-col h-full py-8">
           <div className="mb-6">
             {/* MD3 Headline Medium Typography */}
             <h3 className="font-[family-name:var(--md-sys-typescale-headline-medium-font)] text-[length:var(--md-sys-typescale-headline-medium-size)] leading-[var(--md-sys-typescale-headline-medium-line-height)] font-[number:var(--md-sys-typescale-headline-medium-weight)] tracking-[var(--md-sys-typescale-headline-medium-tracking)] text-[hsl(var(--md-sys-color-on-surface))] mb-2 capitalize">
@@ -64,7 +64,7 @@ export function PricingCard({ plan, price, features, highlighted = false, ctaTex
             ))}
           </ul>
 
-          <Link href={ctaHref} className="w-full">
+          <Link href={ctaHref} className="w-full mb-8">
             <Button variant={highlighted ? "filled" : "outlined"} size="medium" className="w-full">
               {ctaText}
             </Button>
