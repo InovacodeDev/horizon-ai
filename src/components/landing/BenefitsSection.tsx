@@ -26,15 +26,14 @@ const benefits = [
 
 export function BenefitsSection() {
   return (
-    <section className="py-24 px-6 bg-surface">
+    <section className="py-24 px-6 bg-[hsl(var(--md-sys-color-surface))]">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-on-surface mb-4">
+          <h2 className="text-[length:var(--md-sys-typescale-headline-medium-size)] md:text-[length:var(--md-sys-typescale-headline-large-size)] leading-[var(--md-sys-typescale-headline-medium-line-height)] md:leading-[var(--md-sys-typescale-headline-large-line-height)] font-[var(--md-sys-typescale-headline-large-weight)] text-[hsl(var(--md-sys-color-on-surface))] mb-4">
             Por que escolher a Horizon AI?
           </h2>
-          <p className="text-lg text-on-surface-variant max-w-2xl mx-auto">
-            Resolvemos os principais problemas que você enfrenta ao gerenciar
-            suas finanças pessoais.
+          <p className="text-[length:var(--md-sys-typescale-body-large-size)] leading-[var(--md-sys-typescale-body-large-line-height)] tracking-[var(--md-sys-typescale-body-large-tracking)] text-[hsl(var(--md-sys-color-on-surface-variant))] max-w-2xl mx-auto">
+            Resolvemos os principais problemas que você enfrenta ao gerenciar suas finanças pessoais.
           </p>
         </div>
         <div className="space-y-12">

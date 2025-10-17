@@ -38,15 +38,14 @@ export function PricingSection() {
   ];
 
   return (
-    <section className="py-24 px-6 bg-background">
+    <section className="py-24 px-6 bg-[hsl(var(--md-sys-color-background))]">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-on-surface mb-4">
+          <h2 className="text-[length:var(--md-sys-typescale-headline-medium-size)] md:text-[length:var(--md-sys-typescale-headline-large-size)] leading-[var(--md-sys-typescale-headline-medium-line-height)] md:leading-[var(--md-sys-typescale-headline-large-line-height)] font-[var(--md-sys-typescale-headline-large-weight)] text-[hsl(var(--md-sys-color-on-surface))] mb-4">
             Escolha o plano ideal para você
           </h2>
-          <p className="text-lg text-on-surface-variant max-w-2xl mx-auto">
-            Comece gratuitamente e faça upgrade quando precisar de recursos
-            avançados
+          <p className="text-[length:var(--md-sys-typescale-body-large-size)] leading-[var(--md-sys-typescale-body-large-line-height)] tracking-[var(--md-sys-typescale-body-large-tracking)] text-[hsl(var(--md-sys-color-on-surface-variant))] max-w-2xl mx-auto">
+            Comece gratuitamente e faça upgrade quando precisar de recursos avançados
           </p>
         </div>
 

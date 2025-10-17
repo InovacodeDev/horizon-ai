@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { ReactNode } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface FeatureCardProps {
   icon: ReactNode;
@@ -10,12 +11,7 @@ interface FeatureCardProps {
   index: number;
 }
 
-export function FeatureCard({
-  icon,
-  title,
-  description,
-  index,
-}: FeatureCardProps) {
+export function FeatureCard({ icon, title, description, index }: FeatureCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -24,15 +20,20 @@ export function FeatureCard({
       transition={{
         duration: 0.4,
         delay: index * 0.1,
-        ease: [0.4, 0, 0.2, 1], // Standard easing
+        ease: [0.4, 0, 0.2, 1], // MD3 Standard easing
       }}
-      className="bg-surface rounded-[var(--radius-m)] p-6 shadow-md hover:shadow-lg transition-shadow duration-[var(--duration-medium)]"
     >
-      <div className="flex flex-col items-center text-center">
-        <div className="mb-4 text-primary">{icon}</div>
-        <h3 className="text-xl font-semibold text-on-surface mb-2">{title}</h3>
-        <p className="text-on-surface-variant">{description}</p>
-      </div>
+      <Card variant="elevated" elevation={1}>
+        <CardContent className="flex flex-col items-center text-center py-6">
+          <div className="mb-4 text-[hsl(var(--md-sys-color-primary))]">{icon}</div>
+          <h3 className="text-[length:var(--md-sys-typescale-title-large-size)] leading-[var(--md-sys-typescale-title-large-line-height)] font-[var(--md-sys-typescale-title-large-weight)] text-[hsl(var(--md-sys-color-on-surface))] mb-2">
+            {title}
+          </h3>
+          <p className="text-[length:var(--md-sys-typescale-body-medium-size)] leading-[var(--md-sys-typescale-body-medium-line-height)] tracking-[var(--md-sys-typescale-body-medium-tracking)] text-[hsl(var(--md-sys-color-on-surface-variant))]">
+            {description}
+          </p>
+        </CardContent>
+      </Card>
     </motion.div>
   );
 }

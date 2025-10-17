@@ -1,6 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { List, ListItem } from "@/components/ui/list";
 import { Button } from "@/components/ui/button";
 import { Loader2, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { useInfiniteQuery } from "@tanstack/react-query";
@@ -44,21 +45,12 @@ async function fetchTransactions({ pageParam = 1 }) {
 export function TransactionFeed({ initialData }: TransactionFeedProps) {
   const observerTarget = useRef<HTMLDivElement>(null);
 
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoading,
-    isError,
-  } = useInfiniteQuery({
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError } = useInfiniteQuery({
     queryKey: ["transactions"],
     queryFn: fetchTransactions,
     initialPageParam: 1,
     getNextPageParam: (lastPage) => {
-      return lastPage.pagination.hasMore
-        ? lastPage.pagination.page + 1
-        : undefined;
+      return lastPage.pagination.hasMore ? lastPage.pagination.page + 1 : undefined;
     },
   });
 
@@ -122,10 +114,7 @@ export function TransactionFeed({ initialData }: TransactionFeedProps) {
       if (seen.has(key)) {
         const existing = seen.get(key)!;
         // Prefer CREDIT_CARD type over CHECKING for deduplication
-        if (
-          transaction.accountType === "CREDIT_CARD" &&
-          existing.accountType !== "CREDIT_CARD"
-        ) {
+        if (transaction.accountType === "CREDIT_CARD" && existing.accountType !== "CREDIT_CARD") {
           seen.set(key, transaction);
         }
       } else {
@@ -138,13 +127,13 @@ export function TransactionFeed({ initialData }: TransactionFeedProps) {
 
   if (isLoading) {
     return (
-      <Card>
+      <Card variant="elevated">
         <CardHeader>
           <CardTitle>Transações Recentes</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            <Loader2 className="w-8 h-8 text-[hsl(var(--md-sys-color-primary))] animate-spin" />
           </div>
         </CardContent>
       </Card>
@@ -153,12 +142,12 @@ export function TransactionFeed({ initialData }: TransactionFeedProps) {
 
   if (isError) {
     return (
-      <Card>
+      <Card variant="elevated">
         <CardHeader>
           <CardTitle>Transações Recentes</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-error text-center py-8">
+          <p className="text-[length:var(--md-sys-typescale-body-medium-size)] leading-[var(--md-sys-typescale-body-medium-line-height)] text-[hsl(var(--md-sys-color-error))] text-center py-8">
             Erro ao carregar transações. Tente novamente.
           </p>
         </CardContent>
@@ -170,85 +159,64 @@ export function TransactionFeed({ initialData }: TransactionFeedProps) {
   const deduplicatedTransactions = deduplicateTransactions(allTransactions);
 
   return (
-    <Card>
+    <Card variant="elevated">
       <CardHeader>
         <CardTitle>Transações Recentes</CardTitle>
       </CardHeader>
       <CardContent>
         {deduplicatedTransactions.length === 0 ? (
-          <p className="text-sm text-on-surface-variant text-center py-8">
+          <p className="text-[length:var(--md-sys-typescale-body-medium-size)] leading-[var(--md-sys-typescale-body-medium-line-height)] text-[hsl(var(--md-sys-color-on-surface-variant))] text-center py-8">
             Nenhuma transação encontrada nos últimos 30 dias.
           </p>
         ) : (
-          <div className="space-y-1">
-            {deduplicatedTransactions.map((transaction) => (
-              <div
-                key={transaction.id}
-                className="flex items-center justify-between py-3 px-2 hover:bg-surface-variant/10 rounded-lg transition-colors"
-              >
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  {/* Transaction Icon */}
-                  <div
-                    className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
-                      transaction.type === "CREDIT"
-                        ? "bg-secondary/10"
-                        : "bg-error/10"
-                    }`}
-                  >
-                    {transaction.type === "CREDIT" ? (
-                      <ArrowDownRight className="w-5 h-5 text-secondary" />
-                    ) : (
-                      <ArrowUpRight className="w-5 h-5 text-error" />
-                    )}
-                  </div>
-
-                  {/* Transaction Details */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-on-surface truncate">
-                      {transaction.description}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <p className="text-xs text-on-surface-variant">
-                        {transaction.institutionName}
-                      </p>
-                      {transaction.category && (
-                        <>
-                          <span className="text-xs text-on-surface-variant">
-                            •
-                          </span>
-                          <p className="text-xs text-on-surface-variant">
-                            {transaction.category}
-                          </p>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Amount and Date */}
-                  <div className="flex-shrink-0 text-right">
-                    <p
-                      className={`text-sm font-semibold ${
+          <>
+            <List>
+              {deduplicatedTransactions.map((transaction) => (
+                <ListItem
+                  key={transaction.id}
+                  leading={
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center ${
                         transaction.type === "CREDIT"
-                          ? "text-secondary"
-                          : "text-on-surface"
+                          ? "bg-[hsl(var(--md-sys-color-secondary)/0.1)]"
+                          : "bg-[hsl(var(--md-sys-color-error)/0.1)]"
                       }`}
                     >
-                      {transaction.type === "CREDIT" ? "+" : "-"}
-                      {formatCurrency(Math.abs(transaction.amount))}
-                    </p>
-                    <p className="text-xs text-on-surface-variant mt-1">
-                      {formatDate(transaction.date)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
+                      {transaction.type === "CREDIT" ? (
+                        <ArrowDownRight className="w-5 h-5 text-[hsl(var(--md-sys-color-secondary))]" />
+                      ) : (
+                        <ArrowUpRight className="w-5 h-5 text-[hsl(var(--md-sys-color-error))]" />
+                      )}
+                    </div>
+                  }
+                  headline={transaction.description}
+                  supportingText={`${transaction.institutionName}${transaction.category ? ` • ${transaction.category}` : ""}`}
+                  trailing={
+                    <div className="text-right">
+                      <p
+                        className={`text-[length:var(--md-sys-typescale-body-large-size)] leading-[var(--md-sys-typescale-body-large-line-height)] font-semibold ${
+                          transaction.type === "CREDIT"
+                            ? "text-[hsl(var(--md-sys-color-secondary))]"
+                            : "text-[hsl(var(--md-sys-color-on-surface))]"
+                        }`}
+                      >
+                        {transaction.type === "CREDIT" ? "+" : "-"}
+                        {formatCurrency(Math.abs(transaction.amount))}
+                      </p>
+                      <p className="text-[length:var(--md-sys-typescale-body-small-size)] leading-[var(--md-sys-typescale-body-small-line-height)] text-[hsl(var(--md-sys-color-on-surface-variant))] mt-1">
+                        {formatDate(transaction.date)}
+                      </p>
+                    </div>
+                  }
+                />
+              ))}
+            </List>
 
             {/* Infinite scroll trigger */}
             <div ref={observerTarget} className="py-4">
               {isFetchingNextPage && (
                 <div className="flex justify-center">
-                  <Loader2 className="w-6 h-6 text-primary animate-spin" />
+                  <Loader2 className="w-6 h-6 text-[hsl(var(--md-sys-color-primary))] animate-spin" />
                 </div>
               )}
             </div>
@@ -256,16 +224,12 @@ export function TransactionFeed({ initialData }: TransactionFeedProps) {
             {/* Load more button (fallback) */}
             {hasNextPage && !isFetchingNextPage && (
               <div className="flex justify-center pt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => fetchNextPage()}
-                  disabled={isFetchingNextPage}
-                >
+                <Button variant="outlined" onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
                   Carregar mais
                 </Button>
               </div>
             )}
-          </div>
+          </>
         )}
       </CardContent>
     </Card>

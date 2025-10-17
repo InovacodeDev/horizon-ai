@@ -1,6 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { List, ListItem } from "@/components/ui/list";
 import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw, Unplug, Building2 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -49,9 +50,7 @@ export function AccountList({ accounts, isLoading = false }: AccountListProps) {
 
         // Handle rate limit error with custom message
         if (response.status === 429) {
-          throw new Error(
-            error.message || "Aguarde antes de sincronizar novamente"
-          );
+          throw new Error(error.message || "Aguarde antes de sincronizar novamente");
         }
 
         throw new Error(error.error || "Failed to sync account");
@@ -128,13 +127,13 @@ export function AccountList({ accounts, isLoading = false }: AccountListProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "ACTIVE":
-        return "text-secondary";
+        return "text-[hsl(var(--md-sys-color-secondary))]";
       case "ERROR":
-        return "text-error";
+        return "text-[hsl(var(--md-sys-color-error))]";
       case "EXPIRED":
-        return "text-chart-1";
+        return "text-[hsl(var(--md-sys-color-tertiary))]";
       default:
-        return "text-on-surface-variant";
+        return "text-[hsl(var(--md-sys-color-on-surface-variant))]";
     }
   };
 
@@ -155,13 +154,13 @@ export function AccountList({ accounts, isLoading = false }: AccountListProps) {
 
   if (isLoading) {
     return (
-      <Card>
+      <Card variant="elevated">
         <CardHeader>
           <CardTitle>Contas Conectadas</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            <Loader2 className="w-8 h-8 text-[hsl(var(--md-sys-color-primary))] animate-spin" />
           </div>
         </CardContent>
       </Card>
@@ -169,66 +168,39 @@ export function AccountList({ accounts, isLoading = false }: AccountListProps) {
   }
 
   return (
-    <Card>
+    <Card variant="elevated">
       <CardHeader>
         <CardTitle>Contas Conectadas</CardTitle>
       </CardHeader>
       <CardContent>
         {accounts.length === 0 ? (
-          <p className="text-sm text-on-surface-variant text-center py-8">
+          <p className="text-[length:var(--md-sys-typescale-body-medium-size)] leading-[var(--md-sys-typescale-body-medium-line-height)] text-[hsl(var(--md-sys-color-on-surface-variant))] text-center py-8">
             Nenhuma conta conectada ainda.
           </p>
         ) : (
-          <div className="space-y-4">
+          <List>
             {accounts.map((account) => (
-              <div
+              <ListItem
                 key={account.id}
-                className="border border-outline/20 rounded-lg p-4 hover:bg-surface-variant/10 transition-colors"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-3 flex-1 min-w-0">
-                    {/* Institution Icon */}
-                    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Building2 className="w-6 h-6 text-primary" />
-                    </div>
-
-                    {/* Account Details */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-sm font-semibold text-on-surface truncate">
-                          {account.institutionName}
-                        </h3>
-                        <span
-                          className={`text-xs font-medium ${getStatusColor(account.status)}`}
-                        >
-                          {getStatusLabel(account.status)}
-                        </span>
-                      </div>
-                      <p className="text-xs text-on-surface-variant mb-2">
-                        {accountTypeLabels[account.accountType] ||
-                          account.accountType}
-                        {account.accountNumber && ` • ${account.accountNumber}`}
-                      </p>
-                      <p className="text-lg font-bold text-on-surface">
-                        {formatCurrency(account.balance, account.currency)}
-                      </p>
-                      <p className="text-xs text-on-surface-variant mt-1">
-                        Última sincronização: {formatLastSync(account.lastSync)}
-                      </p>
-                    </div>
+                leading={
+                  <div className="w-10 h-10 rounded-full bg-[hsl(var(--md-sys-color-primary)/0.1)] flex items-center justify-center">
+                    <Building2 className="w-5 h-5 text-[hsl(var(--md-sys-color-primary))]" />
                   </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex flex-col gap-2 ml-4">
+                }
+                overline={`${accountTypeLabels[account.accountType] || account.accountType}${account.accountNumber ? ` • ${account.accountNumber}` : ""}`}
+                headline={account.institutionName}
+                supportingText={`${formatCurrency(account.balance, account.currency)} • ${getStatusLabel(account.status)} • ${formatLastSync(account.lastSync)}`}
+                trailing={
+                  <div className="flex flex-col gap-2">
                     <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => syncMutation.mutate(account.connectionId)}
-                      disabled={
-                        syncMutation.isPending ||
-                        account.status === "DISCONNECTED"
-                      }
-                      className="w-full"
+                      variant="outlined"
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        syncMutation.mutate(account.connectionId);
+                      }}
+                      disabled={syncMutation.isPending || account.status === "DISCONNECTED"}
+                      className="w-full min-w-[120px]"
                     >
                       {syncMutation.isPending ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -240,16 +212,14 @@ export function AccountList({ accounts, isLoading = false }: AccountListProps) {
                       )}
                     </Button>
                     <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        disconnectMutation.mutate(account.connectionId)
-                      }
-                      disabled={
-                        disconnectMutation.isPending ||
-                        account.status === "DISCONNECTED"
-                      }
-                      className="w-full text-error hover:text-error"
+                      variant="outlined"
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        disconnectMutation.mutate(account.connectionId);
+                      }}
+                      disabled={disconnectMutation.isPending || account.status === "DISCONNECTED"}
+                      className="w-full min-w-[120px] text-[hsl(var(--md-sys-color-error))] hover:text-[hsl(var(--md-sys-color-error))]"
                     >
                       {disconnectMutation.isPending ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -261,10 +231,10 @@ export function AccountList({ accounts, isLoading = false }: AccountListProps) {
                       )}
                     </Button>
                   </div>
-                </div>
-              </div>
+                }
+              />
             ))}
-          </div>
+          </List>
         )}
       </CardContent>
     </Card>

@@ -60,3 +60,4 @@ export {
   MenuSubTrigger,
   MenuRadioGroup,
 } from "./menu";
+export { Tabs, TabsList, TabsTrigger, TabsContent } from "./tabs";

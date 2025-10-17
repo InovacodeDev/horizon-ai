@@ -176,3 +176,6 @@ Dockerfile.prod
 # Misc
 *.tgz
 *.tar.gz
+
+*storybook.log
+storybook-static
