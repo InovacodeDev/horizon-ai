@@ -58,7 +58,7 @@ export default function SelectBankPage() {
             <button
               key={bank.id}
               onClick={() => handleBankSelect(bank.id, bank.name)}
-              className="w-full h-[72px] bg-surface hover:bg-on-surface/[0.08] active:bg-primary/[0.12] rounded-xl px-4 flex items-center gap-4 transition-all duration-200 border border-transparent hover:border-outline group"
+              className="w-full h-[72px] bg-surface hover:bg-on-surface/[0.08] active:bg-primary/[0.12] rounded-[var(--md-sys-shape-corner-large)] px-4 flex items-center gap-4 transition-all duration-200 border border-transparent hover:border-outline group"
               style={{
                 animation: `fadeIn 200ms ease-out ${index * 50}ms both`,
               }}

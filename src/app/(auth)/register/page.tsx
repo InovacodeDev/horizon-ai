@@ -9,13 +9,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 // Validation schema matching the API
 const registerSchema = z.object({
@@ -100,9 +94,7 @@ export default function RegisterPage() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-2xl font-bold">Criar Conta</CardTitle>
-          <CardDescription>
-            Crie sua conta para começar a gerenciar suas finanças
-          </CardDescription>
+          <CardDescription>Crie sua conta para começar a gerenciar suas finanças</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -115,16 +107,10 @@ export default function RegisterPage() {
                 placeholder="Seu nome"
                 {...register("firstName")}
                 aria-invalid={errors.firstName ? "true" : "false"}
-                aria-describedby={
-                  errors.firstName ? "firstName-error" : undefined
-                }
+                aria-describedby={errors.firstName ? "firstName-error" : undefined}
               />
               {errors.firstName && (
-                <p
-                  id="firstName-error"
-                  className="text-sm text-red-600"
-                  role="alert"
-                >
+                <p id="firstName-error" className="text-sm text-red-600" role="alert">
                   {errors.firstName.message}
                 </p>
               )}
@@ -133,12 +119,7 @@ export default function RegisterPage() {
             {/* Last Name Field */}
             <div className="space-y-2">
               <Label htmlFor="lastName">Sobrenome (opcional)</Label>
-              <Input
-                id="lastName"
-                type="text"
-                placeholder="Seu sobrenome"
-                {...register("lastName")}
-              />
+              <Input id="lastName" type="text" placeholder="Seu sobrenome" {...register("lastName")} />
             </div>
 
             {/* Email Field */}
@@ -153,11 +134,7 @@ export default function RegisterPage() {
                 aria-describedby={errors.email ? "email-error" : undefined}
               />
               {errors.email && (
-                <p
-                  id="email-error"
-                  className="text-sm text-red-600"
-                  role="alert"
-                >
+                <p id="email-error" className="text-sm text-red-600" role="alert">
                   {errors.email.message}
                 </p>
               )}
@@ -172,16 +149,10 @@ export default function RegisterPage() {
                 placeholder="Mínimo 8 caracteres"
                 {...register("password")}
                 aria-invalid={errors.password ? "true" : "false"}
-                aria-describedby={
-                  errors.password ? "password-error" : undefined
-                }
+                aria-describedby={errors.password ? "password-error" : undefined}
               />
               {errors.password && (
-                <p
-                  id="password-error"
-                  className="text-sm text-red-600"
-                  role="alert"
-                >
+                <p id="password-error" className="text-sm text-red-600" role="alert">
                   {errors.password.message}
                 </p>
               )}
@@ -190,7 +161,7 @@ export default function RegisterPage() {
             {/* Server Error */}
             {serverError && (
               <div
-                className="rounded-md bg-red-50 p-3 text-sm text-red-800"
+                className="rounded-[var(--md-sys-shape-corner-small)] bg-[hsl(var(--md-sys-color-error-container))] p-3 text-[length:var(--md-sys-typescale-body-small-size)] text-[hsl(var(--md-sys-color-on-error-container))]"
                 role="alert"
               >
                 {serverError}
@@ -198,21 +169,14 @@ export default function RegisterPage() {
             )}
 
             {/* Submit Button */}
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={mutation.isPending}
-            >
+            <Button type="submit" className="w-full" disabled={mutation.isPending}>
               {mutation.isPending ? "Criando conta..." : "Criar Conta"}
             </Button>
 
             {/* Login Link */}
             <p className="text-center text-sm text-gray-600">
               Já tem uma conta?{" "}
-              <a
-                href="/login"
-                className="font-medium text-blue-600 hover:text-blue-500"
-              >
+              <a href="/login" className="font-medium text-blue-600 hover:text-blue-500">
                 Fazer login
               </a>
             </p>

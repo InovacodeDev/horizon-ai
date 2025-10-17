@@ -26,7 +26,7 @@ export default function ConnectionsPage() {
         </Button>
       </div>
 
-      <div className="bg-card rounded-lg border border-outline/20 p-8 text-center">
+      <div className="bg-card rounded-[var(--md-sys-shape-corner-medium)] border border-outline/20 p-8 text-center">
         <p className="text-muted-foreground">
           Página de conexões em desenvolvimento
         </p>
