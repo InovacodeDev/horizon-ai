@@ -23,7 +23,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
-      <body className={`${figtree.variable} font-sans antialiased`}>
+      <body 
+        className={`${figtree.variable} font-sans antialiased`}
+        suppressHydrationWarning
+      >
         <ThemeProvider defaultTheme="system" storageKey="horizon-theme">
           <ErrorBoundary>
             <ReactQueryProvider>{children}</ReactQueryProvider>
