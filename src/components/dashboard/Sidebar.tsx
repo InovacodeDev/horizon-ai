@@ -86,39 +86,63 @@ export function Sidebar({ userEmail = "user@example.com", userName = "User" }: S
         "hidden md:flex flex-col",
         "fixed left-0 top-0 bottom-0 z-40",
         "w-64",
-        "bg-[hsl(var(--md-sys-color-surface-container))]",
-        "border-r border-[hsl(var(--md-sys-color-outline-variant))]",
-        "pt-0"
+        "bg-[hsl(var(--md-sys-color-surface))]",
+        "shadow-[var(--md-sys-elevation-level0)]",
+        "border-r border-[hsl(var(--md-sys-color-outline-variant))]"
       )}
     >
-      {/* Logo Section */}
+      {/* Logo Section - MD3 Top App Bar height (64px) */}
       <div
         className={cn(
           "flex items-center gap-3",
-          "px-6 py-6",
+          "px-4 h-16",
           "border-b border-[hsl(var(--md-sys-color-outline-variant))]"
         )}
       >
-        <Link href="/dashboard" className="flex items-center gap-3 flex-1">
+        <Link href="/dashboard" className="flex items-center gap-3 flex-1 min-w-0">
           <div
             className={cn(
               "w-10 h-10",
               "bg-[hsl(var(--md-sys-color-primary))]",
-              "rounded-[var(--md-sys-shape-corner-small)]",
+              "rounded-[var(--md-sys-shape-corner-medium)]",
               "flex items-center justify-center flex-shrink-0"
             )}
           >
-            <span className={cn("text-[hsl(var(--md-sys-color-on-primary))]", "font-bold text-lg")}>H</span>
+            <span
+              className={cn(
+                "text-[hsl(var(--md-sys-color-on-primary))]",
+                "font-bold",
+                "text-[length:var(--md-sys-typescale-title-large-size)]"
+              )}
+            >
+              H
+            </span>
           </div>
-          <div className="flex flex-col">
-            <span className={cn("text-lg font-bold", "text-[hsl(var(--md-sys-color-on-surface))]")}>Horizon</span>
-            <span className={cn("text-xs", "text-[hsl(var(--md-sys-color-on-surface-variant))]")}>AI</span>
+          <div className="flex flex-col min-w-0">
+            <span
+              className={cn(
+                "font-[number:var(--md-sys-typescale-title-medium-weight)]",
+                "text-[length:var(--md-sys-typescale-title-medium-size)]",
+                "text-[hsl(var(--md-sys-color-on-surface))]",
+                "truncate"
+              )}
+            >
+              Horizon
+            </span>
+            <span
+              className={cn(
+                "text-[length:var(--md-sys-typescale-label-small-size)]",
+                "text-[hsl(var(--md-sys-color-on-surface-variant))]"
+              )}
+            >
+              AI
+            </span>
           </div>
         </Link>
       </div>
 
-      {/* Navigation Items */}
-      <nav className={cn("flex-1", "px-3 py-6", "space-y-1 overflow-y-auto")}>
+      {/* Navigation Items - MD3 Navigation Rail spacing */}
+      <nav className={cn("flex-1", "px-3 py-2", "space-y-1 overflow-y-auto")}>
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
@@ -128,14 +152,18 @@ export function Sidebar({ userEmail = "user@example.com", userName = "User" }: S
               key={item.id}
               onClick={() => handleNavigation(item.href)}
               className={cn(
-                "w-full flex items-center gap-3 px-4 py-3",
-                "rounded-[var(--md-sys-shape-corner-small)]",
+                "w-full flex items-center gap-3",
+                "px-4 h-14",
+                "rounded-[var(--md-sys-shape-corner-full)]",
                 "text-left",
                 "transition-colors",
                 "duration-[var(--md-sys-motion-duration-short2)]",
                 "ease-[var(--md-sys-motion-easing-standard)]",
                 isActive
-                  ? cn("bg-[hsl(var(--md-sys-color-primary)/0.12)]", "text-[hsl(var(--md-sys-color-primary))]")
+                  ? cn(
+                      "bg-[hsl(var(--md-sys-color-secondary-container))]",
+                      "text-[hsl(var(--md-sys-color-on-secondary-container))]"
+                    )
                   : cn(
                       "text-[hsl(var(--md-sys-color-on-surface-variant))]",
                       "hover:bg-[hsl(var(--md-sys-color-on-surface)/0.08)]"
@@ -143,28 +171,37 @@ export function Sidebar({ userEmail = "user@example.com", userName = "User" }: S
               )}
             >
               <Icon
-                size={20}
+                size={24}
                 className={cn(
                   "flex-shrink-0",
                   isActive
-                    ? "text-[hsl(var(--md-sys-color-primary))]"
+                    ? "text-[hsl(var(--md-sys-color-on-secondary-container))]"
                     : "text-[hsl(var(--md-sys-color-on-surface-variant))]"
                 )}
               />
-              <span className={cn("text-sm font-medium", "flex-1")}>{item.label}</span>
+              <span
+                className={cn(
+                  "text-[length:var(--md-sys-typescale-label-large-size)]",
+                  "font-[number:var(--md-sys-typescale-label-large-weight)]",
+                  "flex-1 truncate"
+                )}
+              >
+                {item.label}
+              </span>
             </button>
           );
         })}
       </nav>
 
-      {/* User Profile Section */}
-      <div className={cn("px-3 py-4", "border-t border-[hsl(var(--md-sys-color-outline-variant))]")}>
+      {/* User Profile Section - MD3 Standard List Item (72px) */}
+      <div className={cn("px-3 py-2", "border-t border-[hsl(var(--md-sys-color-outline-variant))]")}>
         <div className="relative">
           <button
             onClick={() => setAvatarMenuOpen(!avatarMenuOpen)}
             className={cn(
-              "w-full flex items-center gap-3 px-4 py-3",
-              "rounded-[var(--md-sys-shape-corner-small)]",
+              "w-full flex items-center gap-3",
+              "px-4 h-[72px]",
+              "rounded-[var(--md-sys-shape-corner-full)]",
               "transition-colors",
               "duration-[var(--md-sys-motion-duration-short2)]",
               "ease-[var(--md-sys-motion-easing-standard)]",
@@ -172,15 +209,16 @@ export function Sidebar({ userEmail = "user@example.com", userName = "User" }: S
               avatarMenuOpen && "bg-[hsl(var(--md-sys-color-on-surface)/0.12)]"
             )}
           >
-            {/* Avatar */}
+            {/* Avatar - MD3 Standard 40px */}
             <div
               className={cn(
                 "w-10 h-10",
-                "bg-[hsl(var(--md-sys-color-secondary))]",
+                "bg-[hsl(var(--md-sys-color-secondary-container))]",
                 "rounded-full",
                 "flex items-center justify-center flex-shrink-0",
-                "text-[hsl(var(--md-sys-color-on-secondary))]",
-                "font-semibold text-sm"
+                "text-[hsl(var(--md-sys-color-on-secondary-container))]",
+                "font-semibold",
+                "text-[length:var(--md-sys-typescale-label-large-size)]"
               )}
             >
               {getInitials(userName)}
@@ -188,17 +226,30 @@ export function Sidebar({ userEmail = "user@example.com", userName = "User" }: S
 
             {/* User Info */}
             <div className="flex-1 min-w-0">
-              <p className={cn("text-sm font-medium", "text-[hsl(var(--md-sys-color-on-surface))]", "truncate")}>
+              <p
+                className={cn(
+                  "text-[length:var(--md-sys-typescale-body-large-size)]",
+                  "font-[number:var(--md-sys-typescale-body-large-weight)]",
+                  "text-[hsl(var(--md-sys-color-on-surface))]",
+                  "truncate"
+                )}
+              >
                 {userName}
               </p>
-              <p className={cn("text-xs", "text-[hsl(var(--md-sys-color-on-surface-variant))]", "truncate")}>
+              <p
+                className={cn(
+                  "text-[length:var(--md-sys-typescale-body-medium-size)]",
+                  "text-[hsl(var(--md-sys-color-on-surface-variant))]",
+                  "truncate"
+                )}
+              >
                 {userEmail}
               </p>
             </div>
 
             {/* Chevron Icon */}
             <ChevronDown
-              size={18}
+              size={20}
               className={cn(
                 "flex-shrink-0",
                 "transition-transform",
@@ -210,14 +261,13 @@ export function Sidebar({ userEmail = "user@example.com", userName = "User" }: S
             />
           </button>
 
-          {/* Dropdown Menu */}
+          {/* Dropdown Menu - MD3 Menu */}
           {avatarMenuOpen && (
             <div
               className={cn(
                 "absolute bottom-full left-3 right-3 mb-2",
-                "bg-[hsl(var(--md-sys-color-surface))]",
-                "border border-[hsl(var(--md-sys-color-outline-variant))]",
-                "rounded-[var(--md-sys-shape-corner-small)]",
+                "bg-[hsl(var(--md-sys-color-surface-container))]",
+                "rounded-[var(--md-sys-shape-corner-extra-small)]",
                 "shadow-[var(--md-sys-elevation-level2)]",
                 "overflow-hidden"
               )}
@@ -228,8 +278,11 @@ export function Sidebar({ userEmail = "user@example.com", userName = "User" }: S
                   handleLogout();
                 }}
                 className={cn(
-                  "w-full flex items-center gap-3 px-4 py-3",
-                  "text-left text-sm font-medium",
+                  "w-full flex items-center gap-3",
+                  "px-3 h-12",
+                  "text-left",
+                  "text-[length:var(--md-sys-typescale-label-large-size)]",
+                  "font-[number:var(--md-sys-typescale-label-large-weight)]",
                   "text-[hsl(var(--md-sys-color-on-surface))]",
                   "hover:bg-[hsl(var(--md-sys-color-on-surface)/0.08)]",
                   "transition-colors",
@@ -237,7 +290,7 @@ export function Sidebar({ userEmail = "user@example.com", userName = "User" }: S
                   "ease-[var(--md-sys-motion-easing-standard)]"
                 )}
               >
-                <LogOut size={18} className="flex-shrink-0" />
+                <LogOut size={20} className="flex-shrink-0" />
                 <span>Sair</span>
               </button>
             </div>
