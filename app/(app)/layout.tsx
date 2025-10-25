@@ -2,6 +2,7 @@ import React from 'react';
 import { redirect } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { getCurrentUser } from '@/lib/auth/session';
+import { User } from '@/lib/types';
 
 /**
  * Protected App Layout
@@ -23,11 +24,16 @@ export default async function AppLayout({
   }
 
   // Transform JWT payload to User format expected by DashboardLayout
-  const userData = {
-    id: user.sub,
+  const userData: User = {
+    $id: user.sub,
+    ...user,
     email: user.email,
     name: user.name || user.email.split('@')[0],
-    role: 'FREE' as const, // Default role, can be enhanced later
+    $createdAt: '',
+    $updatedAt: '',
+    auth_user_id: '',
+    created_at: '',
+    updated_at: ''
   };
 
   return (
