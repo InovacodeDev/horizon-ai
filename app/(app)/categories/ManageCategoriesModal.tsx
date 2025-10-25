@@ -120,15 +120,15 @@ const ManageCategoriesModal: React.FC<ManageCategoriesModalProps> = ({
                     <ul className="space-y-2 max-h-96 overflow-y-auto pr-2">
                         {categories.map((category) => {
                             const { icon: Icon } = category;
-                            const isEditing = editingCategory?.id === category.id;
-                            const isConfirmingDelete = deleteConfirmId === category.id;
+                            const isEditing = editingCategory?.$id === category.$id;
+                            const isConfirmingDelete = deleteConfirmId === category.$id;
 
                             return (
-                                <li key={category.id} className="p-2 rounded-lg bg-surface-variant/20">
+                                <li key={category.$id} className="p-2 rounded-lg bg-surface-variant/20">
                                     {isEditing ? (
                                         <div className="space-y-4">
                                             <Input
-                                                id={`edit-cat-${category.id}`}
+                                                id={`edit-cat-${category.$id}`}
                                                 label="Category Name"
                                                 value={editingCategory.name}
                                                 onChange={(e) =>
@@ -160,7 +160,7 @@ const ManageCategoriesModal: React.FC<ManageCategoriesModalProps> = ({
                                                     <Button
                                                         variant="text"
                                                         className="!text-error !px-2 !h-auto !py-1"
-                                                        onClick={() => handleDelete(category.id)}
+                                                        onClick={() => handleDelete(category.$id)}
                                                     >
                                                         Confirm
                                                     </Button>
@@ -184,7 +184,7 @@ const ManageCategoriesModal: React.FC<ManageCategoriesModalProps> = ({
                                                     <Button
                                                         variant="text"
                                                         className="!text-error !px-2 !h-auto !py-1"
-                                                        onClick={() => setDeleteConfirmId(category.id)}
+                                                        onClick={() => setDeleteConfirmId(category.$id)}
                                                     >
                                                         Delete
                                                     </Button>

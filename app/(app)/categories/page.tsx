@@ -41,7 +41,7 @@ export default function CategoriesPage() {
 
     const handleAddCategory = (name: string, icon: React.FC<{ className?: string }>) => {
         const newCategory: Category = {
-            id: `cat-${Date.now()}`,
+            $id: `cat-${Date.now()}`,
             name,
             icon,
             transactionCount: 0,
@@ -53,13 +53,13 @@ export default function CategoriesPage() {
     const handleUpdateCategory = (updatedCategory: Category) => {
         setCategories((prev) =>
             prev.map((c) =>
-                c.id === updatedCategory.id ? { ...c, name: updatedCategory.name, icon: updatedCategory.icon } : c
+                c.$id === updatedCategory.$id ? { ...c, name: updatedCategory.name, icon: updatedCategory.icon } : c
             )
         );
     };
 
     const handleDeleteCategory = (categoryId: string) => {
-        setCategories((prev) => prev.filter((c) => c.id !== categoryId));
+        setCategories((prev) => prev.filter((c) => c.$id !== categoryId));
     };
 
     return (
@@ -85,7 +85,7 @@ export default function CategoriesPage() {
                     </p>
                     <div className="space-y-4">
                         {categories.map((category) => (
-                            <CategoryItem key={category.id} category={category} />
+                            <CategoryItem key={category.$id} category={category} />
                         ))}
                     </div>
                 </Card>

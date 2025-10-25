@@ -74,7 +74,7 @@ export default function InsurancePage() {
             </header>
             <main className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {MOCK_INSURANCE_POLICIES.map((policy) => (
-                    <PolicyCard key={policy.id} policy={policy} />
+                    <PolicyCard key={policy.$id} policy={policy} />
                 ))}
             </main>
         </div>

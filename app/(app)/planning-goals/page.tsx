@@ -184,11 +184,11 @@ export default function PlanningGoalsPage() {
 
         if ("id" in editingGoal) {
             setGoals(
-                goals.map((g) => (g.id === (editingGoal as FinancialGoal).id ? (editingGoal as FinancialGoal) : g))
+                goals.map((g) => (g.$id === (editingGoal as FinancialGoal).$id ? (editingGoal as FinancialGoal) : g))
             );
         } else {
             const newGoal: FinancialGoal = {
-                id: `goal-${Date.now()}`,
+                $id: `goal-${Date.now()}`,
                 name: editingGoal.name,
                 targetAmount: editingGoal.targetAmount || 0,
                 currentAmount: editingGoal.currentAmount || 0,
@@ -201,7 +201,7 @@ export default function PlanningGoalsPage() {
 
     const handleConfirmDelete = () => {
         if (!goalToDelete) return;
-        setGoals(goals.filter((g) => g.id !== goalToDelete.id));
+        setGoals(goals.filter((g) => g.$id !== goalToDelete.$id));
         handleCloseModals();
     };
 
@@ -262,7 +262,7 @@ export default function PlanningGoalsPage() {
                     },
                 },
             });
-            const suggested = JSON.parse(response.text);
+            const suggested = JSON.parse(response.text ?? '[]');
             setSuggestedGoals(suggested);
             setIsSuggestionModalOpen(true);
         } catch (error) {
@@ -274,7 +274,7 @@ export default function PlanningGoalsPage() {
 
     const handleAddSuggestedGoal = (goalToAdd: SuggestedGoal) => {
         const newGoal: FinancialGoal = {
-            id: `goal-${Date.now()}`,
+            $id: `goal-${Date.now()}`,
             name: goalToAdd.name,
             targetAmount: goalToAdd.targetAmount,
             currentAmount: 0,
@@ -318,7 +318,7 @@ export default function PlanningGoalsPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {goals.map((goal) => (
                                 <FinancialGoalCard
-                                    key={goal.id}
+                                    key={goal.$id}
                                     goal={goal}
                                     onEdit={handleOpenEditModal}
                                     onDelete={handleOpenDeleteModal}

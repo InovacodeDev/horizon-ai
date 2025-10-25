@@ -145,7 +145,7 @@ export default function ShoppingListPage() {
                     responseSchema: { type: Type.ARRAY, items: { type: Type.STRING } },
                 },
             });
-            const items = JSON.parse(response.text);
+            const items = JSON.parse(response.text ?? '[]');
             setNewListItems(items.map((name: string) => ({ id: `item-${Math.random()}`, name, checked: false })));
             setNewListTitle(prompt);
         } catch (error) {
@@ -156,14 +156,14 @@ export default function ShoppingListPage() {
     };
 
     const handleToggleItem = (id: string) => {
-        setNewListItems((prev) => prev.map((item) => (item.id === id ? { ...item, checked: !item.checked } : item)));
+        setNewListItems((prev) => prev.map((item) => (item.$id === id ? { ...item, checked: !item.checked } : item)));
     };
 
     const handleAddManualItem = () => {
         if (manualItem.trim()) {
             setNewListItems((prev) => [
                 ...prev,
-                { id: `manual-${Date.now()}`, name: manualItem.trim(), checked: false },
+                { $id: `manual-${Date.now()}`, name: manualItem.trim(), checked: false },
             ]);
             setManualItem("");
         }
@@ -172,7 +172,7 @@ export default function ShoppingListPage() {
     const handleSaveAndArchive = () => {
         if (newListItems.length === 0) return;
         const newList: ShoppingList = {
-            id: `list-${Date.now()}`,
+            $id: `list-${Date.now()}`,
             title: newListTitle || "Untitled List",
             createdAt: new Date().toISOString(),
             items: newListItems,
@@ -239,7 +239,7 @@ export default function ShoppingListPage() {
                     },
                 },
             });
-            const parsedData = JSON.parse(response.text);
+            const parsedData = JSON.parse(response.text ?? '[]');
             setParsedPurchase(parsedData);
         } catch (error) {
             console.error("Error importing NF-e:", error);
@@ -251,9 +251,9 @@ export default function ShoppingListPage() {
     const handleSavePurchase = () => {
         if (!parsedPurchase) return;
         const newRecord: PurchaseRecord = {
-            id: `pr-${Date.now()}`,
-            nfeUrl: nfeUrl,
             ...parsedPurchase,
+            $id: `pr-${Date.now()}`,
+            nfeUrl: nfeUrl,
         };
         setPurchaseHistory((prev) => [newRecord, ...prev]);
         setParsedPurchase(null);
@@ -298,7 +298,7 @@ export default function ShoppingListPage() {
                 model: "gemini-2.5-flash",
                 contents: prompt,
             });
-            setInsights(response.text);
+            setInsights(response.text ?? '');
         } catch (error) {
             console.error("Error generating insights:", error);
         } finally {
@@ -363,18 +363,18 @@ export default function ShoppingListPage() {
                                     <ul className="space-y-2">
                                         {newListItems.map((item) => (
                                             <li
-                                                key={item.id}
+                                                key={item.$id}
                                                 className="flex items-center p-2 rounded-md hover:bg-surface-variant/20"
                                             >
                                                 <input
                                                     type="checkbox"
-                                                    id={item.id}
+                                                    id={item.$id}
                                                     checked={item.checked}
-                                                    onChange={() => handleToggleItem(item.id)}
+                                                    onChange={() => handleToggleItem(item.$id)}
                                                     className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary"
                                                 />
                                                 <label
-                                                    htmlFor={item.id}
+                                                    htmlFor={item.$id}
                                                     className={`ml-3 text-on-surface ${
                                                         item.checked ? "line-through text-on-surface-variant" : ""
                                                     }`}
@@ -476,7 +476,7 @@ export default function ShoppingListPage() {
                                     <div className="space-y-4">
                                         {purchaseHistory.length > 0 ? (
                                             purchaseHistory.map((rec) => (
-                                                <Card key={rec.id} className="p-4 bg-surface">
+                                                <Card key={rec.$id} className="p-4 bg-surface">
                                                     <details>
                                                         <summary className="font-medium text-on-surface cursor-pointer flex justify-between items-center">
                                                             <div>
@@ -511,7 +511,7 @@ export default function ShoppingListPage() {
                                     <div className="space-y-4">
                                         {historicLists.length > 0 ? (
                                             historicLists.map((list) => (
-                                                <Card key={list.id} className="p-4 bg-surface">
+                                                <Card key={list.$id} className="p-4 bg-surface">
                                                     <details>
                                                         <summary className="font-medium text-on-surface cursor-pointer flex justify-between items-center">
                                                             <div>
@@ -526,7 +526,7 @@ export default function ShoppingListPage() {
                                                         </summary>
                                                         <ul className="mt-3 pt-3 border-t border-outline space-y-1">
                                                             {list.items.map((item) => (
-                                                                <li key={item.id} className="flex items-center text-sm">
+                                                                <li key={item.$id} className="flex items-center text-sm">
                                                                     <span
                                                                         className={`mr-2 ${
                                                                             item.checked

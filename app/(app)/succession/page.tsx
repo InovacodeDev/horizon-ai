@@ -73,12 +73,12 @@ export default function SuccessionPage() {
         if ("id" in editingBeneficiary) {
             setBeneficiaries(
                 beneficiaries.map((b) =>
-                    b.id === (editingBeneficiary as Beneficiary).id ? (editingBeneficiary as Beneficiary) : b
+                    b.$id === (editingBeneficiary as Beneficiary).$id ? (editingBeneficiary as Beneficiary) : b
                 )
             );
         } else {
             const newBeneficiary: Beneficiary = {
-                id: `beneficiary-${Date.now()}`,
+                $id: `beneficiary-${Date.now()}`,
                 name: editingBeneficiary.name || "",
                 relationship: editingBeneficiary.relationship || "",
                 allocation: editingBeneficiary.allocation || "",
@@ -91,7 +91,7 @@ export default function SuccessionPage() {
 
     const handleConfirmDelete = () => {
         if (beneficiaryToDelete) {
-            setBeneficiaries(beneficiaries.filter((b) => b.id !== beneficiaryToDelete.id));
+            setBeneficiaries(beneficiaries.filter((b) => b.$id !== beneficiaryToDelete.$id));
             handleCloseModals();
         }
     };
@@ -131,7 +131,7 @@ export default function SuccessionPage() {
                                 <tbody>
                                     {beneficiaries.map((b) => (
                                         <BeneficiaryRow
-                                            key={b.id}
+                                            key={b.$id}
                                             beneficiary={b}
                                             onEdit={() => handleOpenEditModal(b)}
                                             onDelete={() => handleOpenDeleteModal(b)}

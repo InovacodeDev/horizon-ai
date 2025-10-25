@@ -80,7 +80,7 @@ export async function GET_ManualAuth(request: NextRequest) {
 
 export const GET_WithWrapper = withAuth(async (request, context) => {
   // User is guaranteed to be authenticated here
-  const { user } = context;
+  const { params: { user } } = context;
 
   const data = await fetchUserData(user.sub);
 
