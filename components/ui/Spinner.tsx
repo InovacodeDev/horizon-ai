@@ -12,3 +12,4 @@ const Spinner: React.FC<{className?: string}> = ({className}) => {
 };
 
 export default Spinner;
+export { Spinner };

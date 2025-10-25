@@ -26,3 +26,4 @@ const Button: React.FC<ButtonProps> = ({ children, variant = 'filled', leftIcon,
 };
 
 export default Button;
+export { Button };

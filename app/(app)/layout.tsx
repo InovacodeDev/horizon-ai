@@ -3,9 +3,6 @@ import { redirect } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { getCurrentUser } from '@/lib/auth/session';
 
-// Force dynamic rendering for authenticated routes
-export const dynamic = 'force-dynamic';
-
 /**
  * Protected App Layout
  * Wraps all protected routes with DashboardLayout

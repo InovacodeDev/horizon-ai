@@ -21,3 +21,4 @@ const Badge: React.FC<BadgeProps> = ({ children, variant = 'default', className 
 };
 
 export default Badge;
+export { Badge };
