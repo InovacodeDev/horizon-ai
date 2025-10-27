@@ -1,6 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from "react";
+
+// Force dynamic rendering for this page
+export const dynamic = 'force-dynamic';
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { DotsVerticalIcon, PlusIcon, WalletIcon, CreditCardIcon } from "@/components/assets/Icons";

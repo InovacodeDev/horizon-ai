@@ -191,7 +191,9 @@ export async function authMiddleware(request: NextRequest): Promise<NextResponse
  * @param handler - API route handler
  * @returns Wrapped handler with auth check
  */
-export function withAuth(handler: (request: NextRequest, context: { params: any }) => Promise<NextResponse>) {
+export function withAuth(
+  handler: (request: NextRequest, context: { params: any; user?: any }) => Promise<NextResponse>,
+) {
   return async (request: NextRequest, context: { params: any }) => {
     const user = await verifyRequestAuth(request);
 

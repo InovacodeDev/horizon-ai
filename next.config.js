@@ -7,9 +7,6 @@ const nextConfig = {
   // Eliminates need for manual useMemo/useCallback in most cases
   reactCompiler: true,
 
-  // Partial Prerendering (PPR) - combines static and dynamic rendering
-  cacheComponents: true,
-
   experimental: {
     // Server Actions configuration
     serverActions: {

@@ -46,6 +46,9 @@ backups/
 scripts/
 *.sh
 
+# Database migrations (development only)
+lib/database/migrations/
+
 # Config files not needed in production
 .eslintrc.js
 .prettierrc
