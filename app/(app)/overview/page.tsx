@@ -351,12 +351,12 @@ const TransactionItem: React.FC<{ transaction: Transaction }> = ({ transaction }
         style: "currency",
         currency: "BRL",
     })}`;
-    const Icon = transaction.icon;
+    const IconComponent = transaction.icon;
 
     return (
         <li className="flex items-center py-3">
             <div className="p-3 bg-primary-container rounded-full mr-4">
-                <Icon className="w-5 h-5 text-on-primary-container" />
+                {IconComponent ? <IconComponent className="w-5 h-5 text-on-primary-container" /> : null}
             </div>
             <div className="flex-grow">
                 <p className="text-base font-medium text-on-surface">{transaction.description}</p>
@@ -375,7 +375,7 @@ export default function OverviewPage() {
     // Get user ID from session (you'll need to implement this based on your auth setup)
     const userId = "default-user"; // TODO: Get from session
     
-    const { transactions: apiTransactions, isLoading: isLoadingTransactions } = useTransactions(userId);
+    const { transactions: apiTransactions, loading: isLoadingTransactions } = useTransactions({ userId });
     const { totalBalance, loading: loadingBalance } = useTotalBalance();
     const { accounts } = useAccounts();
 
@@ -392,24 +392,25 @@ export default function OverviewPage() {
             const categoryIcon = AVAILABLE_CATEGORY_ICONS.find(
                 (cat) => cat.name.toLowerCase() === apiTx.category?.toLowerCase()
             )?.component || SwapIcon;
-            
+
             // Find account name from accountId
-            const account = accounts.find((acc) => acc.$id === apiTx.accountId);
-            const accountName = account?.name || (apiTx.accountId ? apiTx.accountId : 'Manual Entry');
-            
+            const account = accounts.find((acc) => acc.$id === apiTx.account_id);
+            const accountName = account?.name || (apiTx.account_id ? apiTx.account_id : 'Manual Entry');
+
             return {
+                ...apiTx,
                 $id: apiTx.$id,
+                $updatedAt: new Date().toISOString(),
                 description: apiTx.description || apiTx.merchant || 'Transaction',
                 amount: apiTx.type === 'income' ? Math.abs(apiTx.amount) : -Math.abs(apiTx.amount),
                 date: apiTx.date,
                 bankName: accountName,
                 category: apiTx.category || 'Uncategorized',
-                type: apiTx.source === 'manual' ? 'credit' : 
-                      apiTx.type === 'income' ? 'credit' : 'debit',
+                type: 'expense',
                 icon: categoryIcon,
                 notes: apiTx.description || '',
-                account_id: apiTx.accountId,
-                credit_card_id: apiTx.creditCardId,
+                account_id: apiTx.account_id,
+                credit_card_id: apiTx.credit_card_id,
             };
         });
     }, [apiTransactions, accounts]);
