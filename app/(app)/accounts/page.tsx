@@ -1,9 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from "react";
-
-// Force dynamic rendering for this page
-export const dynamic = 'force-dynamic';
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { DotsVerticalIcon, PlusIcon, WalletIcon, CreditCardIcon } from "@/components/assets/Icons";
@@ -175,7 +172,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
                 </div>
                 <div className="text-right">
                     <p className="font-medium text-lg text-on-surface">
-                        {account.balance.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                        {(account.balance ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                     </p>
                     <p className="text-xs text-on-surface-variant">
                         {creditCards.length} cartão(ões)
@@ -238,9 +235,9 @@ const AccountCard: React.FC<AccountCardProps> = ({
                     
                     {creditCards.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {creditCards.map((card) => (
+                            {creditCards.map((card, index) => (
                                 <CreditCardItem 
-                                    key={card.$id} 
+                                    key={card.$id || `card-${index}`} 
                                     card={card}
                                     onViewStatement={() => onViewCreditCardStatement(card.$id)}
                                     onDelete={() => {
@@ -269,7 +266,6 @@ export default function AccountsPage() {
     
     // Store all credit cards in state
     const [allCreditCards, setAllCreditCards] = useState<CreditCard[]>([]);
-    const [loadingCards, setLoadingCards] = useState(false);
     
     const [isAddAccountModalOpen, setIsAddAccountModalOpen] = useState(false);
     const [isAddCardModalOpen, setIsAddCardModalOpen] = useState(false);
@@ -277,13 +273,14 @@ export default function AccountsPage() {
 
     // Fetch all credit cards for all accounts
     useEffect(() => {
-        const fetchAllCreditCards = async () => {
-            if (accounts.length === 0) {
-                setAllCreditCards([]);
-                return;
-            }
+        if (!Array.isArray(accounts) || accounts.length === 0) {
+            setAllCreditCards(prev => prev.length === 0 ? prev : []);
+            return;
+        }
 
-            setLoadingCards(true);
+        let isMounted = true;
+
+        const fetchCards = async () => {
             try {
                 const cardPromises = accounts.map(async (account) => {
                     const response = await fetch(`/api/credit-cards/account/${account.$id}`, {
@@ -297,15 +294,20 @@ export default function AccountsPage() {
 
                 const cardsArrays = await Promise.all(cardPromises);
                 const allCards = cardsArrays.flat();
-                setAllCreditCards(allCards);
+                
+                if (isMounted) {
+                    setAllCreditCards(allCards);
+                }
             } catch (error) {
                 console.error('Error fetching credit cards:', error);
-            } finally {
-                setLoadingCards(false);
             }
         };
 
-        fetchAllCreditCards();
+        fetchCards();
+
+        return () => {
+            isMounted = false;
+        };
     }, [accounts]);
 
     const handleAddCreditCard = (accountId: string) => {
@@ -413,9 +415,9 @@ export default function AccountsPage() {
             
             <main className="space-y-4">
                 {accounts.length > 0 ? (
-                    accounts.map((account) => (
+                    accounts.map((account, index) => (
                         <AccountCard
-                            key={account.$id}
+                            key={account.$id || `account-${index}`}
                             account={account}
                             creditCards={getCreditCardsForAccount(account.$id)}
                             onDelete={deleteAccount}
