@@ -190,12 +190,12 @@ Este é um resumo gerado por IA e não substitui a consulta a um contador profis
         <div className="bg-tertiary/20 p-3 rounded-full mb-4">
           <AlertTriangleIcon className="w-8 h-8 text-tertiary" />
         </div>
-        <h2 className="text-2xl font-medium text-on-surface mb-2">Simplify Your Tax Season</h2>
+        <h2 className="text-2xl font-medium text-on-surface mb-2">Simplifique sua Declaração de Imposto</h2>
         <p className="text-on-surface-variant max-w-md mb-6">
-          Upgrade to Premium to get your IRPF report automatically generated from your connected accounts and
-          investments.
+          Faça upgrade para Premium para ter seu relatório de IRPF gerado automaticamente a partir de suas contas e
+          investimentos conectados.
         </p>
-        <Button onClick={handleUpgrade}>Upgrade to Premium</Button>
+        <Button onClick={handleUpgrade}>Fazer Upgrade para Premium</Button>
       </div>
     );
   }
@@ -208,7 +208,7 @@ Este é um resumo gerado por IA e não substitui a consulta a um contador profis
     <div className="p-4 md:p-8">
       <header className="flex justify-between items-start mb-6">
         <div>
-          <h1 className="text-3xl font-normal text-on-surface">Income Tax (IRPF) 2025</h1>
+          <h1 className="text-3xl font-normal text-on-surface">Imposto de Renda (IRPF) 2025</h1>
           <p className="text-base text-on-surface-variant">
             Ano-calendário 2024. Prepare sua declaração com dados pré-compilados.
           </p>
@@ -218,7 +218,7 @@ Este é um resumo gerado por IA e não substitui a consulta a um contador profis
           disabled={isGenerating}
           leftIcon={<SparklesIcon className="w-5 h-5" />}
         >
-          {isGenerating ? 'Generating...' : 'Generate AI Summary'}
+          {isGenerating ? 'Gerando...' : 'Gerar Resumo com IA'}
         </Button>
       </header>
 
@@ -244,8 +244,8 @@ Este é um resumo gerado por IA e não substitui a consulta a um contador profis
           <Tabs defaultValue="bens-e-direitos">
             <TabsList>
               <TabsTrigger value="bens-e-direitos">Bens e Direitos</TabsTrigger>
-              <TabsTrigger value="rendimentos-isentos">Rend. Isentos e Não Tributáveis</TabsTrigger>
-              <TabsTrigger value="rendimentos-exclusivos">Rend. Sujeitos à Trib. Exclusiva</TabsTrigger>
+              <TabsTrigger value="rendimentos-isentos">Rendimentos Isentos</TabsTrigger>
+              <TabsTrigger value="rendimentos-exclusivos">Rendimentos Exclusivos</TabsTrigger>
             </TabsList>
 
             <div className="p-4 md:p-6">

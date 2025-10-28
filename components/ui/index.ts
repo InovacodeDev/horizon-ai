@@ -10,3 +10,4 @@ export { default as Stepper } from './Stepper';
 export { default as Spinner } from './Spinner';
 export { default as Skeleton } from './Skeleton';
 export { DropdownMenu, DropdownMenuItem } from './DropdownMenu';
+export { default as Tooltip } from './Tooltip';

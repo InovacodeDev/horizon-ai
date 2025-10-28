@@ -26,7 +26,7 @@ function InvoiceItem({ invoice }: { invoice: Invoice }) {
     <Card className="p-4 flex items-center gap-4">
       <div className="flex-grow">
         <p className="font-medium text-on-surface">{invoice.fileName}</p>
-        <p className="text-sm text-on-surface-variant">Uploaded: {invoice.uploadDate}</p>
+        <p className="text-sm text-on-surface-variant">Enviado: {invoice.uploadDate}</p>
       </div>
       <Badge variant={statusVariant[invoice.status]}>{invoice.status}</Badge>
     </Card>
@@ -48,12 +48,11 @@ export default function InvoicesPage() {
         <div className="bg-tertiary/20 p-3 rounded-full mb-4">
           <AlertTriangleIcon className="w-8 h-8 text-tertiary" />
         </div>
-        <h2 className="text-2xl font-medium text-on-surface mb-2">Unlock Invoice Intelligence</h2>
+        <h2 className="text-2xl font-medium text-on-surface mb-2">Desbloqueie a Inteligência de Notas Fiscais</h2>
         <p className="text-on-surface-variant max-w-md mb-6">
-          Upgrade to Premium to automatically process invoices, track products, and manage warranties without manual
-          effort.
+          Faça upgrade para Premium para processar automaticamente notas fiscais, rastrear produtos e gerenciar garantias sem esforço manual.
         </p>
-        <Button onClick={handleUpgrade}>Upgrade to Premium</Button>
+        <Button onClick={handleUpgrade}>Fazer Upgrade para Premium</Button>
       </div>
     );
   }
@@ -61,9 +60,9 @@ export default function InvoicesPage() {
   return (
     <div className="p-4 md:p-8">
       <header className="mb-6">
-        <h1 className="text-3xl font-normal text-on-surface">Your Invoices & Receipts</h1>
+        <h1 className="text-3xl font-normal text-on-surface">Suas Notas Fiscais e Recibos</h1>
         <p className="text-base text-on-surface-variant">
-          Upload your invoices to automatically track purchases and warranties.
+          Faça upload de suas notas fiscais para rastrear automaticamente compras e garantias.
         </p>
       </header>
 
@@ -71,16 +70,16 @@ export default function InvoicesPage() {
         <Card className="p-6">
           <div className="border-2 border-dashed border-outline rounded-m p-8 text-center">
             <UploadCloudIcon className="mx-auto h-12 w-12 text-on-surface-variant" />
-            <h3 className="mt-2 text-lg font-medium text-on-surface">Drag and drop files here</h3>
-            <p className="mt-1 text-sm text-on-surface-variant">PDF, XML, JPG, PNG up to 10MB</p>
+            <h3 className="mt-2 text-lg font-medium text-on-surface">Arraste e solte arquivos aqui</h3>
+            <p className="mt-1 text-sm text-on-surface-variant">PDF, XML, JPG, PNG até 10MB</p>
             <div className="mt-6">
-              <Button>Or click to upload</Button>
+              <Button>Ou clique para fazer upload</Button>
             </div>
           </div>
         </Card>
 
         <div>
-          <h2 className="text-xl font-medium text-on-surface mb-4">Uploaded Invoices</h2>
+          <h2 className="text-xl font-medium text-on-surface mb-4">Notas Fiscais Enviadas</h2>
           {invoices.length > 0 ? (
             <div className="space-y-3">
               {invoices.map((invoice) => (
@@ -90,9 +89,9 @@ export default function InvoicesPage() {
           ) : (
             <Card className="py-12 text-center flex flex-col items-center border-2 border-dashed border-outline bg-surface shadow-none">
               <UploadCloudIcon className="w-10 h-10 text-on-surface-variant mb-3" />
-              <h3 className="text-lg font-medium text-on-surface">No Invoices Uploaded</h3>
+              <h3 className="text-lg font-medium text-on-surface">Nenhuma Nota Fiscal Enviada</h3>
               <p className="text-on-surface-variant text-sm mt-1 max-w-xs">
-                Use the uploader above to add invoices and receipts.
+                Use o uploader acima para adicionar notas fiscais e recibos.
               </p>
             </Card>
           )}

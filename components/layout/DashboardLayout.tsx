@@ -20,6 +20,7 @@ import {
   TrendingUpIcon,
 } from '@/components/assets/Icons';
 import Modal from '@/components/ui/Modal';
+import Tooltip from '@/components/ui/Tooltip';
 import type { User } from '@/lib/types';
 
 interface NavItemProps {
@@ -27,17 +28,32 @@ interface NavItemProps {
   label: string;
   href: string;
   isActive: boolean;
+  disabled?: boolean;
+  tooltipText?: string;
 }
 
-const NavItem: React.FC<NavItemProps> = ({ icon, label, href, isActive }) => {
-  return (
-    <Link
-      href={href}
+const NavItem: React.FC<NavItemProps> = ({ icon, label, href, isActive, disabled = false, tooltipText }) => {
+  const content = (
+    <div
       className={`w-full flex items-center p-2.5 rounded-lg text-sm font-medium transition-colors
-        ${isActive ? 'bg-primary-container text-primary' : 'text-on-surface-variant hover:bg-on-surface/5'}`}
+        ${disabled ? 'opacity-50 cursor-not-allowed text-on-surface-variant' : isActive ? 'bg-primary-container text-primary' : 'text-on-surface-variant hover:bg-on-surface/5'}`}
     >
       <div className="mr-3">{icon}</div>
       {label}
+    </div>
+  );
+
+  if (disabled && tooltipText) {
+    return <Tooltip content={tooltipText}>{content}</Tooltip>;
+  }
+
+  if (disabled) {
+    return content;
+  }
+
+  return (
+    <Link href={href} className="block">
+      {content}
     </Link>
   );
 };
@@ -135,28 +151,34 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, user }) => 
                 key={item.href}
                 {...item}
                 isActive={pathname === item.href}
+                disabled={true}
+                tooltipText="Em construção"
               />
             ))}
           </nav>
 
-          <NavSection title="Wealth Management" />
+          <NavSection title="Gestão Patrimonial" />
           <nav className="space-y-1.5">
             {planningNav.map((item) => (
               <NavItem
                 key={item.href}
                 {...item}
                 isActive={pathname === item.href}
+                disabled={true}
+                tooltipText="Em construção"
               />
             ))}
           </nav>
 
-          <NavSection title="Ecosystem" />
+          <NavSection title="Ecossistema" />
           <nav className="space-y-1.5">
             {ecosystemNav.map((item) => (
               <NavItem
                 key={item.href}
                 {...item}
                 isActive={pathname === item.href}
+                disabled={true}
+                tooltipText="Em construção"
               />
             ))}
           </nav>

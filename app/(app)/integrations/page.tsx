@@ -24,10 +24,10 @@ const IntegrationCard: React.FC<{ integration: Integration }> = ({ integration }
       </div>
       {connected ? (
         <Button variant="outlined" disabled leftIcon={<CheckIcon className="w-4 h-4" />}>
-          Connected
+          Conectado
         </Button>
       ) : (
-        <Button variant="outlined">Connect</Button>
+        <Button variant="outlined">Conectar</Button>
       )}
     </Card>
   );
@@ -50,9 +50,9 @@ export default function IntegrationsPage() {
   return (
     <div className="p-4 md:p-8">
       <header className="mb-8">
-        <h1 className="text-3xl font-normal text-on-surface">App Integrations</h1>
+        <h1 className="text-3xl font-normal text-on-surface">Integrações de Aplicativos</h1>
         <p className="text-base text-on-surface-variant">
-          Connect other services to enrich your financial picture and automate tracking.
+          Conecte outros serviços para enriquecer seu panorama financeiro e automatizar o rastreamento.
         </p>
       </header>
       <main className="space-y-8">

@@ -62,8 +62,8 @@ const RetirementGoalCard: React.FC = () => {
                     <TrendingUpIcon className="w-8 h-8 text-primary" />
                 </div>
                 <div>
-                    <h3 className="text-xl font-medium text-on-primary-container">Retirement Plan</h3>
-                    <p className="text-sm text-on-primary-container/80">On track to retire at age {targetAge}.</p>
+                    <h3 className="text-xl font-medium text-on-primary-container">Plano de Aposentadoria</h3>
+                    <p className="text-sm text-on-primary-container/80">No caminho para se aposentar aos {targetAge} anos.</p>
                 </div>
             </div>
 
@@ -77,10 +77,10 @@ const RetirementGoalCard: React.FC = () => {
                 </div>
                 <div className="flex justify-between items-center mt-2">
                     <p className="text-sm text-on-primary-container">
-                        Current monthly contribution: <strong>{formatCurrency(monthlyContribution)}</strong>
+                        Contribuição mensal atual: <strong>{formatCurrency(monthlyContribution)}</strong>
                     </p>
                     <Button variant="text" className="!text-primary">
-                        Adjust Plan
+                        Ajustar Plano
                     </Button>
                 </div>
             </div>
@@ -105,7 +105,7 @@ const FinancialGoalCard: React.FC<FinancialGoalCardProps> = ({ goal, onEdit, onD
                 <div className="p-3 bg-primary-container rounded-full">{getGoalIcon(goal.name)}</div>
                 <div className="flex-grow">
                     <h3 className="font-medium text-lg text-on-surface">{goal.name}</h3>
-                    <p className="text-sm text-on-surface-variant">Target Date: {goal.targetDate}</p>
+                    <p className="text-sm text-on-surface-variant">Data Alvo: {goal.targetDate}</p>
                 </div>
                 <div className="flex gap-1">
                     <Button variant="text" className="!p-2 !h-auto !rounded-full" onClick={() => onEdit(goal)}>
@@ -118,7 +118,7 @@ const FinancialGoalCard: React.FC<FinancialGoalCardProps> = ({ goal, onEdit, onD
             </div>
             <div className="mt-4 flex-grow flex flex-col justify-end">
                 <div className="flex justify-between items-end mb-1">
-                    <span className="text-sm text-on-surface-variant">Progress</span>
+                    <span className="text-sm text-on-surface-variant">Progresso</span>
                     <span className={`text-xl font-medium ${isCompleted ? "text-secondary" : "text-on-surface"}`}>
                         {progress.toFixed(0)}%
                     </span>
@@ -289,9 +289,9 @@ export default function PlanningGoalsPage() {
             <div className="p-4 md:p-8">
                 <header className="flex justify-between items-center mb-6">
                     <div>
-                        <h1 className="text-3xl font-normal text-on-surface">Financial Goals</h1>
+                        <h1 className="text-3xl font-normal text-on-surface">Metas Financeiras</h1>
                         <p className="text-base text-on-surface-variant">
-                            Track your progress towards your biggest dreams.
+                            Acompanhe seu progresso em direção aos seus maiores sonhos.
                         </p>
                     </div>
                     <div className="flex items-center gap-3">
@@ -301,10 +301,10 @@ export default function PlanningGoalsPage() {
                             onClick={handleGenerateGoals}
                             disabled={isGenerating}
                         >
-                            {isGenerating ? "Generating..." : "Generate with AI"}
+                            {isGenerating ? "Gerando..." : "Gerar com IA"}
                         </Button>
                         <Button leftIcon={<PlusIcon className="w-5 h-5" />} onClick={handleOpenAddModal}>
-                            Add New Goal
+                            Adicionar Nova Meta
                         </Button>
                     </div>
                 </header>
@@ -330,12 +330,12 @@ export default function PlanningGoalsPage() {
                             <div className="p-3 bg-primary-container rounded-full mb-4">
                                 <TargetIcon className="w-8 h-8 text-on-primary-container" />
                             </div>
-                            <h3 className="text-xl font-medium text-on-surface">No Financial Goals Yet</h3>
+                            <h3 className="text-xl font-medium text-on-surface">Nenhuma Meta Financeira Ainda</h3>
                             <p className="text-on-surface-variant mt-1 mb-6 max-w-sm">
-                                Create your first goal to start tracking your progress towards achieving it.
+                                Crie sua primeira meta para começar a acompanhar seu progresso em alcançá-la.
                             </p>
                             <Button leftIcon={<PlusIcon className="w-5 h-5" />} onClick={handleOpenAddModal}>
-                                Add New Goal
+                                Adicionar Nova Meta
                             </Button>
                         </Card>
                     )}
@@ -343,7 +343,7 @@ export default function PlanningGoalsPage() {
             </div>
 
             {/* AI Suggestions Modal */}
-            <Modal isOpen={isSuggestionModalOpen} onClose={handleCloseModals} title="AI-Powered Goal Suggestions">
+            <Modal isOpen={isSuggestionModalOpen} onClose={handleCloseModals} title="Sugestões de Metas com IA">
                 <div className="p-6">
                     {suggestedGoals.length > 0 ? (
                         <div className="space-y-4">
@@ -351,24 +351,24 @@ export default function PlanningGoalsPage() {
                                 <Card key={index} className="p-4 bg-surface">
                                     <h4 className="font-medium text-lg text-on-surface">{goal.name}</h4>
                                     <p className="text-sm text-on-surface-variant mt-1">
-                                        Target: <strong>{formatCurrency(goal.targetAmount)}</strong> by{" "}
+                                        Alvo: <strong>{formatCurrency(goal.targetAmount)}</strong> até{" "}
                                         <strong>{goal.targetDate}</strong>
                                     </p>
                                     <p className="text-xs text-on-surface-variant mt-2 p-2 bg-surface-variant/20 rounded-md">
-                                        <strong>Justification:</strong> {goal.justification}
+                                        <strong>Justificativa:</strong> {goal.justification}
                                     </p>
                                     <div className="text-right mt-3">
-                                        <Button onClick={() => handleAddSuggestedGoal(goal)}>Add Goal</Button>
+                                        <Button onClick={() => handleAddSuggestedGoal(goal)}>Adicionar Meta</Button>
                                     </div>
                                 </Card>
                             ))}
                         </div>
                     ) : (
-                        <p className="text-on-surface-variant text-center py-4">All suggestions have been added!</p>
+                        <p className="text-on-surface-variant text-center py-4">Todas as sugestões foram adicionadas!</p>
                     )}
                     <div className="flex justify-end mt-6">
                         <Button variant="outlined" onClick={handleCloseModals}>
-                            Close
+                            Fechar
                         </Button>
                     </div>
                 </div>
@@ -379,7 +379,7 @@ export default function PlanningGoalsPage() {
                 <Modal
                     isOpen={isModalOpen}
                     onClose={handleCloseModals}
-                    title={"id" in editingGoal ? "Edit Financial Goal" : "Add New Financial Goal"}
+                    title={"id" in editingGoal ? "Editar Meta Financeira" : "Adicionar Nova Meta Financeira"}
                 >
                     <div className="p-6">
                         <form
@@ -392,8 +392,8 @@ export default function PlanningGoalsPage() {
                             <Input
                                 id="name"
                                 name="name"
-                                label="Goal Name"
-                                placeholder="e.g., European Vacation"
+                                label="Nome da Meta"
+                                placeholder="Ex: Viagem para Europa"
                                 value={editingGoal.name || ""}
                                 onChange={handleInputChange}
                                 required
@@ -402,7 +402,7 @@ export default function PlanningGoalsPage() {
                                 <Input
                                     id="currentAmount"
                                     name="currentAmount"
-                                    label="Current Amount"
+                                    label="Valor Atual"
                                     type="number"
                                     value={editingGoal.currentAmount || ""}
                                     onChange={handleInputChange}
@@ -410,7 +410,7 @@ export default function PlanningGoalsPage() {
                                 <Input
                                     id="targetAmount"
                                     name="targetAmount"
-                                    label="Target Amount"
+                                    label="Valor Alvo"
                                     type="number"
                                     value={editingGoal.targetAmount || ""}
                                     onChange={handleInputChange}
@@ -420,17 +420,17 @@ export default function PlanningGoalsPage() {
                             <Input
                                 id="targetDate"
                                 name="targetDate"
-                                label="Target Date"
-                                placeholder="e.g., June 2025"
+                                label="Data Alvo"
+                                placeholder="Ex: Junho 2025"
                                 value={editingGoal.targetDate || ""}
                                 onChange={handleInputChange}
                             />
                         </form>
                         <div className="flex justify-end gap-3 mt-6">
                             <Button variant="outlined" onClick={handleCloseModals}>
-                                Cancel
+                                Cancelar
                             </Button>
-                            <Button onClick={handleSaveGoal}>Save Goal</Button>
+                            <Button onClick={handleSaveGoal}>Salvar Meta</Button>
                         </div>
                     </div>
                 </Modal>
@@ -438,18 +438,18 @@ export default function PlanningGoalsPage() {
 
             {/* Delete Confirmation Modal */}
             {goalToDelete && (
-                <Modal isOpen={isDeleteModalOpen} onClose={handleCloseModals} title="Confirm Goal Deletion">
+                <Modal isOpen={isDeleteModalOpen} onClose={handleCloseModals} title="Confirmar Exclusão de Meta">
                     <div className="p-6">
                         <p className="text-on-surface-variant mb-6">
-                            Are you sure you want to delete the goal "{goalToDelete.name}"? This action cannot be
-                            undone.
+                            Tem certeza que deseja excluir a meta "{goalToDelete.name}"? Esta ação não pode ser
+                            desfeita.
                         </p>
                         <div className="flex justify-end gap-3">
                             <Button variant="outlined" onClick={handleCloseModals}>
-                                Cancel
+                                Cancelar
                             </Button>
                             <Button className="bg-error hover:opacity-90" onClick={handleConfirmDelete}>
-                                Delete
+                                Excluir
                             </Button>
                         </div>
                     </div>

@@ -28,7 +28,7 @@ const CategoryItem: React.FC<{ category: Category }> = ({ category }) => {
                     </div>
                 )}
                 {transactionCount !== undefined && (
-                    <p className="text-xs text-on-surface-variant mt-1">{transactionCount} transactions</p>
+                    <p className="text-xs text-on-surface-variant mt-1">{transactionCount} transações</p>
                 )}
             </div>
         </div>
@@ -66,22 +66,22 @@ export default function CategoriesPage() {
         <>
             <header className="flex justify-between items-center mb-6">
                 <div>
-                    <h1 className="text-3xl font-normal text-on-surface">Transaction Categories</h1>
-                    <p className="text-base text-on-surface-variant">Understand where your money is going.</p>
+                    <h1 className="text-3xl font-normal text-on-surface">Categorias de Transações</h1>
+                    <p className="text-base text-on-surface-variant">Entenda para onde seu dinheiro está indo.</p>
                 </div>
                 <Button
                     variant="outlined"
                     leftIcon={<SettingsIcon className="w-5 h-5" />}
                     onClick={() => setIsModalOpen(true)}
                 >
-                    Manage Categories
+                    Gerenciar Categorias
                 </Button>
             </header>
             <main>
                 <Card className="p-6">
-                    <h2 className="text-xl font-medium text-on-surface mb-2">Spending Breakdown</h2>
+                    <h2 className="text-xl font-medium text-on-surface mb-2">Distribuição de Gastos</h2>
                     <p className="text-sm text-on-surface-variant mb-4">
-                        92% of transactions auto-categorized this month.
+                        92% das transações foram categorizadas automaticamente este mês.
                     </p>
                     <div className="space-y-4">
                         {categories.map((category) => (

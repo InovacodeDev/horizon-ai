@@ -74,7 +74,7 @@ const ParsedPurchaseCard: React.FC<{ purchase: Omit<PurchaseRecord, "id">; onSav
 }) => (
     <Card className="mt-6">
         <div className="p-4 bg-primary-container/30">
-            <h4 className="text-xl font-medium mb-1">Imported Invoice</h4>
+            <h4 className="text-xl font-medium mb-1">Nota Fiscal Importada</h4>
             <div className="flex justify-between text-on-surface-variant text-sm">
                 <span>{purchase.storeName}</span>
                 <span>{new Date(purchase.purchaseDate).toLocaleDateString("pt-BR")}</span>
@@ -84,9 +84,9 @@ const ParsedPurchaseCard: React.FC<{ purchase: Omit<PurchaseRecord, "id">; onSav
             <table className="w-full text-left text-sm">
                 <thead className="border-b border-outline">
                     <tr>
-                        <th className="py-2 font-medium">Product</th>
-                        <th className="py-2 font-medium text-center">Qty</th>
-                        <th className="py-2 font-medium text-right">Unit Price</th>
+                        <th className="py-2 font-medium">Produto</th>
+                        <th className="py-2 font-medium text-center">Qtd</th>
+                        <th className="py-2 font-medium text-right">Preço Unit.</th>
                         <th className="py-2 font-medium text-right">Total</th>
                     </tr>
                 </thead>
@@ -104,7 +104,7 @@ const ParsedPurchaseCard: React.FC<{ purchase: Omit<PurchaseRecord, "id">; onSav
         </div>
         <div className="p-4 border-t border-outline flex justify-between items-center">
             <span className="font-medium text-lg">Total: {formatCurrency(purchase.totalAmount)}</span>
-            <Button onClick={onSave}>Save to History</Button>
+            <Button onClick={onSave}>Salvar no Histórico</Button>
         </div>
     </Card>
 );
@@ -312,32 +312,32 @@ export default function ShoppingListPage() {
     return (
         <div>
             <header className="mb-6">
-                <h1 className="text-3xl font-normal text-on-surface">Shopping Intelligence</h1>
+                <h1 className="text-3xl font-normal text-on-surface">Inteligência de Compras</h1>
                 <p className="text-base text-on-surface-variant">
-                    Create lists, import purchases, and get AI-powered savings insights.
+                    Crie listas, importe compras e obtenha insights de economia com IA.
                 </p>
             </header>
 
             <Card>
                 <Tabs defaultValue="create">
                     <TabsList>
-                        <TabsTrigger value="create">Create New List</TabsTrigger>
-                        <TabsTrigger value="import">Import NF-e</TabsTrigger>
-                        <TabsTrigger value="history">History & Insights</TabsTrigger>
+                        <TabsTrigger value="create">Criar Nova Lista</TabsTrigger>
+                        <TabsTrigger value="import">Importar NF-e</TabsTrigger>
+                        <TabsTrigger value="history">Histórico e Insights</TabsTrigger>
                     </TabsList>
 
                     {/* Create List Tab */}
                     <TabsContent value="create">
                         <div className="p-4 md:p-6 max-w-2xl mx-auto">
-                            <h3 className="text-lg font-medium">What do you need to buy?</h3>
+                            <h3 className="text-lg font-medium">O que você precisa comprar?</h3>
                             <p className="text-sm text-on-surface-variant mb-4">
-                                e.g., "Weekly groceries", "Ingredients for lasagna"
+                                Ex: "Compras da semana", "Ingredientes para lasanha"
                             </p>
                             <div className="flex gap-2">
                                 <textarea
                                     rows={2}
                                     className="w-full p-3 bg-surface border border-outline rounded-xl flex-grow"
-                                    placeholder="Describe your shopping needs..."
+                                    placeholder="Descreva suas necessidades de compra..."
                                     value={prompt}
                                     onChange={(e) => setPrompt(e.target.value)}
                                     disabled={isGeneratingList}
@@ -347,7 +347,7 @@ export default function ShoppingListPage() {
                                     disabled={isGeneratingList || !prompt}
                                     leftIcon={<SparklesIcon className="w-5 h-5" />}
                                 >
-                                    {isGeneratingList ? "Generating..." : "Generate"}
+                                    {isGeneratingList ? "Gerando..." : "Gerar"}
                                 </Button>
                             </div>
                             {isGeneratingList && (
@@ -358,7 +358,7 @@ export default function ShoppingListPage() {
                             {newListItems.length > 0 && (
                                 <div className="mt-6">
                                     <h4 className="text-xl font-medium mb-3">
-                                        Your List: <span className="text-primary">{newListTitle}</span>
+                                        Sua Lista: <span className="text-primary">{newListTitle}</span>
                                     </h4>
                                     <ul className="space-y-2">
                                         {newListItems.map((item) => (
@@ -387,7 +387,7 @@ export default function ShoppingListPage() {
                                     <div className="mt-4 pt-4 border-t border-outline flex gap-2">
                                         <Input
                                             id="manual-item"
-                                            placeholder="Add another item..."
+                                            placeholder="Adicionar outro item..."
                                             value={manualItem}
                                             onChange={(e) => setManualItem(e.target.value)}
                                             onKeyDown={(e) => e.key === "Enter" && handleAddManualItem()}
@@ -397,11 +397,11 @@ export default function ShoppingListPage() {
                                             onClick={handleAddManualItem}
                                             leftIcon={<PlusIcon className="w-5 h-5" />}
                                         >
-                                            Add
+                                            Adicionar
                                         </Button>
                                     </div>
                                     <div className="mt-6 text-right">
-                                        <Button onClick={handleSaveAndArchive}>Save & Archive</Button>
+                                        <Button onClick={handleSaveAndArchive}>Salvar e Arquivar</Button>
                                     </div>
                                 </div>
                             )}
@@ -411,10 +411,9 @@ export default function ShoppingListPage() {
                     {/* Import NF-e Tab */}
                     <TabsContent value="import">
                         <div className="p-4 md:p-6 max-w-2xl mx-auto">
-                            <h3 className="text-lg font-medium">Import from NF-e URL</h3>
+                            <h3 className="text-lg font-medium">Importar da URL da NF-e</h3>
                             <p className="text-sm text-on-surface-variant mb-4">
-                                Paste the public URL of a Brazilian Nota Fiscal Eletrônica to automatically log your
-                                purchase.
+                                Cole a URL pública de uma Nota Fiscal Eletrônica brasileira para registrar automaticamente sua compra.
                             </p>
                             <div className="flex gap-2">
                                 <Input
@@ -429,10 +428,10 @@ export default function ShoppingListPage() {
                                     onClick={() => {}}
                                     leftIcon={<QrCodeIcon className="w-5 h-5" />}
                                 >
-                                    Scan
+                                    Escanear
                                 </Button>
                                 <Button onClick={handleImportNFe} disabled={isImporting || !nfeUrl}>
-                                    {isImporting ? "Importing..." : "Import"}
+                                    {isImporting ? "Importando..." : "Importar"}
                                 </Button>
                             </div>
                             {isImporting && (
@@ -455,7 +454,7 @@ export default function ShoppingListPage() {
                                     disabled={isGeneratingInsights}
                                     leftIcon={<SparklesIcon className="w-5 h-5" />}
                                 >
-                                    {isGeneratingInsights ? "Analyzing..." : "Generate Savings Insights"}
+                                    {isGeneratingInsights ? "Analisando..." : "Gerar Insights de Economia"}
                                 </Button>
                             </div>
 
@@ -472,7 +471,7 @@ export default function ShoppingListPage() {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div>
-                                    <h3 className="text-lg font-medium text-on-surface mb-3">Purchase History</h3>
+                                    <h3 className="text-lg font-medium text-on-surface mb-3">Histórico de Compras</h3>
                                     <div className="space-y-4">
                                         {purchaseHistory.length > 0 ? (
                                             purchaseHistory.map((rec) => (
@@ -501,13 +500,13 @@ export default function ShoppingListPage() {
                                             ))
                                         ) : (
                                             <p className="text-center text-on-surface-variant py-8 text-sm">
-                                                No purchase history yet.
+                                                Nenhum histórico de compras ainda.
                                             </p>
                                         )}
                                     </div>
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-medium text-on-surface mb-3">Past Shopping Lists</h3>
+                                    <h3 className="text-lg font-medium text-on-surface mb-3">Listas de Compras Anteriores</h3>
                                     <div className="space-y-4">
                                         {historicLists.length > 0 ? (
                                             historicLists.map((list) => (
@@ -517,11 +516,11 @@ export default function ShoppingListPage() {
                                                             <div>
                                                                 <p>{list.title}</p>
                                                                 <p className="text-xs text-on-surface-variant">
-                                                                    Created: {formatDate(list.createdAt)}
+                                                                    Criado: {formatDate(list.createdAt)}
                                                                 </p>
                                                             </div>
                                                             <span className="text-sm text-on-surface-variant">
-                                                                {list.items.length} items
+                                                                {list.items.length} itens
                                                             </span>
                                                         </summary>
                                                         <ul className="mt-3 pt-3 border-t border-outline space-y-1">
@@ -553,7 +552,7 @@ export default function ShoppingListPage() {
                                             ))
                                         ) : (
                                             <p className="text-center text-on-surface-variant py-8 text-sm">
-                                                No shopping list history yet.
+                                                Nenhum histórico de listas de compras ainda.
                                             </p>
                                         )}
                                     </div>
