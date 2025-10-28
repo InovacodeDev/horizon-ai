@@ -28,7 +28,7 @@ export const migration: Migration = {
     await safe(async () => {
       await databases.createStringColumn({
         databaseId,
-        collectionId: 'users',
+        tableId: 'users',
         key: 'password_hash',
         size: 1000,
         required: true,
@@ -36,22 +36,22 @@ export const migration: Migration = {
     }, 'users.password_hash');
 
     await safe(async () => {
-      await databases.createBooleanColumn({ databaseId, collectionId: 'users', key: 'is_email_verified', required: true });
+      await databases.createBooleanColumn({ databaseId, tableId: 'users', key: 'is_email_verified', required: true });
     }, 'users.is_email_verified');
 
     await safe(async () => {
-      await databases.createBooleanColumn({ databaseId, collectionId: 'users', key: 'is_active', required: true });
+      await databases.createBooleanColumn({ databaseId, tableId: 'users', key: 'is_active', required: true });
     }, 'users.is_active');
 
     await safe(async () => {
-      await databases.createDatetimeColumn({ databaseId, collectionId: 'users', key: 'last_login_at', required: false });
+      await databases.createDatetimeColumn({ databaseId, tableId: 'users', key: 'last_login_at', required: false });
     }, 'users.last_login_at');
 
     // Ensure index on email exists
     await safe(async () => {
       await databases.createIndex({
         databaseId,
-        collectionId: 'users',
+        tableId: 'users',
         key: 'email_idx',
         type: IndexType.Key,
         columns: ['email'],
@@ -65,7 +65,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createStringColumn({
             databaseId,
-            collectionId: 'user_profiles',
+            tableId: 'user_profiles',
             key: 'first_name',
             size: 100,
             required: false,
@@ -76,7 +76,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createStringColumn({
             databaseId,
-            collectionId: 'user_profiles',
+            tableId: 'user_profiles',
             key: 'last_name',
             size: 100,
             required: false,
@@ -87,7 +87,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createStringColumn({
             databaseId,
-            collectionId: 'user_profiles',
+            tableId: 'user_profiles',
             key: 'display_name',
             size: 200,
             required: false,
@@ -98,7 +98,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createStringColumn({
             databaseId,
-            collectionId: 'user_profiles',
+            tableId: 'user_profiles',
             key: 'avatar_url',
             size: 1000,
             required: false,
@@ -109,7 +109,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createStringColumn({
             databaseId,
-            collectionId: 'user_profiles',
+            tableId: 'user_profiles',
             key: 'phone_number',
             size: 20,
             required: false,
@@ -120,7 +120,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createDatetimeColumn({
             databaseId,
-            collectionId: 'user_profiles',
+            tableId: 'user_profiles',
             key: 'date_of_birth',
             required: false,
           }),
@@ -130,7 +130,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createStringColumn({
             databaseId,
-            collectionId: 'user_profiles',
+            tableId: 'user_profiles',
             key: 'address',
             size: 10000,
             required: false,
@@ -141,7 +141,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createStringColumn({
             databaseId,
-            collectionId: 'user_profiles',
+            tableId: 'user_profiles',
             key: 'bio',
             size: 2000,
             required: false,
@@ -152,7 +152,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createStringColumn({
             databaseId,
-            collectionId: 'user_profiles',
+            tableId: 'user_profiles',
             key: 'occupation',
             size: 100,
             required: false,
@@ -163,7 +163,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createStringColumn({
             databaseId,
-            collectionId: 'user_profiles',
+            tableId: 'user_profiles',
             key: 'company',
             size: 100,
             required: false,
@@ -174,7 +174,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createStringColumn({
             databaseId,
-            collectionId: 'user_profiles',
+            tableId: 'user_profiles',
             key: 'website',
             size: 255,
             required: false,
@@ -185,7 +185,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createStringColumn({
             databaseId,
-            collectionId: 'user_profiles',
+            tableId: 'user_profiles',
             key: 'social_links',
             size: 2000,
             required: false,
@@ -201,7 +201,7 @@ export const migration: Migration = {
     await safe(async () => {
       await databases.createIndex({
         databaseId,
-        collectionId: 'user_profiles',
+        tableId: 'user_profiles',
         key: 'user_id_idx',
         type: IndexType.Unique,
         columns: ['user_id'],
@@ -215,7 +215,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createStringColumn({
             databaseId,
-            collectionId: 'user_preferences',
+            tableId: 'user_preferences',
             key: 'theme',
             size: 20,
             required: true,
@@ -226,7 +226,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createStringColumn({
             databaseId,
-            collectionId: 'user_preferences',
+            tableId: 'user_preferences',
             key: 'language',
             size: 10,
             required: true,
@@ -237,7 +237,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createStringColumn({
             databaseId,
-            collectionId: 'user_preferences',
+            tableId: 'user_preferences',
             key: 'currency',
             size: 10,
             required: true,
@@ -248,7 +248,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createStringColumn({
             databaseId,
-            collectionId: 'user_preferences',
+            tableId: 'user_preferences',
             key: 'default_dashboard_view',
             size: 50,
             required: false,
@@ -259,7 +259,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createStringColumn({
             databaseId,
-            collectionId: 'user_preferences',
+            tableId: 'user_preferences',
             key: 'dashboard_widgets',
             size: 10000,
             required: false,
@@ -270,7 +270,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createBooleanColumn({
             databaseId,
-            collectionId: 'user_preferences',
+            tableId: 'user_preferences',
             key: 'email_notifications',
             required: true,
           }),
@@ -280,7 +280,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createBooleanColumn({
             databaseId,
-            collectionId: 'user_preferences',
+            tableId: 'user_preferences',
             key: 'push_notifications',
             required: true,
           }),
@@ -290,7 +290,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createBooleanColumn({
             databaseId,
-            collectionId: 'user_preferences',
+            tableId: 'user_preferences',
             key: 'sms_notifications',
             required: true,
           }),
@@ -300,7 +300,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createStringColumn({
             databaseId,
-            collectionId: 'user_preferences',
+            tableId: 'user_preferences',
             key: 'notification_frequency',
             size: 20,
             required: true,
@@ -311,7 +311,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createBooleanColumn({
             databaseId,
-            collectionId: 'user_preferences',
+            tableId: 'user_preferences',
             key: 'show_balances',
             required: true,
           }),
@@ -321,7 +321,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createBooleanColumn({
             databaseId,
-            collectionId: 'user_preferences',
+            tableId: 'user_preferences',
             key: 'auto_categorization_enabled',
             required: true,
           }),
@@ -331,7 +331,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createBooleanColumn({
             databaseId,
-            collectionId: 'user_preferences',
+            tableId: 'user_preferences',
             key: 'budget_alerts',
             required: true,
           }),
@@ -341,7 +341,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createStringColumn({
             databaseId,
-            collectionId: 'user_preferences',
+            tableId: 'user_preferences',
             key: 'profile_visibility',
             size: 20,
             required: true,
@@ -352,7 +352,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createBooleanColumn({
             databaseId,
-            collectionId: 'user_preferences',
+            tableId: 'user_preferences',
             key: 'share_data_for_insights',
             required: true,
           }),
@@ -367,7 +367,7 @@ export const migration: Migration = {
     await safe(async () => {
       await databases.createIndex({
         databaseId,
-        collectionId: 'user_preferences',
+        tableId: 'user_preferences',
         key: 'user_id_idx',
         type: IndexType.Unique,
         columns: ['user_id'],
@@ -381,7 +381,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createBooleanColumn({
             databaseId,
-            collectionId: 'user_settings',
+            tableId: 'user_settings',
             key: 'two_factor_enabled',
             required: true,
           }),
@@ -391,7 +391,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createStringColumn({
             databaseId,
-            collectionId: 'user_settings',
+            tableId: 'user_settings',
             key: 'two_factor_method',
             size: 20,
             required: false,
@@ -402,7 +402,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createIntegerColumn({
             databaseId,
-            collectionId: 'user_settings',
+            tableId: 'user_settings',
             key: 'session_timeout',
             required: true,
             min: 5,
@@ -414,7 +414,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createDatetimeColumn({
             databaseId,
-            collectionId: 'user_settings',
+            tableId: 'user_settings',
             key: 'password_last_changed_at',
             required: false,
           }),
@@ -424,7 +424,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createBooleanColumn({
             databaseId,
-            collectionId: 'user_settings',
+            tableId: 'user_settings',
             key: 'auto_sync_enabled',
             required: true,
           }),
@@ -434,7 +434,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createIntegerColumn({
             databaseId,
-            collectionId: 'user_settings',
+            tableId: 'user_settings',
             key: 'sync_frequency',
             required: true,
             min: 1,
@@ -446,7 +446,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createBooleanColumn({
             databaseId,
-            collectionId: 'user_settings',
+            tableId: 'user_settings',
             key: 'cloud_backup_enabled',
             required: true,
           }),
@@ -456,7 +456,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createStringColumn({
             databaseId,
-            collectionId: 'user_settings',
+            tableId: 'user_settings',
             key: 'connected_banks',
             size: 50000,
             required: false,
@@ -467,7 +467,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createStringColumn({
             databaseId,
-            collectionId: 'user_settings',
+            tableId: 'user_settings',
             key: 'connected_apps',
             size: 50000,
             required: false,
@@ -476,14 +476,14 @@ export const migration: Migration = {
       {
         key: 'beta_features',
         fn: () =>
-          databases.createBooleanColumn({ databaseId, collectionId: 'user_settings', key: 'beta_features', required: true }),
+          databases.createBooleanColumn({ databaseId, tableId: 'user_settings', key: 'beta_features', required: true }),
       },
       {
         key: 'analytics_opt_in',
         fn: () =>
           databases.createBooleanColumn({
             databaseId,
-            collectionId: 'user_settings',
+            tableId: 'user_settings',
             key: 'analytics_opt_in',
             required: true,
           }),
@@ -493,7 +493,7 @@ export const migration: Migration = {
         fn: () =>
           databases.createStringColumn({
             databaseId,
-            collectionId: 'user_settings',
+            tableId: 'user_settings',
             key: 'custom_settings',
             size: 50000,
             required: false,
@@ -509,7 +509,7 @@ export const migration: Migration = {
     await safe(async () => {
       await databases.createIndex({
         databaseId,
-        collectionId: 'user_settings',
+        tableId: 'user_settings',
         key: 'user_id_idx',
         type: IndexType.Unique,
         columns: ['user_id'],
@@ -519,7 +519,7 @@ export const migration: Migration = {
     await safe(async () => {
       await databases.createIndex({
         databaseId,
-        collectionId: 'user_settings',
+        tableId: 'user_settings',
         key: 'two_factor_enabled_idx',
         type: IndexType.Key,
         columns: ['two_factor_enabled'],

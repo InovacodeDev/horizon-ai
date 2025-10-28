@@ -21,107 +21,228 @@ export const migration: Migration = {
     console.log('Creating credit card bills and installments tables...');
 
     // Create credit_card_bills table
-    await databases.createCollection(
+    await databases.createTable({
       databaseId,
-      COLLECTIONS.CREDIT_CARD_BILLS,
-      'Credit Card Bills',
-      ['read("any")', 'write("any")'],
-      true,
-    );
+      tableId: COLLECTIONS.CREDIT_CARD_BILLS,
+      name: 'Credit Card Bills',
+      permissions: ['read("any")', 'write("any")'],
+      rowSecurity: true,
+    });
 
     // Create installment_plans table
-    await databases.createCollection(
+    await databases.createTable({
       databaseId,
-      COLLECTIONS.INSTALLMENT_PLANS,
-      'Installment Plans',
-      ['read("any")', 'write("any")'],
-      true,
-    );
+      tableId: COLLECTIONS.INSTALLMENT_PLANS,
+      name: 'Installment Plans',
+      permissions: ['read("any")', 'write("any")'],
+      rowSecurity: true,
+    });
 
     // Create credit_card_transactions table
-    await databases.createCollection(
+    await databases.createTable({
       databaseId,
-      COLLECTIONS.CREDIT_CARD_TRANSACTIONS,
-      'Credit Card Transactions',
-      ['read("any")', 'write("any")'],
-      true,
-    );
+      tableId: COLLECTIONS.CREDIT_CARD_TRANSACTIONS,
+      name: 'Credit Card Transactions',
+      permissions: ['read("any")', 'write("any")'],
+      rowSecurity: true,
+    });
 
     console.log('Creating credit_card_bills columns...');
 
     // Credit Card Bills columns
-    await databases.createStringAttribute(databaseId, COLLECTIONS.CREDIT_CARD_BILLS, 'credit_card_id', 255, true);
-    await databases.createStringAttribute(databaseId, COLLECTIONS.CREDIT_CARD_BILLS, 'user_id', 255, true);
-    await databases.createDatetimeAttribute(databaseId, COLLECTIONS.CREDIT_CARD_BILLS, 'due_date', true);
-    await databases.createDatetimeAttribute(databaseId, COLLECTIONS.CREDIT_CARD_BILLS, 'closing_date', true);
-    await databases.createFloatAttribute(databaseId, COLLECTIONS.CREDIT_CARD_BILLS, 'total_amount', true);
-    await databases.createFloatAttribute(databaseId, COLLECTIONS.CREDIT_CARD_BILLS, 'paid_amount', true);
-    await databases.createEnumAttribute(
+    await (databases as any).createStringAttribute({
       databaseId,
-      COLLECTIONS.CREDIT_CARD_BILLS,
-      'status',
-      ['open', 'closed', 'paid', 'overdue'],
-      true,
-    );
-    await databases.createDatetimeAttribute(databaseId, COLLECTIONS.CREDIT_CARD_BILLS, 'created_at', true);
-    await databases.createDatetimeAttribute(databaseId, COLLECTIONS.CREDIT_CARD_BILLS, 'updated_at', true);
+      tableId: COLLECTIONS.CREDIT_CARD_BILLS,
+      key: 'credit_card_id',
+      size: 255,
+      required: true,
+    });
+    await (databases as any).createStringAttribute({
+      databaseId,
+      tableId: COLLECTIONS.CREDIT_CARD_BILLS,
+      key: 'user_id',
+      size: 255,
+      required: true,
+    });
+    await (databases as any).createDatetimeAttribute({
+      databaseId,
+      tableId: COLLECTIONS.CREDIT_CARD_BILLS,
+      key: 'due_date',
+      required: true,
+    });
+    await (databases as any).createDatetimeAttribute({
+      databaseId,
+      tableId: COLLECTIONS.CREDIT_CARD_BILLS,
+      key: 'closing_date',
+      required: true,
+    });
+    await (databases as any).createFloatAttribute({
+      databaseId,
+      tableId: COLLECTIONS.CREDIT_CARD_BILLS,
+      key: 'total_amount',
+      required: true,
+    });
+    await (databases as any).createFloatAttribute({
+      databaseId,
+      tableId: COLLECTIONS.CREDIT_CARD_BILLS,
+      key: 'paid_amount',
+      required: true,
+    });
+    await (databases as any).createEnumAttribute({
+      databaseId,
+      tableId: COLLECTIONS.CREDIT_CARD_BILLS,
+      key: 'status',
+      elements: ['open', 'closed', 'paid', 'overdue'],
+      required: true,
+    });
+    await (databases as any).createDatetimeAttribute({
+      databaseId,
+      tableId: COLLECTIONS.CREDIT_CARD_BILLS,
+      key: 'created_at',
+      required: true,
+    });
+    await (databases as any).createDatetimeAttribute({
+      databaseId,
+      tableId: COLLECTIONS.CREDIT_CARD_BILLS,
+      key: 'updated_at',
+      required: true,
+    });
 
     console.log('Creating installment_plans columns...');
 
     // Installment Plans columns
-    await databases.createStringAttribute(databaseId, COLLECTIONS.INSTALLMENT_PLANS, 'transaction_id', 255, true);
-    await databases.createStringAttribute(databaseId, COLLECTIONS.INSTALLMENT_PLANS, 'credit_card_id', 255, true);
-    await databases.createStringAttribute(databaseId, COLLECTIONS.INSTALLMENT_PLANS, 'user_id', 255, true);
-    await databases.createFloatAttribute(databaseId, COLLECTIONS.INSTALLMENT_PLANS, 'total_amount', true);
-    await databases.createIntegerAttribute(databaseId, COLLECTIONS.INSTALLMENT_PLANS, 'installments', true);
-    await databases.createIntegerAttribute(databaseId, COLLECTIONS.INSTALLMENT_PLANS, 'current_installment', true);
-    await databases.createFloatAttribute(databaseId, COLLECTIONS.INSTALLMENT_PLANS, 'installment_amount', true);
-    await databases.createFloatAttribute(databaseId, COLLECTIONS.INSTALLMENT_PLANS, 'first_installment_amount', true);
-    await databases.createDatetimeAttribute(databaseId, COLLECTIONS.INSTALLMENT_PLANS, 'start_date', true);
-    await databases.createEnumAttribute(
+    await (databases as any).createStringAttribute({
       databaseId,
-      COLLECTIONS.INSTALLMENT_PLANS,
-      'status',
-      ['active', 'completed', 'cancelled'],
-      true,
-    );
-    await databases.createDatetimeAttribute(databaseId, COLLECTIONS.INSTALLMENT_PLANS, 'created_at', true);
-    await databases.createDatetimeAttribute(databaseId, COLLECTIONS.INSTALLMENT_PLANS, 'updated_at', true);
+      tableId: COLLECTIONS.INSTALLMENT_PLANS,
+      key: 'transaction_id',
+      size: 255,
+      required: true,
+    });
+    await (databases as any).createStringAttribute({
+      databaseId,
+      tableId: COLLECTIONS.INSTALLMENT_PLANS,
+      key: 'credit_card_id',
+      size: 255,
+      required: true,
+    });
+    await (databases as any).createStringAttribute({
+      databaseId,
+      tableId: COLLECTIONS.INSTALLMENT_PLANS,
+      key: 'user_id',
+      size: 255,
+      required: true,
+    });
+    await (databases as any).createFloatAttribute({
+      databaseId,
+      tableId: COLLECTIONS.INSTALLMENT_PLANS,
+      key: 'total_amount',
+      required: true,
+    });
+    await (databases as any).createIntegerAttribute({
+      databaseId,
+      tableId: COLLECTIONS.INSTALLMENT_PLANS,
+      key: 'installments',
+      required: true,
+    });
+    await (databases as any).createIntegerAttribute({
+      databaseId,
+      tableId: COLLECTIONS.INSTALLMENT_PLANS,
+      key: 'current_installment',
+      required: true,
+    });
+    await (databases as any).createFloatAttribute({
+      databaseId,
+      tableId: COLLECTIONS.INSTALLMENT_PLANS,
+      key: 'installment_amount',
+      required: true,
+    });
+    await (databases as any).createFloatAttribute({
+      databaseId,
+      tableId: COLLECTIONS.INSTALLMENT_PLANS,
+      key: 'first_installment_amount',
+      required: true,
+    });
+    await (databases as any).createDatetimeAttribute({
+      databaseId,
+      tableId: COLLECTIONS.INSTALLMENT_PLANS,
+      key: 'start_date',
+      required: true,
+    });
+    await (databases as any).createEnumAttribute({
+      databaseId,
+      tableId: COLLECTIONS.INSTALLMENT_PLANS,
+      key: 'status',
+      elements: ['active', 'completed', 'cancelled'],
+      required: true,
+    });
+    await (databases as any).createDatetimeAttribute({
+      databaseId,
+      tableId: COLLECTIONS.INSTALLMENT_PLANS,
+      key: 'created_at',
+      required: true,
+    });
+    await (databases as any).createDatetimeAttribute({
+      databaseId,
+      tableId: COLLECTIONS.INSTALLMENT_PLANS,
+      key: 'updated_at',
+      required: true,
+    });
 
     console.log('Creating credit_card_transactions columns...');
 
     // Credit Card Transactions columns
-    await databases.createStringAttribute(
+    await (databases as any).createStringAttribute({
       databaseId,
-      COLLECTIONS.CREDIT_CARD_TRANSACTIONS,
-      'transaction_id',
-      255,
-      true,
-    );
-    await databases.createStringAttribute(
+      tableId: COLLECTIONS.CREDIT_CARD_TRANSACTIONS,
+      key: 'transaction_id',
+      size: 255,
+      required: true,
+    });
+    await (databases as any).createStringAttribute({
       databaseId,
-      COLLECTIONS.CREDIT_CARD_TRANSACTIONS,
-      'credit_card_bill_id',
-      255,
-      true,
-    );
-    await databases.createStringAttribute(
+      tableId: COLLECTIONS.CREDIT_CARD_TRANSACTIONS,
+      key: 'credit_card_bill_id',
+      size: 255,
+      required: true,
+    });
+    await (databases as any).createStringAttribute({
       databaseId,
-      COLLECTIONS.CREDIT_CARD_TRANSACTIONS,
-      'installment_plan_id',
-      255,
-      false,
-    );
-    await databases.createFloatAttribute(databaseId, COLLECTIONS.CREDIT_CARD_TRANSACTIONS, 'amount', true);
-    await databases.createIntegerAttribute(
+      tableId: COLLECTIONS.CREDIT_CARD_TRANSACTIONS,
+      key: 'installment_plan_id',
+      size: 255,
+      required: false,
+    });
+    await (databases as any).createFloatAttribute({
       databaseId,
-      COLLECTIONS.CREDIT_CARD_TRANSACTIONS,
-      'installment_number',
-      false,
-    );
-    await databases.createStringAttribute(databaseId, COLLECTIONS.CREDIT_CARD_TRANSACTIONS, 'description', 500, true);
-    await databases.createDatetimeAttribute(databaseId, COLLECTIONS.CREDIT_CARD_TRANSACTIONS, 'date', true);
-    await databases.createDatetimeAttribute(databaseId, COLLECTIONS.CREDIT_CARD_TRANSACTIONS, 'created_at', true);
+      tableId: COLLECTIONS.CREDIT_CARD_TRANSACTIONS,
+      key: 'amount',
+      required: true,
+    });
+    await (databases as any).createIntegerAttribute({
+      databaseId,
+      tableId: COLLECTIONS.CREDIT_CARD_TRANSACTIONS,
+      key: 'installment_number',
+      required: false,
+    });
+    await (databases as any).createStringAttribute({
+      databaseId,
+      tableId: COLLECTIONS.CREDIT_CARD_TRANSACTIONS,
+      key: 'description',
+      size: 500,
+      required: true,
+    });
+    await (databases as any).createDatetimeAttribute({
+      databaseId,
+      tableId: COLLECTIONS.CREDIT_CARD_TRANSACTIONS,
+      key: 'date',
+      required: true,
+    });
+    await (databases as any).createDatetimeAttribute({
+      databaseId,
+      tableId: COLLECTIONS.CREDIT_CARD_TRANSACTIONS,
+      key: 'created_at',
+      required: true,
+    });
 
     console.log('Waiting for attributes to be available...');
     await new Promise((resolve) => setTimeout(resolve, 5000));
@@ -129,30 +250,52 @@ export const migration: Migration = {
     console.log('Creating indexes...');
 
     // Credit Card Bills indexes
-    await databases.createIndex(databaseId, COLLECTIONS.CREDIT_CARD_BILLS, 'idx_credit_card_id', IndexType.Key, [
-      'credit_card_id',
-    ]);
-    await databases.createIndex(databaseId, COLLECTIONS.CREDIT_CARD_BILLS, 'idx_user_id', IndexType.Key, ['user_id']);
+    await (databases as any).createIndex({
+      databaseId,
+      tableId: COLLECTIONS.CREDIT_CARD_BILLS,
+      key: 'idx_credit_card_id',
+      type: IndexType.Key,
+      attributes: ['credit_card_id'],
+    });
+    await (databases as any).createIndex({
+      databaseId,
+      tableId: COLLECTIONS.CREDIT_CARD_BILLS,
+      key: 'idx_user_id',
+      type: IndexType.Key,
+      attributes: ['user_id'],
+    });
 
     // Installment Plans indexes
-    await databases.createIndex(databaseId, COLLECTIONS.INSTALLMENT_PLANS, 'idx_transaction_id', IndexType.Key, [
-      'transaction_id',
-    ]);
-    await databases.createIndex(databaseId, COLLECTIONS.INSTALLMENT_PLANS, 'idx_credit_card_id', IndexType.Key, [
-      'credit_card_id',
-    ]);
+    await (databases as any).createIndex({
+      databaseId,
+      tableId: COLLECTIONS.INSTALLMENT_PLANS,
+      key: 'idx_transaction_id',
+      type: IndexType.Key,
+      attributes: ['transaction_id'],
+    });
+    await (databases as any).createIndex({
+      databaseId,
+      tableId: COLLECTIONS.INSTALLMENT_PLANS,
+      key: 'idx_credit_card_id',
+      type: IndexType.Key,
+      attributes: ['credit_card_id'],
+    });
 
     // Credit Card Transactions indexes
-    await databases.createIndex(databaseId, COLLECTIONS.CREDIT_CARD_TRANSACTIONS, 'idx_bill_id', IndexType.Key, [
-      'credit_card_bill_id',
-    ]);
-    await databases.createIndex(
+    await (databases as any).createIndex({
       databaseId,
-      COLLECTIONS.CREDIT_CARD_TRANSACTIONS,
-      'idx_installment_plan_id',
-      IndexType.Key,
-      ['installment_plan_id'],
-    );
+      tableId: COLLECTIONS.CREDIT_CARD_TRANSACTIONS,
+      key: 'idx_bill_id',
+      type: IndexType.Key,
+      attributes: ['credit_card_bill_id'],
+    });
+    await (databases as any).createIndex({
+      databaseId,
+      tableId: COLLECTIONS.CREDIT_CARD_TRANSACTIONS,
+      key: 'idx_installment_plan_id',
+      type: IndexType.Key,
+      attributes: ['installment_plan_id'],
+    });
 
     console.log('✅ Credit card bills and installments tables created successfully');
   },
@@ -161,9 +304,18 @@ export const migration: Migration = {
     const { databases, databaseId } = context;
     console.log('Dropping credit card bills and installments tables...');
 
-    await databases.deleteCollection(databaseId, COLLECTIONS.CREDIT_CARD_TRANSACTIONS);
-    await databases.deleteCollection(databaseId, COLLECTIONS.INSTALLMENT_PLANS);
-    await databases.deleteCollection(databaseId, COLLECTIONS.CREDIT_CARD_BILLS);
+    await databases.deleteTable({
+      databaseId,
+      tableId: COLLECTIONS.CREDIT_CARD_TRANSACTIONS,
+    });
+    await databases.deleteTable({
+      databaseId,
+      tableId: COLLECTIONS.INSTALLMENT_PLANS,
+    });
+    await databases.deleteTable({
+      databaseId,
+      tableId: COLLECTIONS.CREDIT_CARD_BILLS,
+    });
 
     console.log('✅ Credit card bills and installments tables dropped');
   },

@@ -21,12 +21,12 @@ export const migration: Migration = {
     console.log('Creating investments table...');
 
     // Create investments table
-    await databases.createCollection({
+    await databases.createTable({
       databaseId,
-      collectionId: COLLECTIONS.INVESTMENTS,
+      tableId: COLLECTIONS.INVESTMENTS,
       name: 'Investments',
       permissions: ['read("any")', 'write("any")'],
-      documentSecurity: true,
+      rowSecurity: true,
     });
 
     console.log('Creating columns...');
@@ -34,7 +34,7 @@ export const migration: Migration = {
     // Column 1: user_id
     await (databases as any).createStringAttribute({
       databaseId,
-      collectionId: COLLECTIONS.INVESTMENTS,
+      tableId: COLLECTIONS.INVESTMENTS,
       key: 'user_id',
       size: 255,
       required: true,
@@ -43,7 +43,7 @@ export const migration: Migration = {
     // Column 2: account_id
     await (databases as any).createStringAttribute({
       databaseId,
-      collectionId: COLLECTIONS.INVESTMENTS,
+      tableId: COLLECTIONS.INVESTMENTS,
       key: 'account_id',
       size: 255,
       required: true,
@@ -52,7 +52,7 @@ export const migration: Migration = {
     // Column 3: name
     await (databases as any).createStringAttribute({
       databaseId,
-      collectionId: COLLECTIONS.INVESTMENTS,
+      tableId: COLLECTIONS.INVESTMENTS,
       key: 'name',
       size: 255,
       required: true,
@@ -61,7 +61,7 @@ export const migration: Migration = {
     // Column 4: type
     await (databases as any).createEnumAttribute({
       databaseId,
-      collectionId: COLLECTIONS.INVESTMENTS,
+      tableId: COLLECTIONS.INVESTMENTS,
       key: 'type',
       elements: ['stocks', 'fiis', 'fixed_income', 'crypto', 'funds', 'etf', 'pension', 'other'],
       required: true,
@@ -70,7 +70,7 @@ export const migration: Migration = {
     // Column 5: ticker (optional)
     await (databases as any).createStringAttribute({
       databaseId,
-      collectionId: COLLECTIONS.INVESTMENTS,
+      tableId: COLLECTIONS.INVESTMENTS,
       key: 'ticker',
       size: 50,
       required: false,
@@ -79,7 +79,7 @@ export const migration: Migration = {
     // Column 6: quantity
     await (databases as any).createFloatAttribute({
       databaseId,
-      collectionId: COLLECTIONS.INVESTMENTS,
+      tableId: COLLECTIONS.INVESTMENTS,
       key: 'quantity',
       required: true,
     });
@@ -87,7 +87,7 @@ export const migration: Migration = {
     // Column 7: purchase_price
     await (databases as any).createFloatAttribute({
       databaseId,
-      collectionId: COLLECTIONS.INVESTMENTS,
+      tableId: COLLECTIONS.INVESTMENTS,
       key: 'purchase_price',
       required: true,
     });
@@ -95,7 +95,7 @@ export const migration: Migration = {
     // Column 8: purchase_date
     await (databases as any).createDatetimeAttribute({
       databaseId,
-      collectionId: COLLECTIONS.INVESTMENTS,
+      tableId: COLLECTIONS.INVESTMENTS,
       key: 'purchase_date',
       required: true,
     });
@@ -103,7 +103,7 @@ export const migration: Migration = {
     // Column 9: current_price
     await (databases as any).createFloatAttribute({
       databaseId,
-      collectionId: COLLECTIONS.INVESTMENTS,
+      tableId: COLLECTIONS.INVESTMENTS,
       key: 'current_price',
       required: true,
     });
@@ -111,7 +111,7 @@ export const migration: Migration = {
     // Column 10: status
     await (databases as any).createEnumAttribute({
       databaseId,
-      collectionId: COLLECTIONS.INVESTMENTS,
+      tableId: COLLECTIONS.INVESTMENTS,
       key: 'status',
       elements: ['active', 'sold', 'matured'],
       required: true,
@@ -120,7 +120,7 @@ export const migration: Migration = {
     // Column 11: data (JSON)
     await (databases as any).createStringAttribute({
       databaseId,
-      collectionId: COLLECTIONS.INVESTMENTS,
+      tableId: COLLECTIONS.INVESTMENTS,
       key: 'data',
       size: 4000,
       required: false,
@@ -129,7 +129,7 @@ export const migration: Migration = {
     // Column 12: created_at
     await (databases as any).createDatetimeAttribute({
       databaseId,
-      collectionId: COLLECTIONS.INVESTMENTS,
+      tableId: COLLECTIONS.INVESTMENTS,
       key: 'created_at',
       required: true,
     });
@@ -137,7 +137,7 @@ export const migration: Migration = {
     // Column 13: updated_at
     await (databases as any).createDatetimeAttribute({
       databaseId,
-      collectionId: COLLECTIONS.INVESTMENTS,
+      tableId: COLLECTIONS.INVESTMENTS,
       key: 'updated_at',
       required: true,
     });
@@ -150,7 +150,7 @@ export const migration: Migration = {
     // Index 1: user_id
     await (databases as any).createIndex({
       databaseId,
-      collectionId: COLLECTIONS.INVESTMENTS,
+      tableId: COLLECTIONS.INVESTMENTS,
       key: 'idx_user_id',
       type: IndexType.Key,
       attributes: ['user_id'],
@@ -160,7 +160,7 @@ export const migration: Migration = {
     // Index 2: account_id
     await (databases as any).createIndex({
       databaseId,
-      collectionId: COLLECTIONS.INVESTMENTS,
+      tableId: COLLECTIONS.INVESTMENTS,
       key: 'idx_account_id',
       type: IndexType.Key,
       attributes: ['account_id'],
@@ -170,7 +170,7 @@ export const migration: Migration = {
     // Index 3: type
     await (databases as any).createIndex({
       databaseId,
-      collectionId: COLLECTIONS.INVESTMENTS,
+      tableId: COLLECTIONS.INVESTMENTS,
       key: 'idx_type',
       type: IndexType.Key,
       attributes: ['type'],
@@ -179,7 +179,7 @@ export const migration: Migration = {
     // Index 4: status
     await (databases as any).createIndex({
       databaseId,
-      collectionId: COLLECTIONS.INVESTMENTS,
+      tableId: COLLECTIONS.INVESTMENTS,
       key: 'idx_status',
       type: IndexType.Key,
       attributes: ['status'],
@@ -192,9 +192,9 @@ export const migration: Migration = {
     const { databases, databaseId } = context;
     console.log('Dropping investments table...');
 
-    await databases.deleteCollection({
+    await databases.deleteTable({
       databaseId,
-      collectionId: COLLECTIONS.INVESTMENTS,
+      tableId: COLLECTIONS.INVESTMENTS,
     });
 
     console.log('✅ Investments table dropped');

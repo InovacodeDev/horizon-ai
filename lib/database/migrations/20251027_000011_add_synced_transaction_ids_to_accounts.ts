@@ -25,7 +25,7 @@ export const migration: Migration = {
     try {
       await (databases as any).createStringAttribute({
         databaseId,
-        collectionId: COLLECTIONS.ACCOUNTS,
+        tableId: COLLECTIONS.ACCOUNTS,
         key: 'synced_transaction_ids',
         size: 65535, // Large size to store many transaction IDs
         required: false,
@@ -53,7 +53,7 @@ export const migration: Migration = {
     // Delete attribute
     await (databases as any).deleteAttribute({
       databaseId,
-      collectionId: COLLECTIONS.ACCOUNTS,
+      tableId: COLLECTIONS.ACCOUNTS,
       key: 'synced_transaction_ids',
     });
 

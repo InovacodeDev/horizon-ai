@@ -35,9 +35,9 @@ export const migration: Migration = {
     console.log('Creating transactions table (ultra optimized)...');
 
     // Create transactions table
-    await databases.createCollection({
+    await databases.createTable({
       databaseId,
-      collectionId: 'transactions',
+      tableId: 'transactions',
       name: 'Transactions',
       permissions: ['read("any")', 'write("any")'],
       rowSecurity: true,
@@ -48,7 +48,7 @@ export const migration: Migration = {
     // Column 1: user_id - Reference to user (indexed for queries)
     await databases.createStringColumn({
       databaseId,
-      collectionId: 'transactions',
+      tableId: 'transactions',
       key: 'user_id',
       size: 255,
       required: true,
@@ -57,7 +57,7 @@ export const migration: Migration = {
     // Column 2: amount - Transaction amount
     await databases.createFloatColumn({
       databaseId,
-      collectionId: 'transactions',
+      tableId: 'transactions',
       key: 'amount',
       required: true,
     });
@@ -65,7 +65,7 @@ export const migration: Migration = {
     // Column 3: type - income, expense, transfer (indexed for queries)
     await databases.createEnumColumn({
       databaseId,
-      collectionId: 'transactions',
+      tableId: 'transactions',
       key: 'type',
       elements: ['income', 'expense', 'transfer'],
       required: true,
@@ -74,7 +74,7 @@ export const migration: Migration = {
     // Column 4: date - Transaction date (indexed for queries)
     await databases.createDatetimeColumn({
       databaseId,
-      collectionId: 'transactions',
+      tableId: 'transactions',
       key: 'date',
       required: true,
     });
@@ -82,7 +82,7 @@ export const migration: Migration = {
     // Column 5: status - pending, completed, failed, cancelled (indexed for queries)
     await databases.createEnumColumn({
       databaseId,
-      collectionId: 'transactions',
+      tableId: 'transactions',
       key: 'status',
       elements: ['pending', 'completed', 'failed', 'cancelled'],
       required: true,
@@ -95,7 +95,7 @@ export const migration: Migration = {
     console.log('Creating data column (JSON) for all other fields...');
     await databases.createStringColumn({
       databaseId,
-      collectionId: 'transactions',
+      tableId: 'transactions',
       key: 'data',
       size: 4000, // Reduced from 16000 to work within Appwrite limits
       required: false,
@@ -104,7 +104,7 @@ export const migration: Migration = {
     // Column 7: created_at
     await databases.createDatetimeColumn({
       databaseId,
-      collectionId: 'transactions',
+      tableId: 'transactions',
       key: 'created_at',
       required: true,
     });
@@ -112,7 +112,7 @@ export const migration: Migration = {
     // Column 8: updated_at
     await databases.createDatetimeColumn({
       databaseId,
-      collectionId: 'transactions',
+      tableId: 'transactions',
       key: 'updated_at',
       required: true,
     });
@@ -122,7 +122,7 @@ export const migration: Migration = {
     // Index 1: user_id for fast user queries
     await databases.createIndex({
       databaseId,
-      collectionId: 'transactions',
+      tableId: 'transactions',
       key: 'idx_user_id',
       type: IndexType.Key,
       columns: ['user_id'],
@@ -132,7 +132,7 @@ export const migration: Migration = {
     // Index 2: date for temporal queries
     await databases.createIndex({
       databaseId,
-      collectionId: 'transactions',
+      tableId: 'transactions',
       key: 'idx_date',
       type: IndexType.Key,
       columns: ['date'],
@@ -142,7 +142,7 @@ export const migration: Migration = {
     // Index 3: type for income/expense filtering
     await databases.createIndex({
       databaseId,
-      collectionId: 'transactions',
+      tableId: 'transactions',
       key: 'idx_type',
       type: IndexType.Key,
       columns: ['type'],
@@ -151,7 +151,7 @@ export const migration: Migration = {
     // Index 4: status for filtering by transaction status
     await databases.createIndex({
       databaseId,
-      collectionId: 'transactions',
+      tableId: 'transactions',
       key: 'idx_status',
       type: IndexType.Key,
       columns: ['status'],
@@ -166,9 +166,9 @@ export const migration: Migration = {
 
     console.log('Dropping transactions table...');
 
-    await databases.deleteCollection({
+    await databases.deleteTable({
       databaseId,
-      collectionId: 'transactions',
+      tableId: 'transactions',
     });
 
     console.log('✅ Transactions table dropped successfully');

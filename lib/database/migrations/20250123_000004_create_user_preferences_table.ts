@@ -15,9 +15,9 @@ export const migration: Migration = {
     console.log('Creating user_preferences table...');
 
     // Create user_preferences table
-    await databases.createCollection({
+    await databases.createTable({
       databaseId,
-      collectionId: 'user_preferences',
+      tableId: 'user_preferences',
       name: 'User Preferences',
       permissions: ['read("any")', 'write("any")'],
       rowSecurity: true, // rowSecurity enabled
@@ -28,7 +28,7 @@ export const migration: Migration = {
     // user_id - Foreign key to users table
     await databases.createStringColumn({
       databaseId,
-      collectionId: 'user_preferences',
+      tableId: 'user_preferences',
       key: 'user_id',
       size: 255,
       required: true,
@@ -37,7 +37,7 @@ export const migration: Migration = {
     // theme - enum: light, dark, system
     await databases.createEnumColumn({
       databaseId,
-      collectionId: 'user_preferences',
+      tableId: 'user_preferences',
       key: 'theme',
       elements: ['light', 'dark', 'system'],
       required: true,
@@ -46,7 +46,7 @@ export const migration: Migration = {
     // language
     await databases.createStringColumn({
       databaseId,
-      collectionId: 'user_preferences',
+      tableId: 'user_preferences',
       key: 'language',
       size: 10,
       required: true,
@@ -55,7 +55,7 @@ export const migration: Migration = {
     // currency
     await databases.createStringColumn({
       databaseId,
-      collectionId: 'user_preferences',
+      tableId: 'user_preferences',
       key: 'currency',
       size: 10,
       required: true,
@@ -64,7 +64,7 @@ export const migration: Migration = {
     // timezone
     await databases.createStringColumn({
       databaseId,
-      collectionId: 'user_preferences',
+      tableId: 'user_preferences',
       key: 'timezone',
       size: 100,
       required: true,
@@ -73,7 +73,7 @@ export const migration: Migration = {
     // notifications - JSON string
     await databases.createStringColumn({
       databaseId,
-      collectionId: 'user_preferences',
+      tableId: 'user_preferences',
       key: 'notifications',
       size: 5000,
       required: true,
@@ -82,7 +82,7 @@ export const migration: Migration = {
     // created_at
     await databases.createDatetimeColumn({
       databaseId,
-      collectionId: 'user_preferences',
+      tableId: 'user_preferences',
       key: 'created_at',
       required: true,
     });
@@ -90,7 +90,7 @@ export const migration: Migration = {
     // updated_at
     await databases.createDatetimeColumn({
       databaseId,
-      collectionId: 'user_preferences',
+      tableId: 'user_preferences',
       key: 'updated_at',
       required: true,
     });
@@ -100,7 +100,7 @@ export const migration: Migration = {
     // Create unique index on user_id
     await databases.createIndex({
       databaseId,
-      collectionId: 'user_preferences',
+      tableId: 'user_preferences',
       key: 'idx_user_id',
       type: IndexType.Unique,
       columns: ['user_id'],
@@ -114,9 +114,9 @@ export const migration: Migration = {
 
     console.log('Dropping user_preferences table...');
 
-    await databases.deleteCollection({
+    await databases.deleteTable({
       databaseId,
-      collectionId: 'user_preferences',
+      tableId: 'user_preferences',
     });
 
     console.log('✅ User preferences table dropped successfully');

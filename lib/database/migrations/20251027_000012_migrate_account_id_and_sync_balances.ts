@@ -27,11 +27,13 @@ export const migration: Migration = {
     // Passo 1: Migrar account_id de data para coluna dedicada
     console.log('📦 Step 1: Migrating account_id from data field to dedicated column...');
 
-    const transactionsResult = await databases.listDocuments(databaseId, COLLECTIONS.TRANSACTIONS, [
-      Query.limit(10000),
-    ]);
+    const transactionsResult = await databases.listRows({
+      databaseId,
+      tableId: COLLECTIONS.TRANSACTIONS,
+      queries: [Query.limit(10000)],
+    });
 
-    const transactions = transactionsResult.documents || [];
+    const transactions = transactionsResult.rows || [];
     console.log(`   Found ${transactions.length} transactions`);
 
     let migratedCount = 0;
@@ -49,8 +51,13 @@ export const migration: Migration = {
 
         // Se tem account_id no data e não tem na coluna, migrar
         if (data.account_id && !transaction.account_id) {
-          await databases.updateDocument(databaseId, COLLECTIONS.TRANSACTIONS, transaction.$id, {
-            account_id: data.account_id,
+          await databases.updateRow({
+            databaseId,
+            tableId: COLLECTIONS.TRANSACTIONS,
+            rowId: transaction.$id,
+            data: {
+              account_id: data.account_id,
+            },
           });
           migratedCount++;
         }
@@ -64,9 +71,13 @@ export const migration: Migration = {
     // Passo 2: Recalcular balance de todas as contas
     console.log('💰 Step 2: Recalculating balances for all accounts...');
 
-    const accountsResult = await databases.listDocuments(databaseId, COLLECTIONS.ACCOUNTS, [Query.limit(10000)]);
+    const accountsResult = await databases.listRows({
+      databaseId,
+      tableId: COLLECTIONS.ACCOUNTS,
+      queries: [Query.limit(10000)],
+    });
 
-    const accounts = accountsResult.documents || [];
+    const accounts = accountsResult.rows || [];
     console.log(`   Found ${accounts.length} accounts`);
 
     for (const account of accounts) {
@@ -114,9 +125,14 @@ export const migration: Migration = {
 
         // O balance atual já inclui as transações, então não precisamos somar
         // Apenas atualizamos synced_transaction_ids
-        await databases.updateDocument(databaseId, COLLECTIONS.ACCOUNTS, account.$id, {
-          synced_transaction_ids: JSON.stringify(syncedIds),
-          updated_at: new Date().toISOString(),
+        await databases.updateRow({
+          databaseId,
+          tableId: COLLECTIONS.ACCOUNTS,
+          rowId: account.$id,
+          data: {
+            synced_transaction_ids: JSON.stringify(syncedIds),
+            updated_at: new Date().toISOString(),
+          },
         });
 
         console.log(`   ✅ Account ${account.name}: ${syncedIds.length} transactions synced`);
@@ -137,28 +153,44 @@ export const migration: Migration = {
     console.log('Rolling back data migration...');
 
     // Limpar account_id das transações
-    const transactionsResult = await databases.listDocuments(databaseId, COLLECTIONS.TRANSACTIONS, [
-      Query.limit(10000),
-    ]);
+    const transactionsResult = await databases.listRows({
+      databaseId,
+      tableId: COLLECTIONS.TRANSACTIONS,
+      queries: [Query.limit(10000)],
+    });
 
-    const transactions = transactionsResult.documents || [];
+    const transactions = transactionsResult.rows || [];
 
     for (const transaction of transactions) {
       if (transaction.account_id) {
-        await databases.updateDocument(databaseId, COLLECTIONS.TRANSACTIONS, transaction.$id, {
-          account_id: null,
+        await databases.updateRow({
+          databaseId,
+          tableId: COLLECTIONS.TRANSACTIONS,
+          rowId: transaction.$id,
+          data: {
+            account_id: null,
+          },
         });
       }
     }
 
     // Limpar synced_transaction_ids das contas
-    const accountsResult = await databases.listDocuments(databaseId, COLLECTIONS.ACCOUNTS, [Query.limit(10000)]);
+    const accountsResult = await databases.listRows({
+      databaseId,
+      tableId: COLLECTIONS.ACCOUNTS,
+      queries: [Query.limit(10000)],
+    });
 
-    const accounts = accountsResult.documents || [];
+    const accounts = accountsResult.rows || [];
 
     for (const account of accounts) {
-      await databases.updateDocument(databaseId, COLLECTIONS.ACCOUNTS, account.$id, {
-        synced_transaction_ids: '[]',
+      await databases.updateRow({
+        databaseId,
+        tableId: COLLECTIONS.ACCOUNTS,
+        rowId: account.$id,
+        data: {
+          synced_transaction_ids: '[]',
+        },
       });
     }
 

@@ -16,9 +16,9 @@ export const migration: Migration = {
     console.log('Creating migrations table...');
 
     // Create the migrations table
-    await databases.createCollection({
+    await databases.createTable({
       databaseId,
-      collectionId: 'migrations',
+      tableId: 'migrations',
       name: 'Migrations',
       permissions: [], // empty for now, can be configured later
       rowSecurity: false, // disabled for system table
@@ -29,7 +29,7 @@ export const migration: Migration = {
     // Create migrationId column (string, required, unique)
     await databases.createStringColumn({
       databaseId,
-      collectionId: 'migrations',
+      tableId: 'migrations',
       key: 'migrationId',
       size: 255,
       required: true,
@@ -38,7 +38,7 @@ export const migration: Migration = {
     // Create description column (string, required)
     await databases.createStringColumn({
       databaseId,
-      collectionId: 'migrations',
+      tableId: 'migrations',
       key: 'description',
       size: 1000,
       required: true,
@@ -47,7 +47,7 @@ export const migration: Migration = {
     // Create appliedAt column (datetime, required)
     await databases.createDatetimeColumn({
       databaseId,
-      collectionId: 'migrations',
+      tableId: 'migrations',
       key: 'appliedAt',
       required: true,
     });
@@ -57,7 +57,7 @@ export const migration: Migration = {
     // Create unique index on migrationId
     await databases.createIndex({
       databaseId,
-      collectionId: 'migrations',
+      tableId: 'migrations',
       key: 'migrationId_unique',
       type: IndexType.Unique,
       columns: ['migrationId'],
@@ -66,7 +66,7 @@ export const migration: Migration = {
     // Create index on appliedAt for chronological queries
     await databases.createIndex({
       databaseId,
-      collectionId: 'migrations',
+      tableId: 'migrations',
       key: 'appliedAt_index',
       type: IndexType.Key,
       columns: ['appliedAt'],
@@ -82,9 +82,9 @@ export const migration: Migration = {
     console.log('Dropping migrations table...');
 
     // Delete the entire table (indexes and columns are automatically deleted)
-    await databases.deleteCollection({
+    await databases.deleteTable({
       databaseId,
-      collectionId: 'migrations',
+      tableId: 'migrations',
     });
 
     console.log('✅ Migrations table dropped successfully');

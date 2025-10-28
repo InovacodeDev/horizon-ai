@@ -15,9 +15,9 @@ export const migration: Migration = {
     console.log('Creating users table...');
 
     // Create users table
-    await databases.createCollection({
+    await databases.createTable({
       databaseId,
-      collectionId: 'users',
+      tableId: 'users',
       name: 'Users',
       permissions: ['read("any")', 'write("any")'],
       rowSecurity: true, // rowSecurity enabled
@@ -28,7 +28,7 @@ export const migration: Migration = {
     // auth_user_id - Reference to Appwrite Auth user
     await databases.createStringColumn({
       databaseId,
-      collectionId: 'users',
+      tableId: 'users',
       key: 'auth_user_id',
       size: 255,
       required: true,
@@ -37,7 +37,7 @@ export const migration: Migration = {
     // email
     await databases.createEmailColumn({
       databaseId,
-      collectionId: 'users',
+      tableId: 'users',
       key: 'email',
       required: true,
     });
@@ -45,7 +45,7 @@ export const migration: Migration = {
     // name
     await databases.createStringColumn({
       databaseId,
-      collectionId: 'users',
+      tableId: 'users',
       key: 'name',
       size: 255,
       required: true,
@@ -54,7 +54,7 @@ export const migration: Migration = {
     // created_at
     await databases.createDatetimeColumn({
       databaseId,
-      collectionId: 'users',
+      tableId: 'users',
       key: 'created_at',
       required: true,
     });
@@ -62,7 +62,7 @@ export const migration: Migration = {
     // updated_at
     await databases.createDatetimeColumn({
       databaseId,
-      collectionId: 'users',
+      tableId: 'users',
       key: 'updated_at',
       required: true,
     });
@@ -72,7 +72,7 @@ export const migration: Migration = {
     // Create unique index on auth_user_id
     await databases.createIndex({
       databaseId,
-      collectionId: 'users',
+      tableId: 'users',
       key: 'idx_auth_user_id',
       type: IndexType.Unique,
       columns: ['auth_user_id'],
@@ -81,7 +81,7 @@ export const migration: Migration = {
     // Create index on email
     await databases.createIndex({
       databaseId,
-      collectionId: 'users',
+      tableId: 'users',
       key: 'idx_email',
       type: IndexType.Key,
       columns: ['email'],
@@ -95,9 +95,9 @@ export const migration: Migration = {
 
     console.log('Dropping users table...');
 
-    await databases.deleteCollection({
+    await databases.deleteTable({
       databaseId,
-      collectionId: 'users',
+      tableId: 'users',
     });
 
     console.log('✅ Users table dropped successfully');

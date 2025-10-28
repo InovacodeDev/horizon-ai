@@ -15,29 +15,29 @@ export const migration: Migration = {
     console.log('Creating user_settings table...');
 
     // Create user_settings table
-    // await databases.createCollection({
-    //   databaseId,
-    //   collectionId: 'user_settings',
-    //   name: 'User Settings',
-    //   permissions: ['read("any")', 'write("any")'],
-    //   rowSecurity: true, // rowSecurity enabled
-    // });
+    await databases.createTable({
+      databaseId,
+      tableId: 'user_settings',
+      name: 'User Settings',
+      permissions: ['read("any")', 'write("any")'],
+      rowSecurity: true, // rowSecurity enabled
+    });
 
     console.log('Creating columns...');
 
     // user_id - Foreign key to users table
-    // await databases.createStringColumn({
-    //   databaseId,
-    //   collectionId: 'user_settings',
-    //   key: 'user_id',
-    //   size: 255,
-    //   required: true,
-    // });
+    await databases.createStringColumn({
+      databaseId,
+      tableId: 'user_settings',
+      key: 'user_id',
+      size: 255,
+      required: true,
+    });
 
     // two_factor_enabled
     await databases.createBooleanColumn({
       databaseId,
-      collectionId: 'user_settings',
+      tableId: 'user_settings',
       key: 'two_factor_enabled',
       required: true,
     });
@@ -45,7 +45,7 @@ export const migration: Migration = {
     // email_verified
     await databases.createBooleanColumn({
       databaseId,
-      collectionId: 'user_settings',
+      tableId: 'user_settings',
       key: 'email_verified',
       required: true,
     });
@@ -53,7 +53,7 @@ export const migration: Migration = {
     // phone_verified
     await databases.createBooleanColumn({
       databaseId,
-      collectionId: 'user_settings',
+      tableId: 'user_settings',
       key: 'phone_verified',
       required: true,
     });
@@ -61,7 +61,7 @@ export const migration: Migration = {
     // marketing_emails
     await databases.createBooleanColumn({
       databaseId,
-      collectionId: 'user_settings',
+      tableId: 'user_settings',
       key: 'marketing_emails',
       required: true,
     });
@@ -69,7 +69,7 @@ export const migration: Migration = {
     // privacy_settings - JSON string
     await databases.createStringColumn({
       databaseId,
-      collectionId: 'user_settings',
+      tableId: 'user_settings',
       key: 'privacy_settings',
       size: 5000,
       required: true,
@@ -78,7 +78,7 @@ export const migration: Migration = {
     // created_at
     await databases.createDatetimeColumn({
       databaseId,
-      collectionId: 'user_settings',
+      tableId: 'user_settings',
       key: 'created_at',
       required: true,
     });
@@ -86,7 +86,7 @@ export const migration: Migration = {
     // updated_at
     await databases.createDatetimeColumn({
       databaseId,
-      collectionId: 'user_settings',
+      tableId: 'user_settings',
       key: 'updated_at',
       required: true,
     });
@@ -96,7 +96,7 @@ export const migration: Migration = {
     // Create unique index on user_id
     await databases.createIndex({
       databaseId,
-      collectionId: 'user_settings',
+      tableId: 'user_settings',
       key: 'idx_user_id',
       type: IndexType.Unique,
       columns: ['user_id'],
@@ -110,9 +110,9 @@ export const migration: Migration = {
 
     console.log('Dropping user_settings table...');
 
-    await databases.deleteCollection({
+    await databases.deleteTable({
       databaseId,
-      collectionId: 'user_settings',
+      tableId: 'user_settings',
     });
 
     console.log('✅ User settings table dropped successfully');

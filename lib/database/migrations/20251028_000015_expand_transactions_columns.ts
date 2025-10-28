@@ -27,32 +27,69 @@ export const migration: Migration = {
 
     // Add new columns
     console.log('Adding category column...');
-    await databases.createStringAttribute(databaseId, COLLECTION_ID, 'category', 100, false);
+    await (databases as any).createStringAttribute({
+      databaseId,
+      tableId: COLLECTION_ID,
+      key: 'category',
+      size: 100,
+      required: false,
+    });
 
     console.log('Adding description column...');
-    await databases.createStringAttribute(databaseId, COLLECTION_ID, 'description', 500, false);
+    await (databases as any).createStringAttribute({
+      databaseId,
+      tableId: COLLECTION_ID,
+      key: 'description',
+      size: 500,
+      required: false,
+    });
 
     console.log('Adding currency column...');
-    await databases.createStringAttribute(databaseId, COLLECTION_ID, 'currency', 10, false, 'BRL');
+    await (databases as any).createStringAttribute({
+      databaseId,
+      tableId: COLLECTION_ID,
+      key: 'currency',
+      size: 10,
+      required: false,
+      default: 'BRL',
+    });
 
     console.log('Adding source column...');
-    await databases.createEnumAttribute(
+    await (databases as any).createEnumAttribute({
       databaseId,
-      COLLECTION_ID,
-      'source',
-      ['manual', 'integration', 'import'],
-      false,
-      'manual',
-    );
+      tableId: COLLECTION_ID,
+      key: 'source',
+      elements: ['manual', 'integration', 'import'],
+      required: false,
+      default: 'manual',
+    });
 
     console.log('Adding merchant column...');
-    await databases.createStringAttribute(databaseId, COLLECTION_ID, 'merchant', 255, false);
+    await (databases as any).createStringAttribute({
+      databaseId,
+      tableId: COLLECTION_ID,
+      key: 'merchant',
+      size: 255,
+      required: false,
+    });
 
     console.log('Adding tags column...');
-    await databases.createStringAttribute(databaseId, COLLECTION_ID, 'tags', 500, false);
+    await (databases as any).createStringAttribute({
+      databaseId,
+      tableId: COLLECTION_ID,
+      key: 'tags',
+      size: 500,
+      required: false,
+    });
 
     console.log('Adding is_recurring column...');
-    await databases.createBooleanAttribute(databaseId, COLLECTION_ID, 'is_recurring', false, false);
+    await (databases as any).createBooleanAttribute({
+      databaseId,
+      tableId: COLLECTION_ID,
+      key: 'is_recurring',
+      required: false,
+      default: false,
+    });
 
     console.log('Waiting for attributes to be available...');
     await new Promise((resolve) => setTimeout(resolve, 5000));
@@ -60,13 +97,31 @@ export const migration: Migration = {
     console.log('Creating indexes for new columns...');
 
     // Index for category (most common filter)
-    await databases.createIndex(databaseId, COLLECTION_ID, 'idx_category', IndexType.Key, ['category']);
+    await (databases as any).createIndex({
+      databaseId,
+      tableId: COLLECTION_ID,
+      key: 'idx_category',
+      type: IndexType.Key,
+      attributes: ['category'],
+    });
 
     // Index for source
-    await databases.createIndex(databaseId, COLLECTION_ID, 'idx_source', IndexType.Key, ['source']);
+    await (databases as any).createIndex({
+      databaseId,
+      tableId: COLLECTION_ID,
+      key: 'idx_source',
+      type: IndexType.Key,
+      attributes: ['source'],
+    });
 
     // Index for merchant
-    await databases.createIndex(databaseId, COLLECTION_ID, 'idx_merchant', IndexType.Key, ['merchant']);
+    await (databases as any).createIndex({
+      databaseId,
+      tableId: COLLECTION_ID,
+      key: 'idx_merchant',
+      type: IndexType.Key,
+      attributes: ['merchant'],
+    });
 
     console.log('✅ Transactions table expanded successfully');
     console.log('⚠️  Note: Run data migration script to move data from "data" column to new columns');
@@ -78,21 +133,61 @@ export const migration: Migration = {
 
     // Delete indexes first
     try {
-      await databases.deleteIndex(databaseId, COLLECTION_ID, 'idx_category');
-      await databases.deleteIndex(databaseId, COLLECTION_ID, 'idx_source');
-      await databases.deleteIndex(databaseId, COLLECTION_ID, 'idx_merchant');
+      await (databases as any).deleteIndex({
+        databaseId,
+        tableId: COLLECTION_ID,
+        key: 'idx_category',
+      });
+      await (databases as any).deleteIndex({
+        databaseId,
+        tableId: COLLECTION_ID,
+        key: 'idx_source',
+      });
+      await (databases as any).deleteIndex({
+        databaseId,
+        tableId: COLLECTION_ID,
+        key: 'idx_merchant',
+      });
     } catch (err) {
       console.warn('Some indexes may not exist:', err);
     }
 
     // Delete columns
-    await databases.deleteAttribute(databaseId, COLLECTION_ID, 'is_recurring');
-    await databases.deleteAttribute(databaseId, COLLECTION_ID, 'tags');
-    await databases.deleteAttribute(databaseId, COLLECTION_ID, 'merchant');
-    await databases.deleteAttribute(databaseId, COLLECTION_ID, 'source');
-    await databases.deleteAttribute(databaseId, COLLECTION_ID, 'currency');
-    await databases.deleteAttribute(databaseId, COLLECTION_ID, 'description');
-    await databases.deleteAttribute(databaseId, COLLECTION_ID, 'category');
+    await (databases as any).deleteAttribute({
+      databaseId,
+      tableId: COLLECTION_ID,
+      key: 'is_recurring',
+    });
+    await (databases as any).deleteAttribute({
+      databaseId,
+      tableId: COLLECTION_ID,
+      key: 'tags',
+    });
+    await (databases as any).deleteAttribute({
+      databaseId,
+      tableId: COLLECTION_ID,
+      key: 'merchant',
+    });
+    await (databases as any).deleteAttribute({
+      databaseId,
+      tableId: COLLECTION_ID,
+      key: 'source',
+    });
+    await (databases as any).deleteAttribute({
+      databaseId,
+      tableId: COLLECTION_ID,
+      key: 'currency',
+    });
+    await (databases as any).deleteAttribute({
+      databaseId,
+      tableId: COLLECTION_ID,
+      key: 'description',
+    });
+    await (databases as any).deleteAttribute({
+      databaseId,
+      tableId: COLLECTION_ID,
+      key: 'category',
+    });
 
     console.log('✅ Transactions table reverted to original structure');
   },

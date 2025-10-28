@@ -22,9 +22,9 @@ export const migration: Migration = {
     console.log('Creating credit_cards table...');
 
     // Create credit_cards table
-    await databases.createCollection({
+    await databases.createTable({
       databaseId,
-      collectionId: COLLECTIONS.CREDIT_CARDS,
+      tableId: COLLECTIONS.CREDIT_CARDS,
       name: 'Credit Cards',
       permissions: ['read("any")', 'write("any")'],
       rowSecurity: true,
@@ -35,7 +35,7 @@ export const migration: Migration = {
     // Column 1: account_id - Reference to account
     await databases.createStringColumn({
       databaseId,
-      collectionId: COLLECTIONS.CREDIT_CARDS,
+      tableId: COLLECTIONS.CREDIT_CARDS,
       key: 'account_id',
       size: 255,
       required: true,
@@ -44,7 +44,7 @@ export const migration: Migration = {
     // Column 2: name - Card name
     await databases.createStringColumn({
       databaseId,
-      collectionId: COLLECTIONS.CREDIT_CARDS,
+      tableId: COLLECTIONS.CREDIT_CARDS,
       key: 'name',
       size: 255,
       required: true,
@@ -53,7 +53,7 @@ export const migration: Migration = {
     // Column 3: last_digits - Last 4 digits
     await databases.createStringColumn({
       databaseId,
-      collectionId: COLLECTIONS.CREDIT_CARDS,
+      tableId: COLLECTIONS.CREDIT_CARDS,
       key: 'last_digits',
       size: 4,
       required: true,
@@ -62,7 +62,7 @@ export const migration: Migration = {
     // Column 4: credit_limit - Total credit limit
     await databases.createFloatColumn({
       databaseId,
-      collectionId: COLLECTIONS.CREDIT_CARDS,
+      tableId: COLLECTIONS.CREDIT_CARDS,
       key: 'credit_limit',
       required: true,
     });
@@ -70,7 +70,7 @@ export const migration: Migration = {
     // Column 5: used_limit - Used credit amount
     await databases.createFloatColumn({
       databaseId,
-      collectionId: COLLECTIONS.CREDIT_CARDS,
+      tableId: COLLECTIONS.CREDIT_CARDS,
       key: 'used_limit',
       required: true,
     });
@@ -78,7 +78,7 @@ export const migration: Migration = {
     // Column 6: closing_day - Day of month for closing (1-31)
     await databases.createIntegerColumn({
       databaseId,
-      collectionId: COLLECTIONS.CREDIT_CARDS,
+      tableId: COLLECTIONS.CREDIT_CARDS,
       key: 'closing_day',
       required: true,
     });
@@ -86,7 +86,7 @@ export const migration: Migration = {
     // Column 7: due_day - Day of month for payment due (1-31)
     await databases.createIntegerColumn({
       databaseId,
-      collectionId: COLLECTIONS.CREDIT_CARDS,
+      tableId: COLLECTIONS.CREDIT_CARDS,
       key: 'due_day',
       required: true,
     });
@@ -94,7 +94,7 @@ export const migration: Migration = {
     // Column 8: data - JSON string for brand, network, color, etc.
     await databases.createStringColumn({
       databaseId,
-      collectionId: COLLECTIONS.CREDIT_CARDS,
+      tableId: COLLECTIONS.CREDIT_CARDS,
       key: 'data',
       size: 4000,
       required: false,
@@ -103,7 +103,7 @@ export const migration: Migration = {
     // Column 9: created_at
     await databases.createDatetimeColumn({
       databaseId,
-      collectionId: COLLECTIONS.CREDIT_CARDS,
+      tableId: COLLECTIONS.CREDIT_CARDS,
       key: 'created_at',
       required: true,
     });
@@ -111,7 +111,7 @@ export const migration: Migration = {
     // Column 10: updated_at
     await databases.createDatetimeColumn({
       databaseId,
-      collectionId: COLLECTIONS.CREDIT_CARDS,
+      tableId: COLLECTIONS.CREDIT_CARDS,
       key: 'updated_at',
       required: true,
     });
@@ -121,7 +121,7 @@ export const migration: Migration = {
     // Index 1: account_id for account queries
     await databases.createIndex({
       databaseId,
-      collectionId: COLLECTIONS.CREDIT_CARDS,
+      tableId: COLLECTIONS.CREDIT_CARDS,
       key: 'idx_account_id',
       type: IndexType.Key,
       columns: ['account_id'],
@@ -135,9 +135,9 @@ export const migration: Migration = {
     const { databases, databaseId } = context;
     console.log('Dropping credit_cards table...');
 
-    await databases.deleteCollection({
+    await databases.deleteTable({
       databaseId,
-      collectionId: COLLECTIONS.CREDIT_CARDS,
+      tableId: COLLECTIONS.CREDIT_CARDS,
     });
 
     console.log('✓ Credit Cards table dropped');

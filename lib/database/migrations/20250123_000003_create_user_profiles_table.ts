@@ -15,9 +15,9 @@ export const migration: Migration = {
     console.log('Creating user_profiles table...');
 
     // Create user_profiles table
-    await databases.createCollection({
+    await databases.createTable({
       databaseId,
-      collectionId: 'user_profiles',
+      tableId: 'user_profiles',
       name: 'User Profiles',
       permissions: ['read("any")', 'write("any")'],
       rowSecurity: true, // rowSecurity enabled
@@ -28,7 +28,7 @@ export const migration: Migration = {
     // user_id - Foreign key to users table
     await databases.createStringColumn({
       databaseId,
-      collectionId: 'user_profiles',
+      tableId: 'user_profiles',
       key: 'user_id',
       size: 255,
       required: true,
@@ -37,7 +37,7 @@ export const migration: Migration = {
     // bio
     await databases.createStringColumn({
       databaseId,
-      collectionId: 'user_profiles',
+      tableId: 'user_profiles',
       key: 'bio',
       size: 1000,
       required: false,
@@ -46,7 +46,7 @@ export const migration: Migration = {
     // avatar_url
     await databases.createUrlColumn({
       databaseId,
-      collectionId: 'user_profiles',
+      tableId: 'user_profiles',
       key: 'avatar_url',
       required: false,
     });
@@ -54,7 +54,7 @@ export const migration: Migration = {
     // phone
     await databases.createStringColumn({
       databaseId,
-      collectionId: 'user_profiles',
+      tableId: 'user_profiles',
       key: 'phone',
       size: 50,
       required: false,
@@ -63,7 +63,7 @@ export const migration: Migration = {
     // address - JSON string
     await databases.createStringColumn({
       databaseId,
-      collectionId: 'user_profiles',
+      tableId: 'user_profiles',
       key: 'address',
       size: 5000,
       required: false,
@@ -72,7 +72,7 @@ export const migration: Migration = {
     // birthdate
     await databases.createDatetimeColumn({
       databaseId,
-      collectionId: 'user_profiles',
+      tableId: 'user_profiles',
       key: 'birthdate',
       required: false,
     });
@@ -80,7 +80,7 @@ export const migration: Migration = {
     // created_at
     await databases.createDatetimeColumn({
       databaseId,
-      collectionId: 'user_profiles',
+      tableId: 'user_profiles',
       key: 'created_at',
       required: true,
     });
@@ -88,7 +88,7 @@ export const migration: Migration = {
     // updated_at
     await databases.createDatetimeColumn({
       databaseId,
-      collectionId: 'user_profiles',
+      tableId: 'user_profiles',
       key: 'updated_at',
       required: true,
     });
@@ -98,7 +98,7 @@ export const migration: Migration = {
     // Create unique index on user_id
     await databases.createIndex({
       databaseId,
-      collectionId: 'user_profiles',
+      tableId: 'user_profiles',
       key: 'idx_user_id',
       type: IndexType.Unique,
       columns: ['user_id'],
@@ -112,9 +112,9 @@ export const migration: Migration = {
 
     console.log('Dropping user_profiles table...');
 
-    await databases.deleteCollection({
+    await databases.deleteTable({
       databaseId,
-      collectionId: 'user_profiles',
+      tableId: 'user_profiles',
     });
 
     console.log('✅ User profiles table dropped successfully');

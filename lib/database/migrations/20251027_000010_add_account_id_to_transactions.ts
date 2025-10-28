@@ -23,7 +23,7 @@ export const migration: Migration = {
     try {
       await (databases as any).createStringAttribute({
         databaseId,
-        collectionId: COLLECTIONS.TRANSACTIONS,
+        tableId: COLLECTIONS.TRANSACTIONS,
         key: 'account_id',
         size: 255,
         required: false,
@@ -46,7 +46,7 @@ export const migration: Migration = {
     try {
       await (databases as any).createIndex({
         databaseId,
-        collectionId: COLLECTIONS.TRANSACTIONS,
+        tableId: COLLECTIONS.TRANSACTIONS,
         key: 'idx_account_id',
         type: 'key',
         attributes: ['account_id'],
@@ -70,14 +70,14 @@ export const migration: Migration = {
     // Delete index first
     await (databases as any).deleteIndex({
       databaseId,
-      collectionId: COLLECTIONS.TRANSACTIONS,
+      tableId: COLLECTIONS.TRANSACTIONS,
       key: 'idx_account_id',
     });
 
     // Delete attribute
     await (databases as any).deleteAttribute({
       databaseId,
-      collectionId: COLLECTIONS.TRANSACTIONS,
+      tableId: COLLECTIONS.TRANSACTIONS,
       key: 'account_id',
     });
 
