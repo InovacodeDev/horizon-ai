@@ -61,6 +61,7 @@ export class AccountService {
       const account = this.deserializeAccount(document);
 
       // Create initial transaction if there's an initial balance
+      // This will automatically sync the balance via BalanceSyncService
       if (data.initial_balance && data.initial_balance > 0) {
         try {
           const { TransactionService } = await import('./transaction.service');
@@ -101,66 +102,11 @@ export class AccountService {
       const documents = result.documents || [];
       const accounts = documents.map((doc: any) => this.deserializeAccount(doc));
 
-      // Calculate real balance based on transactions for each account
-      for (const account of accounts) {
-        const realBalance = await this.calculateAccountBalance(account.$id);
-        account.balance = realBalance;
-      }
-
+      // Balance is now automatically synced via BalanceSyncService
+      // No need to recalculate here
       return accounts;
     } catch (error: any) {
       throw new Error(`Failed to fetch accounts: ${error.message}`);
-    }
-  }
-
-  /**
-   * Calculate account balance based on initial balance + transactions (excluding credit card transactions)
-   */
-  async calculateAccountBalance(accountId: string): Promise<number> {
-    try {
-      // Get the account to get initial balance
-      const accountDoc = await this.dbAdapter.getDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, accountId);
-      const initialBalance = accountDoc.balance || 0;
-
-      // Get all transactions for this account
-      const transactionsResult = await this.dbAdapter.listDocuments(DATABASE_ID, COLLECTIONS.TRANSACTIONS, [
-        Query.equal('user_id', accountDoc.user_id),
-        Query.limit(10000), // Get all transactions
-      ]);
-
-      let transactionSum = 0;
-
-      for (const transaction of transactionsResult.documents || []) {
-        // Parse transaction data to check if it has account_id and credit_card_id
-        let transactionData: any = {};
-        if (transaction.data) {
-          try {
-            transactionData = typeof transaction.data === 'string' ? JSON.parse(transaction.data) : transaction.data;
-          } catch {
-            transactionData = {};
-          }
-        }
-
-        // Only include transactions for this account that are NOT credit card transactions
-        if (transactionData.account_id === accountId && !transactionData.credit_card_id) {
-          if (transaction.type === 'income') {
-            transactionSum += transaction.amount;
-          } else if (transaction.type === 'expense') {
-            transactionSum -= transaction.amount;
-          }
-        }
-      }
-
-      return initialBalance + transactionSum;
-    } catch (error: any) {
-      console.error(`Error calculating balance for account ${accountId}:`, error);
-      // Return the stored balance as fallback
-      try {
-        const accountDoc = await this.dbAdapter.getDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, accountId);
-        return accountDoc.balance || 0;
-      } catch {
-        return 0;
-      }
     }
   }
 
@@ -242,23 +188,8 @@ export class AccountService {
   }
 
   /**
-   * Update account balance (used by transactions)
-   */
-  async updateAccountBalance(accountId: string, newBalance: number): Promise<Account> {
-    try {
-      const document = await this.dbAdapter.updateDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, accountId, {
-        balance: newBalance,
-        updated_at: new Date().toISOString(),
-      });
-
-      return this.deserializeAccount(document);
-    } catch (error: any) {
-      throw new Error(`Failed to update account balance: ${error.message}`);
-    }
-  }
-
-  /**
    * Get account balance
+   * Balance is automatically synced via BalanceSyncService when transactions change
    */
   async getAccountBalance(accountId: string): Promise<number> {
     try {
@@ -266,6 +197,20 @@ export class AccountService {
       return document.balance;
     } catch (error: any) {
       throw new Error(`Account not found`);
+    }
+  }
+
+  /**
+   * Manually trigger balance sync for an account
+   * Useful for debugging or manual corrections
+   */
+  async syncAccountBalance(accountId: string): Promise<number> {
+    try {
+      const { BalanceSyncService } = await import('./balance-sync.service');
+      const balanceSyncService = new BalanceSyncService();
+      return await balanceSyncService.syncAccountBalance(accountId);
+    } catch (error: any) {
+      throw new Error(`Failed to sync account balance: ${error.message}`);
     }
   }
 
@@ -292,6 +237,7 @@ export class AccountService {
       account_type: document.account_type,
       balance: document.balance,
       is_manual: document.is_manual,
+      synced_transaction_ids: document.synced_transaction_ids,
       data: data ? JSON.stringify(data) : undefined,
       created_at: document.created_at,
       updated_at: document.updated_at,

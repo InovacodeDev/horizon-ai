@@ -8,6 +8,7 @@ import Skeleton from "@/components/ui/Skeleton";
 import { DropdownMenu, DropdownMenuItem } from "@/components/ui/DropdownMenu";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useTotalBalance } from "@/hooks/useTotalBalance";
+import { useCreditCardsWithCache } from "@/hooks/useCreditCardsWithCache";
 import { AddAccountModal } from "@/components/modals/AddAccountModal";
 import { AddCreditCardModal } from "@/components/modals/AddCreditCardModal";
 import type { Account, AccountStatus, CreditCard } from "@/lib/types";
@@ -131,14 +132,17 @@ interface AccountCardProps {
 }
 
 const AccountCard: React.FC<AccountCardProps> = ({ 
-    account, 
-    creditCards,
+    account,
     onDelete, 
     onAddCreditCard,
-    onDeleteCreditCard,
     onViewCreditCardStatement
 }) => {
     const [expanded, setExpanded] = useState(false);
+
+    const { creditCards, deleteCreditCard: deleteCreditCardFromHook, fetchCreditCards } = useCreditCardsWithCache({
+        accountId: account.$id,
+        enableRealtime: true,
+    });
     
     const statusColor: Record<AccountStatus, string> = {
         Connected: "bg-green-500",
@@ -152,6 +156,15 @@ const AccountCard: React.FC<AccountCardProps> = ({
         savings: "Poupança",
         investment: "Investimento",
         other: "Outro",
+    };
+
+    const onDeleteCreditCard = async (creditCardId: string) => {
+        try {
+            await deleteCreditCardFromHook(creditCardId);
+        } catch (error) {
+            console.error('Error deleting credit card:', error);
+            throw error;
+        }
     };
 
     return (
@@ -264,51 +277,12 @@ export default function AccountsPage() {
     const { accounts, loading, createAccount, deleteAccount } = useAccounts();
     const { totalBalance, loading: loadingBalance } = useTotalBalance();
     
-    // Store all credit cards in state
-    const [allCreditCards, setAllCreditCards] = useState<CreditCard[]>([]);
+    // Use cached credit cards hook
+    const { creditCards: allCreditCards, deleteCreditCard: deleteCreditCardFromHook, fetchCreditCards } = useCreditCardsWithCache();
     
     const [isAddAccountModalOpen, setIsAddAccountModalOpen] = useState(false);
     const [isAddCardModalOpen, setIsAddCardModalOpen] = useState(false);
     const [activeAccountForCard, setActiveAccountForCard] = useState<string>('');
-
-    // Fetch all credit cards for all accounts
-    useEffect(() => {
-        if (!Array.isArray(accounts) || accounts.length === 0) {
-            setAllCreditCards(prev => prev.length === 0 ? prev : []);
-            return;
-        }
-
-        let isMounted = true;
-
-        const fetchCards = async () => {
-            try {
-                const cardPromises = accounts.map(async (account) => {
-                    const response = await fetch(`/api/credit-cards/account/${account.$id}`, {
-                        credentials: 'include',
-                    });
-                    if (response.ok) {
-                        return await response.json();
-                    }
-                    return [];
-                });
-
-                const cardsArrays = await Promise.all(cardPromises);
-                const allCards = cardsArrays.flat();
-                
-                if (isMounted) {
-                    setAllCreditCards(allCards);
-                }
-            } catch (error) {
-                console.error('Error fetching credit cards:', error);
-            }
-        };
-
-        fetchCards();
-
-        return () => {
-            isMounted = false;
-        };
-    }, [accounts]);
 
     const handleAddCreditCard = (accountId: string) => {
         setActiveAccountForCard(accountId);
@@ -329,19 +303,6 @@ export default function AccountsPage() {
             if (!response.ok) {
                 throw new Error('Failed to create credit card');
             }
-            
-            // Refetch all cards
-            const cardPromises = accounts.map(async (account) => {
-                const response = await fetch(`/api/credit-cards/account/${account.$id}`, {
-                    credentials: 'include',
-                });
-                if (response.ok) {
-                    return await response.json();
-                }
-                return [];
-            });
-            const cardsArrays = await Promise.all(cardPromises);
-            setAllCreditCards(cardsArrays.flat());
         } catch (error) {
             console.error('Error creating credit card:', error);
             throw error;
@@ -350,17 +311,7 @@ export default function AccountsPage() {
 
     const handleDeleteCreditCard = async (creditCardId: string) => {
         try {
-            const response = await fetch(`/api/credit-cards/${creditCardId}`, {
-                method: 'DELETE',
-                credentials: 'include',
-            });
-            
-            if (!response.ok) {
-                throw new Error('Failed to delete credit card');
-            }
-            
-            // Remove from state
-            setAllCreditCards(prev => prev.filter(card => card.$id !== creditCardId));
+            await deleteCreditCardFromHook(creditCardId);
         } catch (error) {
             console.error('Error deleting credit card:', error);
             throw error;
@@ -381,7 +332,10 @@ export default function AccountsPage() {
         return allCreditCards.filter(card => card.account_id === accountId);
     };
 
-    const formattedBalance = totalBalance.toLocaleString("pt-BR", {
+    // Calculate total balance from accounts
+    const calculatedTotalBalance = accounts.reduce((sum, account) => sum + (account.balance || 0), 0);
+    
+    const formattedBalance = calculatedTotalBalance.toLocaleString("pt-BR", {
         style: "currency",
         currency: "BRL",
     });
@@ -401,7 +355,7 @@ export default function AccountsPage() {
                 </div>
                 <div className="flex items-end gap-6">
                     <div className="text-right">
-                        <p className="text-sm font-medium text-on-surface-variant uppercase tracking-wider">Total Balance</p>
+                        <p className="text-sm font-medium text-on-surface-variant uppercase tracking-wider">Saldo Total</p>
                         <h2 className="text-3xl font-normal text-primary">{formattedBalance}</h2>
                     </div>
                     <Button 

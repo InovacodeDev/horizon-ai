@@ -1,11 +1,12 @@
 /**
  * Interface for Appwrite Database Migrations
  * Similar to traditional SQL migrations but for Appwrite tables
+ * Using TablesDB (new API) instead of deprecated Databases
  */
-import { Databases } from 'node-appwrite';
+import { TablesDB } from 'node-appwrite';
 
 export interface MigrationContext {
-  databases: Databases;
+  databases: TablesDB;
   databaseId: string;
 }
 

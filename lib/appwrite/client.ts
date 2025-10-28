@@ -35,17 +35,10 @@ export function initializeAppwrite() {
 
   account = new Account(client);
   users = new Users(client);
-  databases = new Databases(client);
 
-  // Try TablesDB if available in SDK
-  try {
-    tables = new TablesDB(client);
-    // prefer tables when SDK supports it
-    databases = tables;
-  } catch (err) {
-    // ignore, fall back to Databases
-    tables = null;
-  }
+  // Use TablesDB (new API) instead of deprecated Databases
+  tables = new TablesDB(client);
+  databases = tables;
 
   // Wrap with adapter so legacy call sites keep working
   dbAdapter = new AppwriteDBAdapter(databases);

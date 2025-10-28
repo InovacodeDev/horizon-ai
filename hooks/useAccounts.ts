@@ -90,7 +90,7 @@ export function useAccounts(options: UseAccountsOptions = {}) {
       // Update with real data
       setAccounts((prev) => {
         const currentAccounts = Array.isArray(prev) ? prev : [];
-        return [...currentAccounts.filter((a) => a.$id !== tempId), newAccount];
+        return [...currentAccounts.filter((a) => a.$id !== tempId), newAccount.data];
       });
       return newAccount;
     } catch (err: any) {

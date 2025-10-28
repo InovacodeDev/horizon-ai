@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState, useEffect } from "react";
 import { AVAILABLE_CATEGORY_ICONS } from "@/lib/constants";
+import { TRANSACTION_CATEGORIES, getCategoryById } from "@/lib/constants/categories";
 import type { Transaction as APITransaction, TransactionType } from "@/lib/types";
 
 // UI Transaction type for display
@@ -17,9 +18,14 @@ interface Transaction {
   notes?: string;
   account_id?: string;
   credit_card_id?: string;
+  source?: string;
+  apiType?: string;
 }
 import { SearchIcon, FilterIcon, SwapIcon, PlusIcon, XIcon } from "@/components/assets/Icons";
 import Input from "@/components/ui/Input";
+import CurrencyInput from "@/components/ui/CurrencyInput";
+import DateInput from "@/components/ui/DateInput";
+import CategorySelect from "@/components/ui/CategorySelect";
 import Skeleton from "@/components/ui/Skeleton";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -161,6 +167,8 @@ export default function TransactionsPage() {
         loading: isLoadingTransactions, 
         error: transactionsError,
         createTransaction,
+        updateTransaction,
+        deleteTransaction,
         refetch 
     } = useTransactions({ userId });
     
@@ -172,6 +180,10 @@ export default function TransactionsPage() {
     const [showFilters, setShowFilters] = useState(false);
     const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
+    const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
 
     const initialNewTransactionState = {
         description: "",
@@ -207,9 +219,8 @@ export default function TransactionsPage() {
             };
 
             // Get icon for category
-            const categoryIcon = AVAILABLE_CATEGORY_ICONS.find(
-                (c) => c.name.toLowerCase() === (apiTx.category || '').toLowerCase()
-            )?.component || SwapIcon;
+            const category = getCategoryById(apiTx.category || '');
+            const categoryIcon = category?.icon || SwapIcon;
 
             // Find account name from account_id
             const account = accounts.find((acc) => acc.$id === apiTx.account_id);
@@ -227,6 +238,8 @@ export default function TransactionsPage() {
                 notes: apiTx.description,
                 account_id: apiTx.account_id,
                 credit_card_id: apiTx.credit_card_id,
+                source: apiTx.source,
+                apiType: apiTx.type,
             };
         });
     }, [apiTransactions, accounts]);
@@ -314,6 +327,82 @@ export default function TransactionsPage() {
         }
     };
 
+    const handleEditTransaction = (transaction: Transaction) => {
+        // Only allow editing manual transactions
+        if (transaction.source !== 'manual') {
+            alert('Apenas transações manuais podem ser editadas');
+            return;
+        }
+
+        setTransactionToEdit(transaction);
+        setNewTransaction({
+            description: transaction.description,
+            amount: Math.abs(transaction.amount),
+            date: transaction.date.split('T')[0],
+            bankName: transaction.bankName,
+            category: transaction.category,
+            type: transaction.type,
+            notes: transaction.notes || '',
+            flow: transaction.apiType === 'income' ? 'income' : 'expense',
+            accountId: transaction.account_id || '',
+            creditCardId: transaction.credit_card_id || '',
+        });
+        setIsEditModalOpen(true);
+    };
+
+    const handleUpdateTransaction = async (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        if (!transactionToEdit) return;
+
+        try {
+            const finalAmount = Math.abs(newTransaction.amount);
+            const transactionType = newTransaction.flow === "expense" ? "expense" : "income";
+
+            await updateTransaction(transactionToEdit.$id, {
+                amount: finalAmount,
+                type: transactionType as TransactionType,
+                category: newTransaction.category,
+                description: newTransaction.description,
+                date: new Date(newTransaction.date).toISOString(),
+                account_id: newTransaction.accountId || undefined,
+            });
+
+            await refetch();
+            
+            setIsEditModalOpen(false);
+            setTransactionToEdit(null);
+        } catch (error) {
+            console.error('Error updating transaction:', error);
+        }
+    };
+
+    const handleDeleteClick = (transaction: Transaction) => {
+        // Only allow deleting manual transactions
+        if (transaction.source !== 'manual') {
+            alert('Apenas transações manuais podem ser removidas');
+            return;
+        }
+
+        setTransactionToDelete(transaction);
+        setIsDeleteModalOpen(true);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!transactionToDelete) return;
+
+        try {
+            await deleteTransaction(transactionToDelete.$id);
+            await refetch();
+            
+            setIsDeleteModalOpen(false);
+            setTransactionToDelete(null);
+            setSelectedTransaction(null);
+        } catch (error) {
+            console.error('Error deleting transaction:', error);
+        }
+    };
+
     // Filter credit cards based on selected account
     const availableCreditCards = useMemo(() => {
         if (!newTransaction.accountId) return [];
@@ -325,7 +414,15 @@ export default function TransactionsPage() {
         setNewTransaction(prev => ({ ...prev, creditCardId: "" }));
     }, [newTransaction.accountId]);
 
-    if (isLoadingTransactions) {
+    // Fetch transactions on mount
+    useEffect(() => {
+        if (userId) {
+            refetch();
+        }
+    }, [userId, refetch]);
+
+    // Show loading skeleton on initial load
+    if (isLoadingTransactions && apiTransactions.length === 0) {
         return <TransactionsScreenSkeleton />;
     }
 
@@ -540,68 +637,64 @@ export default function TransactionsPage() {
                             onChange={(e) => setNewTransaction({ ...newTransaction, description: e.target.value })}
                             required
                         />
-                        <div className="grid grid-cols-2 gap-4">
-                            <Input
-                                label="Amount"
-                                id="amount"
-                                type="number"
-                                step="0.01"
-                                value={newTransaction.amount}
-                                onChange={(e) =>
-                                    setNewTransaction({ ...newTransaction, amount: parseFloat(e.target.value) || 0 })
-                                }
-                                required
-                            />
-                            <div>
-                                <label className="block text-sm font-medium text-on-surface-variant mb-1">Flow</label>
-                                <div className="flex gap-2">
-                                    <label
-                                        className={`flex-1 text-center p-2 rounded-lg border cursor-pointer ${
-                                            newTransaction.flow === "expense"
-                                                ? "bg-primary-container border-primary"
-                                                : "border-outline"
-                                        }`}
-                                    >
-                                        <input
-                                            type="radio"
-                                            name="flow"
-                                            value="expense"
-                                            checked={newTransaction.flow === "expense"}
-                                            onChange={(e) =>
-                                                setNewTransaction({ ...newTransaction, flow: e.target.value })
-                                            }
-                                            className="sr-only"
-                                        />
-                                        Expense
-                                    </label>
-                                    <label
-                                        className={`flex-1 text-center p-2 rounded-lg border cursor-pointer ${
-                                            newTransaction.flow === "income"
-                                                ? "bg-primary-container border-primary"
-                                                : "border-outline"
-                                        }`}
-                                    >
-                                        <input
-                                            type="radio"
-                                            name="flow"
-                                            value="income"
-                                            checked={newTransaction.flow === "income"}
-                                            onChange={(e) =>
-                                                setNewTransaction({ ...newTransaction, flow: e.target.value })
-                                            }
-                                            className="sr-only"
-                                        />
-                                        Income
-                                    </label>
-                                </div>
+                        <div>
+                            <label className="block text-sm font-medium text-on-surface-variant mb-1">
+                                Tipo de Transação *
+                            </label>
+                            <div className="flex gap-2">
+                                <label
+                                    className={`flex-1 text-center p-3 rounded-lg border cursor-pointer transition-colors ${
+                                        newTransaction.flow === "expense"
+                                            ? "bg-primary-container border-primary text-on-primary-container"
+                                            : "border-outline hover:bg-surface-variant/20"
+                                    }`}
+                                >
+                                    <input
+                                        type="radio"
+                                        name="flow"
+                                        value="expense"
+                                        checked={newTransaction.flow === "expense"}
+                                        onChange={(e) =>
+                                            setNewTransaction({ ...newTransaction, flow: e.target.value })
+                                        }
+                                        className="sr-only"
+                                    />
+                                    <span className="font-medium">Despesa</span>
+                                </label>
+                                <label
+                                    className={`flex-1 text-center p-3 rounded-lg border cursor-pointer transition-colors ${
+                                        newTransaction.flow === "income"
+                                            ? "bg-primary-container border-primary text-on-primary-container"
+                                            : "border-outline hover:bg-surface-variant/20"
+                                    }`}
+                                >
+                                    <input
+                                        type="radio"
+                                        name="flow"
+                                        value="income"
+                                        checked={newTransaction.flow === "income"}
+                                        onChange={(e) =>
+                                            setNewTransaction({ ...newTransaction, flow: e.target.value })
+                                        }
+                                        className="sr-only"
+                                    />
+                                    <span className="font-medium">Receita</span>
+                                </label>
                             </div>
                         </div>
-                        <Input
+                        
+                        <CurrencyInput
+                            label="Valor"
+                            id="amount"
+                            value={newTransaction.amount}
+                            onChange={(value) => setNewTransaction({ ...newTransaction, amount: value })}
+                            required
+                        />
+                        <DateInput
                             label="Date"
                             id="date"
-                            type="date"
                             value={newTransaction.date}
-                            onChange={(e) => setNewTransaction({ ...newTransaction, date: e.target.value })}
+                            onChange={(value) => setNewTransaction({ ...newTransaction, date: value })}
                             required
                         />
                         
@@ -651,26 +744,14 @@ export default function TransactionsPage() {
                         )}
                         
                         {/* Category Selection */}
-                        <div>
-                            <label htmlFor="category" className="block text-sm font-medium text-on-surface-variant mb-1">
-                                Categoria *
-                            </label>
-                            <select
-                                id="category"
-                                name="category"
-                                value={newTransaction.category}
-                                onChange={(e) => setNewTransaction({ ...newTransaction, category: e.target.value })}
-                                required
-                                className="w-full h-12 px-3 bg-surface border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:outline-none"
-                            >
-                                <option value="">Selecione uma categoria</option>
-                                {allCategories.map((c) => (
-                                    <option key={c} value={c}>
-                                        {c}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
+                        <CategorySelect
+                            label="Categoria"
+                            id="category"
+                            value={newTransaction.category}
+                            onChange={(categoryId) => setNewTransaction({ ...newTransaction, category: categoryId })}
+                            type={newTransaction.flow === 'expense' ? 'expense' : 'income'}
+                            required
+                        />
                         
                         {/* Transaction Type Selection */}
                         <div>
@@ -712,12 +793,164 @@ export default function TransactionsPage() {
                 </form>
             </Modal>
 
+            {/* Edit Transaction Modal */}
+            <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Editar Transação">
+                <form onSubmit={handleUpdateTransaction}>
+                    <div className="p-6 space-y-4">
+                        <Input
+                            label="Descrição"
+                            id="description"
+                            value={newTransaction.description}
+                            onChange={(e) => setNewTransaction({ ...newTransaction, description: e.target.value })}
+                            required
+                        />
+                        <div>
+                            <label className="block text-sm font-medium text-on-surface-variant mb-1">
+                                Tipo de Transação *
+                            </label>
+                            <div className="flex gap-2">
+                                <label
+                                    className={`flex-1 text-center p-3 rounded-lg border cursor-pointer transition-colors ${
+                                        newTransaction.flow === "expense"
+                                            ? "bg-primary-container border-primary text-on-primary-container"
+                                            : "border-outline hover:bg-surface-variant/20"
+                                    }`}
+                                >
+                                    <input
+                                        type="radio"
+                                        name="flow"
+                                        value="expense"
+                                        checked={newTransaction.flow === "expense"}
+                                        onChange={(e) =>
+                                            setNewTransaction({ ...newTransaction, flow: e.target.value })
+                                        }
+                                        className="sr-only"
+                                    />
+                                    <span className="font-medium">Despesa</span>
+                                </label>
+                                <label
+                                    className={`flex-1 text-center p-3 rounded-lg border cursor-pointer transition-colors ${
+                                        newTransaction.flow === "income"
+                                            ? "bg-primary-container border-primary text-on-primary-container"
+                                            : "border-outline hover:bg-surface-variant/20"
+                                    }`}
+                                >
+                                    <input
+                                        type="radio"
+                                        name="flow"
+                                        value="income"
+                                        checked={newTransaction.flow === "income"}
+                                        onChange={(e) =>
+                                            setNewTransaction({ ...newTransaction, flow: e.target.value })
+                                        }
+                                        className="sr-only"
+                                    />
+                                    <span className="font-medium">Receita</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <CurrencyInput
+                            label="Valor"
+                            id="amount"
+                            value={newTransaction.amount}
+                            onChange={(value) => setNewTransaction({ ...newTransaction, amount: value })}
+                            required
+                        />
+                        <DateInput
+                            label="Data"
+                            id="date"
+                            value={newTransaction.date}
+                            onChange={(value) => setNewTransaction({ ...newTransaction, date: value })}
+                            required
+                        />
+                        
+                        <div>
+                            <label htmlFor="account" className="block text-sm font-medium text-on-surface-variant mb-1">
+                                Conta *
+                            </label>
+                            <select
+                                id="account"
+                                name="account"
+                                value={newTransaction.accountId}
+                                onChange={(e) => setNewTransaction({ ...newTransaction, accountId: e.target.value })}
+                                required
+                                className="w-full h-12 px-3 bg-surface border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:outline-none"
+                            >
+                                <option value="">Selecione uma conta</option>
+                                {accounts.map((acc) => (
+                                    <option key={acc.$id} value={acc.$id}>
+                                        {acc.name} - {acc.balance.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <CategorySelect
+                            label="Categoria"
+                            id="category"
+                            value={newTransaction.category}
+                            onChange={(categoryId) => setNewTransaction({ ...newTransaction, category: categoryId })}
+                            type={newTransaction.flow === 'expense' ? 'expense' : 'income'}
+                            required
+                        />
+                    </div>
+                    <div className="p-4 bg-surface-variant/20 flex justify-end gap-3">
+                        <Button type="button" variant="outlined" onClick={() => setIsEditModalOpen(false)}>
+                            Cancelar
+                        </Button>
+                        <Button type="submit">Salvar Alterações</Button>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* Delete Confirmation Modal */}
+            <Modal 
+                isOpen={isDeleteModalOpen} 
+                onClose={() => setIsDeleteModalOpen(false)} 
+                title="Confirmar Exclusão"
+            >
+                <div className="p-6">
+                    <p className="text-on-surface mb-4">
+                        Tem certeza que deseja excluir esta transação?
+                    </p>
+                    {transactionToDelete && (
+                        <div className="bg-surface-variant/20 p-4 rounded-lg mb-6">
+                            <p className="font-medium text-on-surface">{transactionToDelete.description}</p>
+                            <p className="text-2xl font-light text-on-surface mt-1">
+                                {transactionToDelete.amount.toLocaleString("pt-BR", {
+                                    style: "currency",
+                                    currency: "BRL",
+                                })}
+                            </p>
+                            <p className="text-sm text-on-surface-variant mt-1">
+                                {formatDateForDetails(transactionToDelete.date)}
+                            </p>
+                        </div>
+                    )}
+                    <p className="text-sm text-error mb-6">
+                        Esta ação não pode ser desfeita e o saldo da conta será recalculado.
+                    </p>
+                    <div className="flex justify-end gap-3">
+                        <Button variant="outlined" onClick={() => setIsDeleteModalOpen(false)}>
+                            Cancelar
+                        </Button>
+                        <Button 
+                            onClick={handleConfirmDelete}
+                            className="bg-error text-on-error hover:bg-error/90"
+                        >
+                            Excluir Transação
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+
             {/* Transaction Details Modal */}
             {selectedTransaction && (
                 <Modal
                     isOpen={!!selectedTransaction}
                     onClose={() => setSelectedTransaction(null)}
-                    title="Transaction Details"
+                    title="Detalhes da Transação"
                 >
                     <div className="p-6">
                         <header className="text-center pb-4 border-b border-outline">
@@ -732,40 +965,67 @@ export default function TransactionsPage() {
                                     currency: "BRL",
                                 })}
                             </p>
+                            {selectedTransaction.source !== 'manual' && (
+                                <span className="inline-block mt-2 px-3 py-1 text-xs font-medium bg-primary-container text-on-primary-container rounded-full">
+                                    Importada
+                                </span>
+                            )}
                         </header>
                         <dl className="mt-4 space-y-3">
                             <div className="flex justify-between">
-                                <dt className="text-on-surface-variant">Date</dt>
+                                <dt className="text-on-surface-variant">Data</dt>
                                 <dd className="font-medium text-on-surface">
                                     {formatDateForDetails(selectedTransaction.date)}
                                 </dd>
                             </div>
                             <div className="flex justify-between">
-                                <dt className="text-on-surface-variant">Category</dt>
+                                <dt className="text-on-surface-variant">Categoria</dt>
                                 <dd className="font-medium text-on-surface">{selectedTransaction.category}</dd>
                             </div>
                             <div className="flex justify-between">
-                                <dt className="text-on-surface-variant">Account</dt>
+                                <dt className="text-on-surface-variant">Conta</dt>
                                 <dd className="font-medium text-on-surface">{selectedTransaction.bankName}</dd>
                             </div>
                             <div className="flex justify-between">
-                                <dt className="text-on-surface-variant">Type</dt>
+                                <dt className="text-on-surface-variant">Tipo</dt>
                                 <dd className="font-medium text-on-surface">
                                     <TransactionTypeBadge type={selectedTransaction.type} />
                                 </dd>
                             </div>
                             {selectedTransaction.notes && (
                                 <div className="pt-3 border-t border-outline">
-                                    <dt className="text-on-surface-variant mb-1">Notes</dt>
+                                    <dt className="text-on-surface-variant mb-1">Observações</dt>
                                     <dd className="text-on-surface text-sm bg-surface-variant/20 p-2 rounded-m whitespace-pre-wrap">
                                         {selectedTransaction.notes}
                                     </dd>
                                 </div>
                             )}
                         </dl>
-                        <div className="mt-6 flex justify-end gap-3">
+                        <div className="mt-6 flex justify-between gap-3">
+                            <div className="flex gap-3">
+                                {selectedTransaction.source === 'manual' && (
+                                    <>
+                                        <Button 
+                                            variant="outlined" 
+                                            onClick={() => {
+                                                handleEditTransaction(selectedTransaction);
+                                                setSelectedTransaction(null);
+                                            }}
+                                        >
+                                            Editar
+                                        </Button>
+                                        <Button 
+                                            variant="outlined" 
+                                            onClick={() => handleDeleteClick(selectedTransaction)}
+                                            className="text-error border-error hover:bg-error/10"
+                                        >
+                                            Excluir
+                                        </Button>
+                                    </>
+                                )}
+                            </div>
                             <Button variant="outlined" onClick={() => setSelectedTransaction(null)}>
-                                Close
+                                Fechar
                             </Button>
                         </div>
                     </div>

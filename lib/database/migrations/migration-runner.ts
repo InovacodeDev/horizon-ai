@@ -1,23 +1,24 @@
 /**
  * Appwrite Migration Runner
  * Manages database schema migrations
+ * Using TablesDB (new API) instead of deprecated Databases
  */
 import fs from 'fs';
-import { Client, Databases, ID, Query } from 'node-appwrite';
+import { Client, ID, Query, TablesDB } from 'node-appwrite';
 import path from 'path';
 
 import { migrations } from './index';
 import { Migration, MigrationContext, MigrationRecord } from './migration.interface';
 
 export class MigrationRunner {
-  private databases: Databases;
+  private databases: TablesDB;
   private databaseId: string;
 
   constructor(
     private client: Client,
     databaseId: string,
   ) {
-    this.databases = new Databases(client);
+    this.databases = new TablesDB(client);
     this.databaseId = databaseId;
   }
 
@@ -26,9 +27,13 @@ export class MigrationRunner {
    */
   private async getAppliedMigrations(): Promise<string[]> {
     try {
-      const response = await this.databases.listDocuments(this.databaseId, 'migrations', [Query.orderAsc('appliedAt')]);
+      const response = await this.databases.listRows({
+        databaseId: this.databaseId,
+        tableId: 'migrations',
+        queries: [Query.orderAsc('appliedAt')],
+      });
 
-      return response.documents.map((doc: any) => (doc as unknown as MigrationRecord).migrationId);
+      return response.rows.map((doc: any) => (doc as unknown as MigrationRecord).migrationId);
     } catch (error: unknown) {
       const err = error as { code?: number; message?: string };
       // If migrations table doesn't exist yet, return empty array
@@ -43,10 +48,15 @@ export class MigrationRunner {
    * Record a migration as applied
    */
   private async recordMigration(migration: Migration): Promise<void> {
-    await this.databases.createDocument(this.databaseId, 'migrations', ID.unique(), {
-      migrationId: migration.id,
-      description: migration.description,
-      appliedAt: new Date().toISOString(),
+    await this.databases.createRow({
+      databaseId: this.databaseId,
+      tableId: 'migrations',
+      rowId: ID.unique(),
+      data: {
+        migrationId: migration.id,
+        description: migration.description,
+        appliedAt: new Date().toISOString(),
+      },
     });
 
     // Update local applied-migrations.json (append if missing)
@@ -66,12 +76,18 @@ export class MigrationRunner {
    * Remove a migration record
    */
   private async removeMigrationRecord(migrationId: string): Promise<void> {
-    const response = await this.databases.listDocuments(this.databaseId, 'migrations', [
-      Query.equal('migrationId', migrationId),
-    ]);
+    const response = await this.databases.listRows({
+      databaseId: this.databaseId,
+      tableId: 'migrations',
+      queries: [Query.equal('migrationId', migrationId)],
+    });
 
-    if (response.documents.length > 0) {
-      await this.databases.deleteDocument(this.databaseId, 'migrations', response.documents[0].$id);
+    if (response.rows.length > 0) {
+      await this.databases.deleteRow({
+        databaseId: this.databaseId,
+        tableId: 'migrations',
+        rowId: response.rows[0].$id,
+      });
     }
 
     // Remove from local applied-migrations.json

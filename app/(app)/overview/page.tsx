@@ -18,8 +18,10 @@ import { useFinancialInsights } from "@/hooks/useFinancialInsights";
 import { useTotalBalance } from "@/hooks/useTotalBalance";
 import { useAccounts } from "@/hooks/useAccounts";
 import { AVAILABLE_CATEGORY_ICONS } from "@/lib/constants";
+import { getCategoryById } from "@/lib/constants/categories";
 import type { Transaction, FinancialInsight, InsightType } from "@/lib/types";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 // --- Helper Functions for Date Filtering ---
 const getMonthKey = (date: Date): string => {
@@ -83,11 +85,11 @@ const BarChart: React.FC<{ data: ChartData[] }> = ({ data }) => {
             <div className="flex justify-end gap-4 mb-4">
                 <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-sm bg-secondary"></div>
-                    <span className="text-xs text-on-surface-variant">Income</span>
+                    <span className="text-xs text-on-surface-variant">Receitas</span>
                 </div>
                 <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-sm bg-error"></div>
-                    <span className="text-xs text-on-surface-variant">Expenses</span>
+                    <span className="text-xs text-on-surface-variant">Despesas</span>
                 </div>
             </div>
             <div className="flex gap-4" style={{ height: "250px" }}>
@@ -134,7 +136,7 @@ const BarChart: React.FC<{ data: ChartData[] }> = ({ data }) => {
                                 <div className="flex justify-between items-center">
                                     <span className="flex items-center gap-1.5">
                                         <div className="w-2 h-2 rounded-full bg-secondary"></div>
-                                        <span className="text-surface/80">Income:</span>
+                                        <span className="text-surface/80">Receitas:</span>
                                     </span>
                                     <span>
                                         {item.income.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
@@ -143,7 +145,7 @@ const BarChart: React.FC<{ data: ChartData[] }> = ({ data }) => {
                                 <div className="flex justify-between items-center">
                                     <span className="flex items-center gap-1.5">
                                         <div className="w-2 h-2 rounded-full bg-error"></div>
-                                        <span className="text-surface/80">Expenses:</span>
+                                        <span className="text-surface/80">Despesas:</span>
                                     </span>
                                     <span>
                                         {item.expenses.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
@@ -335,10 +337,10 @@ const formatDate = (isoDate: string): string => {
     const isToday = date.toDateString() === today.toDateString();
     const isYesterday = date.toDateString() === yesterday.toDateString();
 
-    if (isToday) return "Today";
-    if (isYesterday) return "Yesterday";
+    if (isToday) return "Hoje";
+    if (isYesterday) return "Ontem";
 
-    return new Intl.DateTimeFormat("en-GB", {
+    return new Intl.DateTimeFormat("pt-BR", {
         day: "numeric",
         month: "short",
     }).format(date);
@@ -375,9 +377,19 @@ export default function OverviewPage() {
     // Get user ID from session (you'll need to implement this based on your auth setup)
     const userId = "default-user"; // TODO: Get from session
     
-    const { transactions: apiTransactions, loading: isLoadingTransactions } = useTransactions({ userId });
-    const { totalBalance, loading: loadingBalance } = useTotalBalance();
-    const { accounts } = useAccounts();
+    const { 
+        transactions: apiTransactions, 
+        loading: isLoadingTransactions,
+        refetch 
+    } = useTransactions({ userId });
+    const { accounts, loading: loadingAccounts } = useAccounts();
+    
+    // Calculate total balance from accounts
+    const totalBalance = useMemo(() => {
+        return accounts.reduce((sum, account) => sum + (account.balance || 0), 0);
+    }, [accounts]);
+    
+    const loadingBalance = loadingAccounts;
 
     // Generate AI insights based on real transaction data
     const aiInsights = useFinancialInsights(apiTransactions);
@@ -386,10 +398,19 @@ export default function OverviewPage() {
         router.push('/transactions');
     };
 
+    // Fetch transactions and accounts on mount
+    useEffect(() => {
+        if (userId) {
+            refetch();
+        }
+    }, [userId, refetch]);
+
     // Convert API transactions to UI format
     const transactions: Transaction[] = useMemo(() => {
         return apiTransactions.map((apiTx) => {
-            const categoryIcon = AVAILABLE_CATEGORY_ICONS.find(
+            // Get icon for category using new category system
+            const category = getCategoryById(apiTx.category || '');
+            const categoryIcon = category?.icon || AVAILABLE_CATEGORY_ICONS.find(
                 (cat) => cat.name.toLowerCase() === apiTx.category?.toLowerCase()
             )?.component || SwapIcon;
 
@@ -405,7 +426,7 @@ export default function OverviewPage() {
                 amount: apiTx.type === 'income' ? Math.abs(apiTx.amount) : -Math.abs(apiTx.amount),
                 date: apiTx.date,
                 bankName: accountName,
-                category: apiTx.category || 'Uncategorized',
+                category: category?.name || apiTx.category || 'Uncategorized',
                 type: 'expense',
                 icon: categoryIcon,
                 notes: apiTx.description || '',
@@ -415,13 +436,21 @@ export default function OverviewPage() {
         });
     }, [apiTransactions, accounts]);
 
-    // Calculate monthly metrics from real transactions
+    // Calculate monthly metrics from real transactions (only from user's accounts)
     const monthlyMetrics = useMemo(() => {
         const currentMonthKey = getCurrentMonthKey();
         const previousMonthKey = getPreviousMonthKey();
         
+        // Get user's account IDs
+        const userAccountIds = new Set(accounts.map(acc => acc.$id));
+        
+        // Filter transactions to only include those from user's accounts
+        const userTransactions = apiTransactions.filter(tx => 
+            tx.account_id && userAccountIds.has(tx.account_id)
+        );
+        
         // Group transactions by month
-        const transactionsByMonth = apiTransactions.reduce((acc, tx) => {
+        const transactionsByMonth = userTransactions.reduce((acc, tx) => {
             const txDate = new Date(tx.date);
             const monthKey = getMonthKey(txDate);
             
@@ -459,7 +488,7 @@ export default function OverviewPage() {
             previousNet,
             transactionsByMonth,
         };
-    }, [apiTransactions]);
+    }, [apiTransactions, accounts]);
 
     // Generate chart data for last 6 months
     const chartData = useMemo(() => {
@@ -487,17 +516,17 @@ export default function OverviewPage() {
     });
 
     // TODO: Get user name from session
-    const userName = "User";
+    const userName = "Usuário";
 
     return (
         <>
             <header className="mb-8 flex justify-between items-end">
                 <div>
-                    <h1 className="text-4xl font-light text-on-surface">Hi, {userName}!</h1>
-                    <p className="text-base text-on-surface-variant mt-1">Welcome back to your financial dashboard.</p>
+                    <h1 className="text-4xl font-light text-on-surface">Olá, {userName}!</h1>
+                    <p className="text-base text-on-surface-variant mt-1">Bem-vindo ao seu painel financeiro.</p>
                 </div>
                 <div className="text-right">
-                    <p className="text-sm font-medium text-on-surface-variant uppercase tracking-wider">Total Balance</p>
+                    <p className="text-sm font-medium text-on-surface-variant uppercase tracking-wider">Saldo Total</p>
                     <h2 className="text-3xl font-normal text-primary">{formattedBalance}</h2>
                 </div>
             </header>
@@ -505,19 +534,19 @@ export default function OverviewPage() {
             <main className="space-y-8">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     <StatCard
-                        label="Income this month"
+                        label="Receitas do mês"
                         value={monthlyMetrics.currentIncome}
                         previousValue={monthlyMetrics.previousIncome}
                         icon={<ArrowUpCircleIcon className="text-secondary" />}
                     />
                     <StatCard
-                        label="Expenses this month"
+                        label="Despesas do mês"
                         value={monthlyMetrics.currentExpenses}
                         previousValue={monthlyMetrics.previousExpenses}
                         icon={<ArrowDownCircleIcon className="text-error" />}
                     />
                     <StatCard
-                        label="Net this month"
+                        label="Saldo do mês"
                         value={monthlyMetrics.currentNet}
                         previousValue={monthlyMetrics.previousNet}
                         icon={<TrendingUpIcon className={monthlyMetrics.currentNet > 0 ? "text-secondary" : "text-error"} />}
@@ -527,14 +556,14 @@ export default function OverviewPage() {
 
                 {hasTransactions && chartData.some(d => d.income > 0 || d.expenses > 0) && (
                     <Card className="p-6">
-                        <h3 className="text-xl font-medium text-on-surface mb-6">Cash Flow - Last 6 Months</h3>
+                        <h3 className="text-xl font-medium text-on-surface mb-6">Fluxo de Caixa - Últimos 6 Meses</h3>
                         <BarChart data={chartData} />
                     </Card>
                 )}
 
                 {aiInsights.length > 0 && (
                     <div>
-                        <h3 className="text-xl font-medium text-on-surface mb-4">AI Insights</h3>
+                        <h3 className="text-xl font-medium text-on-surface mb-4">Insights de IA</h3>
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             {aiInsights.map((insight) => (
                                 <FinancialInsightCard 
@@ -549,9 +578,9 @@ export default function OverviewPage() {
 
                 <Card className="p-6">
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-xl font-medium text-on-surface">Recent Transactions</h3>
+                        <h3 className="text-xl font-medium text-on-surface">Transações Recentes</h3>
                         <Button onClick={handleNavigateToTransactions} variant="text">
-                            View All
+                            Ver Todas
                         </Button>
                     </div>
                     <ul className="divide-y divide-outline">
@@ -561,7 +590,7 @@ export default function OverviewPage() {
                             ))
                         ) : (
                             <li className="py-8 text-center text-on-surface-variant">
-                                No transactions yet. Add your first transaction to get started!
+                                Nenhuma transação ainda. Adicione sua primeira transação para começar!
                             </li>
                         )}
                     </ul>

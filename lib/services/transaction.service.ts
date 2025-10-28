@@ -122,8 +122,7 @@ export class TransactionService {
       source: 'manual',
     };
 
-    // Add optional fields if present
-    if (data.accountId) transactionData.account_id = data.accountId;
+    // Add optional fields if present (except account_id which is now a column)
     if (data.creditCardId) transactionData.credit_card_id = data.creditCardId;
     if (data.merchant) transactionData.merchant = data.merchant;
     if (data.tags) transactionData.tags = data.tags;
@@ -132,7 +131,7 @@ export class TransactionService {
     if (data.isRecurring) transactionData.is_recurring = data.isRecurring;
     if (data.recurringPattern) transactionData.recurring_pattern = data.recurringPattern;
 
-    const payload = {
+    const payload: any = {
       user_id: data.userId,
       amount: data.amount,
       type: data.type,
@@ -143,7 +142,24 @@ export class TransactionService {
       updated_at: now,
     };
 
+    // Add account_id as a dedicated column
+    if (data.accountId) {
+      payload.account_id = data.accountId;
+    }
+
     const document = await this.dbAdapter.createDocument(DATABASE_ID, COLLECTIONS.TRANSACTIONS, id, payload);
+
+    // Sync account balance if transaction is linked to an account
+    if (data.accountId && !data.creditCardId) {
+      try {
+        const { BalanceSyncService } = await import('./balance-sync.service');
+        const balanceSyncService = new BalanceSyncService();
+        await balanceSyncService.syncAfterCreate(data.accountId, id);
+      } catch (error: any) {
+        console.error('Failed to sync account balance after transaction creation:', error);
+        // Don't fail the transaction creation if balance sync fails
+      }
+    }
 
     return this.formatTransaction(document);
   }
@@ -163,8 +179,7 @@ export class TransactionService {
       source: 'integration',
     };
 
-    // Add optional/integration fields if present
-    if (data.accountId) transactionData.account_id = data.accountId;
+    // Add optional/integration fields if present (except account_id which is now a column)
     if (data.merchant) transactionData.merchant = data.merchant;
     if (data.integrationId) transactionData.integration_id = data.integrationId;
     if (data.integrationData) transactionData.integration_data = data.integrationData;
@@ -174,7 +189,7 @@ export class TransactionService {
     if (data.isRecurring) transactionData.is_recurring = data.isRecurring;
     if (data.recurringPattern) transactionData.recurring_pattern = data.recurringPattern;
 
-    const payload = {
+    const payload: any = {
       user_id: data.userId,
       amount: data.amount,
       type: data.type,
@@ -185,7 +200,24 @@ export class TransactionService {
       updated_at: now,
     };
 
+    // Add account_id as a dedicated column
+    if (data.accountId) {
+      payload.account_id = data.accountId;
+    }
+
     const document = await this.dbAdapter.createDocument(DATABASE_ID, COLLECTIONS.TRANSACTIONS, id, payload);
+
+    // Sync account balance if transaction is linked to an account
+    if (data.accountId && !data.creditCardId) {
+      try {
+        const { BalanceSyncService } = await import('./balance-sync.service');
+        const balanceSyncService = new BalanceSyncService();
+        await balanceSyncService.syncAfterCreate(data.accountId, id);
+      } catch (error: any) {
+        console.error('Failed to sync account balance after transaction creation:', error);
+        // Don't fail the transaction creation if balance sync fails
+      }
+    }
 
     return this.formatTransaction(document);
   }
@@ -212,11 +244,13 @@ export class TransactionService {
     try {
       const now = new Date().toISOString();
 
-      // Get existing transaction to merge data
+      // Get existing transaction to merge data and track account changes
       const existing = await this.getTransactionById(transactionId);
       if (!existing) {
         throw new Error(`Transaction ${transactionId} not found`);
       }
+
+      const oldAccountId = existing.account_id;
 
       // Parse existing data
       const existingData = this.parseJSON(existing.data, {});
@@ -229,8 +263,7 @@ export class TransactionService {
       if (data.description !== undefined) updatedData.description = data.description;
       if (data.currency !== undefined) updatedData.currency = data.currency;
 
-      // Optional fields
-      if (data.accountId !== undefined) updatedData.account_id = data.accountId;
+      // Optional fields (except account_id which is now a column)
       if (data.merchant !== undefined) updatedData.merchant = data.merchant;
       if (data.tags !== undefined) updatedData.tags = data.tags;
       if (data.location !== undefined) updatedData.location = data.location;
@@ -248,6 +281,11 @@ export class TransactionService {
       if (data.date !== undefined) updatePayload.date = data.date;
       if (data.status !== undefined) updatePayload.status = data.status;
 
+      // Update account_id if changed
+      if (data.accountId !== undefined) {
+        updatePayload.account_id = data.accountId;
+      }
+
       // Update data JSON field
       updatePayload.data = this.stringifyJSON(updatedData);
 
@@ -257,6 +295,31 @@ export class TransactionService {
         transactionId,
         updatePayload,
       );
+
+      // Sync account balance if transaction is linked to an account
+      const newAccountId = data.accountId !== undefined ? data.accountId : oldAccountId;
+
+      // Check if it's not a credit card transaction
+      const isCreditCardTransaction = updatedData.credit_card_id || existingData.credit_card_id;
+
+      if (!isCreditCardTransaction) {
+        try {
+          const { BalanceSyncService } = await import('./balance-sync.service');
+          const balanceSyncService = new BalanceSyncService();
+
+          // If account changed, sync both old and new accounts
+          if (oldAccountId && newAccountId && oldAccountId !== newAccountId) {
+            await balanceSyncService.syncAfterUpdate(oldAccountId, transactionId);
+            await balanceSyncService.syncAfterUpdate(newAccountId, transactionId);
+          } else if (newAccountId) {
+            // Same account or only one account, sync it
+            await balanceSyncService.syncAfterUpdate(newAccountId, transactionId);
+          }
+        } catch (error: any) {
+          console.error('Failed to sync account balance after transaction update:', error);
+          // Don't fail the transaction update if balance sync fails
+        }
+      }
 
       return this.formatTransaction(document);
     } catch (error: any) {
@@ -272,7 +335,29 @@ export class TransactionService {
    */
   async deleteTransaction(transactionId: string): Promise<void> {
     try {
+      // Get transaction before deleting to sync account balance
+      const existing = await this.getTransactionById(transactionId);
+      const accountId = existing?.account_id;
+
       await this.dbAdapter.deleteDocument(DATABASE_ID, COLLECTIONS.TRANSACTIONS, transactionId);
+
+      // Sync account balance if transaction was linked to an account
+      if (accountId && existing) {
+        // Check if it's not a credit card transaction
+        const existingData = this.parseJSON(existing.data, {});
+        const isCreditCardTransaction = existingData.credit_card_id;
+
+        if (!isCreditCardTransaction) {
+          try {
+            const { BalanceSyncService } = await import('./balance-sync.service');
+            const balanceSyncService = new BalanceSyncService();
+            await balanceSyncService.syncAfterDelete(accountId, transactionId);
+          } catch (error: any) {
+            console.error('Failed to sync account balance after transaction deletion:', error);
+            // Don't fail the transaction deletion if balance sync fails
+          }
+        }
+      }
     } catch (error: any) {
       if (error.code === 404) {
         throw new Error(`Transaction with id ${transactionId} not found`);
@@ -438,6 +523,7 @@ export class TransactionService {
       type: document.type,
       date: document.date,
       status: document.status,
+      account_id: document.account_id,
       data: document.data,
       created_at: document.created_at,
       updated_at: document.updated_at,

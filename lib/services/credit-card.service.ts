@@ -69,6 +69,29 @@ export class CreditCardService {
   }
 
   /**
+   * Get all credit cards for a user
+   */
+  async getAllCreditCards(userId: string): Promise<CreditCard[]> {
+    try {
+      const result = await this.dbAdapter.listDocuments(DATABASE_ID, COLLECTIONS.CREDIT_CARDS, [
+        Query.orderDesc('created_at'),
+      ]);
+
+      const documents = result.documents || [];
+      return documents.map((doc: any) => this.deserializeCreditCard(doc));
+    } catch (error: any) {
+      throw new Error(`Failed to fetch credit cards: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get credit cards by account (alias for getCreditCardsByAccountId)
+   */
+  async getCreditCardsByAccount(accountId: string): Promise<CreditCard[]> {
+    return this.getCreditCardsByAccountId(accountId);
+  }
+
+  /**
    * Get all credit cards for an account
    */
   async getCreditCardsByAccountId(accountId: string): Promise<CreditCard[]> {

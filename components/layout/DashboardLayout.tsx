@@ -12,13 +12,12 @@ import {
   SettingsIcon,
   HelpCircleIcon,
   LogOutIcon,
-  ShieldCheckIcon,
   LandmarkIcon,
-  UsersIcon,
   RepeatIcon,
   ReceiptIcon,
-  ShieldIcon,
   ShoppingCartIcon,
+  CreditCardIcon,
+  TrendingUpIcon,
 } from '@/components/assets/Icons';
 import Modal from '@/components/ui/Modal';
 import type { User } from '@/lib/types';
@@ -83,32 +82,34 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, user }) => 
   };
 
   const mainNav = [
-    { href: '/overview', label: 'Overview', icon: <HomeIcon className="w-5 h-5" /> },
-    { href: '/accounts', label: 'Accounts', icon: <WalletIcon className="w-5 h-5" /> },
-    { href: '/transactions', label: 'Transactions', icon: <SwapIcon className="w-5 h-5" /> },
+    { href: '/overview', label: 'Visão Geral', icon: <HomeIcon className="w-5 h-5" /> },
+    { href: '/accounts', label: 'Contas', icon: <WalletIcon className="w-5 h-5" /> },
+    { href: '/transactions', label: 'Transações', icon: <SwapIcon className="w-5 h-5" /> },
+    { href: '/credit-card-bills', label: 'Faturas do Cartão', icon: <CreditCardIcon className="w-5 h-5" /> },
   ];
 
   const intelligenceNav = [
-    { href: '/categories', label: 'Categories', icon: <PieChartIcon className="w-5 h-5" /> },
-    { href: '/shopping-list', label: 'Shopping Lists', icon: <ShoppingCartIcon className="w-5 h-5" /> },
-    { href: '/invoices', label: 'Invoices', icon: <ReceiptIcon className="w-5 h-5" /> },
-    { href: '/warranties', label: 'Warranties', icon: <ShieldCheckIcon className="w-5 h-5" /> },
+    { href: '/categories', label: 'Categorias', icon: <PieChartIcon className="w-5 h-5" /> },
+    { href: '/shopping-list', label: 'Listas de Compras', icon: <ShoppingCartIcon className="w-5 h-5" /> },
+    { href: '/invoices', label: 'Notas Fiscais', icon: <ReceiptIcon className="w-5 h-5" /> },
+    // { href: '/warranties', label: 'Garantias', icon: <ShieldCheckIcon className="w-5 h-5" /> }, // TODO: Implementar
   ];
 
   const planningNav = [
-    { href: '/taxes', label: 'Taxes (IRPF)', icon: <FileTextIcon className="w-5 h-5" /> },
-    { href: '/planning-goals', label: 'Financial Goals', icon: <LandmarkIcon className="w-5 h-5" /> },
-    { href: '/succession', label: 'Succession', icon: <UsersIcon className="w-5 h-5" /> },
+    { href: '/investments', label: 'Investimentos', icon: <TrendingUpIcon className="w-5 h-5" /> },
+    { href: '/taxes', label: 'Impostos (IRPF)', icon: <FileTextIcon className="w-5 h-5" /> },
+    { href: '/planning-goals', label: 'Metas Financeiras', icon: <LandmarkIcon className="w-5 h-5" /> },
+    // { href: '/succession', label: 'Sucessão', icon: <UsersIcon className="w-5 h-5" /> }, // TODO: Implementar
   ];
 
   const ecosystemNav = [
-    { href: '/insurance', label: 'Insurance', icon: <ShieldIcon className="w-5 h-5" /> },
-    { href: '/integrations', label: 'Integrations', icon: <RepeatIcon className="w-5 h-5" /> },
+    // { href: '/insurance', label: 'Seguros', icon: <ShieldIcon className="w-5 h-5" /> }, // TODO: Implementar
+    { href: '/integrations', label: 'Integrações', icon: <RepeatIcon className="w-5 h-5" /> },
   ];
 
   const secondaryNav = [
-    { href: '/settings', label: 'Settings', icon: <SettingsIcon className="w-5 h-5" /> },
-    { href: '/help', label: 'Help & Support', icon: <HelpCircleIcon className="w-5 h-5" /> },
+    { href: '/settings', label: 'Configurações', icon: <SettingsIcon className="w-5 h-5" /> },
+    { href: '/help', label: 'Ajuda e Suporte', icon: <HelpCircleIcon className="w-5 h-5" /> },
   ];
 
   return (
@@ -188,7 +189,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, user }) => 
               <div className="mr-3">
                 <LogOutIcon className="w-5 h-5" />
               </div>
-              Log Out
+              Sair
             </button>
           </nav>
         </div>
@@ -199,7 +200,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, user }) => 
       </main>
 
       {/* Logout Confirmation Modal */}
-      <Modal isOpen={isLogoutModalOpen} onClose={() => setIsLogoutModalOpen(false)} title="Confirmar Logout">
+      <Modal isOpen={isLogoutModalOpen} onClose={() => setIsLogoutModalOpen(false)} title="Confirmar Saída">
         <div className="p-6">
           <p className="text-on-surface-variant mb-6">
             Tem certeza que deseja sair da sua conta? Você precisará fazer login novamente para acessar o

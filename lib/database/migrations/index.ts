@@ -11,6 +11,12 @@ import { migration as syncSchemaWithAppwriteSchema } from './20251022_000006_syn
 import { migration as createTransactionsTable } from './20251022_000007_create_transactions_table';
 import { migration as createAccountsTable } from './20251022_000008_create_accounts_table';
 import { migration as createCreditCardsTable } from './20251022_000009_create_credit_cards_table';
+import { migration as addAccountIdToTransactions } from './20251027_000010_add_account_id_to_transactions';
+import { migration as addSyncedTransactionIdsToAccounts } from './20251027_000011_add_synced_transaction_ids_to_accounts';
+import { migration as migrateAccountIdAndSyncBalances } from './20251027_000012_migrate_account_id_and_sync_balances';
+import { migration as createInvestmentsTable } from './20251027_000013_create_investments_table';
+import { migration as createCreditCardBillsTable } from './20251027_000014_create_credit_card_bills_table';
+import { migration as expandTransactionsColumns } from './20251028_000015_expand_transactions_columns';
 import { Migration } from './migration.interface';
 
 /**
@@ -28,4 +34,10 @@ export const migrations: Migration[] = [
   createTransactionsTable,
   createAccountsTable,
   createCreditCardsTable,
+  addAccountIdToTransactions,
+  addSyncedTransactionIdsToAccounts,
+  migrateAccountIdAndSyncBalances,
+  createInvestmentsTable,
+  createCreditCardBillsTable,
+  expandTransactionsColumns,
 ];

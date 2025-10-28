@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import CurrencyInput from '@/components/ui/CurrencyInput';
 
 export interface CreateAccountInput {
   name: string;
@@ -22,7 +23,7 @@ export function AddAccountModal({ isOpen, onClose, onSubmit }: AddAccountModalPr
   const [formData, setFormData] = useState<CreateAccountInput>({
     name: '',
     account_type: 'checking',
-    initial_balance: 0,
+    initial_balance: undefined,
     is_manual: true,
   });
   const [loading, setLoading] = useState(false);
@@ -39,7 +40,7 @@ export function AddAccountModal({ isOpen, onClose, onSubmit }: AddAccountModalPr
       setFormData({
         name: '',
         account_type: 'checking',
-        initial_balance: 0,
+        initial_balance: undefined,
         is_manual: true,
       });
       onClose();
@@ -107,20 +108,12 @@ export function AddAccountModal({ isOpen, onClose, onSubmit }: AddAccountModalPr
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Saldo Inicial
-            </label>
-            <div className="relative">
-              <span className="absolute left-3 top-2 text-gray-500">R$</span>
-              <input
-                type="number"
-                step="0.01"
-                value={formData.initial_balance}
-                onChange={(e) => setFormData({ ...formData, initial_balance: parseFloat(e.target.value) || 0 })}
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="0,00"
-              />
-            </div>
+            <CurrencyInput
+              label="Saldo Inicial"
+              value={formData.initial_balance || 0}
+              onChange={(value) => setFormData({ ...formData, initial_balance: value })}
+              placeholder="R$ 0,00"
+            />
             <p className="text-xs text-gray-500 mt-1">
               Se houver saldo inicial, uma transação de entrada será criada automaticamente
             </p>

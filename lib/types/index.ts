@@ -628,6 +628,7 @@ export interface UpdateTransactionDto {
   category?: string;
   description?: string;
   status?: TransactionStatus;
+  account_id?: string;
 }
 
 /**

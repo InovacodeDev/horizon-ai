@@ -1,6 +1,61 @@
 import { getCurrentUserId } from '@/lib/auth/session';
 import { CreditCardService } from '@/lib/services/credit-card.service';
 import { NextRequest, NextResponse } from 'next/server';
+import { Query } from 'node-appwrite';
+
+/**
+ * GET /api/credit-cards
+ * Get all credit cards for the user, optionally filtered by account IDs
+ * Query params: account_ids (comma-separated list of account IDs)
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const userId = await getCurrentUserId();
+
+    if (!userId) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const accountIdsParam = searchParams.get('account_ids');
+
+    const creditCardService = new CreditCardService();
+
+    // If account_ids provided, filter by those accounts
+    if (accountIdsParam) {
+      const accountIds = accountIdsParam
+        .split(',')
+        .map((id) => id.trim())
+        .filter(Boolean);
+
+      if (accountIds.length === 0) {
+        return NextResponse.json({ data: [] }, { status: 200 });
+      }
+
+      // Fetch cards for each account and combine
+      const cardsPromises = accountIds.map((accountId) => creditCardService.getCreditCardsByAccount(accountId));
+
+      const cardsArrays = await Promise.all(cardsPromises);
+      const allCards = cardsArrays.flat();
+
+      return NextResponse.json({ data: allCards }, { status: 200 });
+    }
+
+    // Otherwise, get all cards for the user
+    const cards = await creditCardService.getAllCreditCards(userId);
+
+    return NextResponse.json({ data: cards }, { status: 200 });
+  } catch (error: any) {
+    console.error('GET /api/credit-cards error:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        message: error.message || 'Failed to fetch credit cards',
+      },
+      { status: 500 },
+    );
+  }
+}
 
 /**
  * POST /api/credit-cards

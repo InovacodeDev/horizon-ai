@@ -358,6 +358,7 @@ export const transactionsSchema = {
       required: true,
       array: false,
     },
+    { key: 'account_id', type: 'string', size: 255, required: false, array: false }, // Account reference for balance sync
     { key: 'data', type: 'string', size: 16000, required: false, array: false }, // JSON field for all other data
     { key: 'created_at', type: 'datetime', required: true },
     { key: 'updated_at', type: 'datetime', required: true },
@@ -367,6 +368,7 @@ export const transactionsSchema = {
     { key: 'idx_date', type: 'key', attributes: ['date'], orders: ['DESC'] },
     { key: 'idx_type', type: 'key', attributes: ['type'] },
     { key: 'idx_status', type: 'key', attributes: ['status'] },
+    { key: 'idx_account_id', type: 'key', attributes: ['account_id'], orders: ['ASC'] },
   ],
 };
 
@@ -379,6 +381,7 @@ export interface Transaction {
   type: 'income' | 'expense' | 'transfer';
   date: string;
   status: 'pending' | 'completed' | 'failed' | 'cancelled';
+  account_id?: string; // Account reference for balance sync
   data?: string; // JSON string containing all other fields
   created_at: string;
   updated_at: string;
@@ -429,6 +432,7 @@ export const accountsSchema = {
     },
     { key: 'balance', type: 'float', required: true },
     { key: 'is_manual', type: 'boolean', required: true },
+    { key: 'synced_transaction_ids', type: 'string', size: 65535, required: false, array: false, default: '[]' }, // JSON array of synced transaction IDs
     { key: 'data', type: 'string', size: 16000, required: false, array: false }, // JSON field for bank_id, last_digits, status, etc.
     { key: 'created_at', type: 'datetime', required: true },
     { key: 'updated_at', type: 'datetime', required: true },
@@ -448,6 +452,7 @@ export interface Account {
   account_type: 'checking' | 'savings' | 'investment' | 'other';
   balance: number;
   is_manual: boolean;
+  synced_transaction_ids?: string; // JSON array of synced transaction IDs
   data?: string; // JSON string
   created_at: string;
   updated_at: string;
