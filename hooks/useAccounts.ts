@@ -59,7 +59,7 @@ export function useAccounts(options: UseAccountsOptions = {}) {
       user_id: '',
       name: input.name,
       account_type: input.account_type,
-      balance: input.initial_balance || 0,
+      balance: 0,
       is_manual: input.is_manual ?? true,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
