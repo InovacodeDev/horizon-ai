@@ -1,7 +1,6 @@
 import { getCurrentUserId } from '@/lib/auth/session';
 import { CreditCardService } from '@/lib/services/credit-card.service';
 import { NextRequest, NextResponse } from 'next/server';
-import { Query } from 'node-appwrite';
 
 /**
  * GET /api/credit-cards
@@ -33,7 +32,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Fetch cards for each account and combine
-      const cardsPromises = accountIds.map((accountId) => creditCardService.getCreditCardsByAccount(accountId));
+      const cardsPromises = accountIds.map((accountId) => creditCardService.getCreditCardsByAccountId(accountId));
 
       const cardsArrays = await Promise.all(cardsPromises);
       const allCards = cardsArrays.flat();

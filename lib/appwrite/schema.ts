@@ -14,6 +14,7 @@ export const COLLECTIONS = {
   TRANSACTIONS: 'transactions',
   ACCOUNTS: 'accounts',
   CREDIT_CARDS: 'credit_cards',
+  CREDIT_CARD_TRANSACTIONS: 'credit_card_transactions',
 } as const;
 
 // Database ID - Configure no Appwrite Console
@@ -358,8 +359,15 @@ export const transactionsSchema = {
       required: true,
       array: false,
     },
-    { key: 'account_id', type: 'string', size: 255, required: false, array: false }, // Account reference for balance sync
-    { key: 'data', type: 'string', size: 16000, required: false, array: false }, // JSON field for all other data
+    { key: 'account_id', type: 'string', size: 255, required: false, array: false },
+    { key: 'category', type: 'string', size: 100, required: false, array: false },
+    { key: 'description', type: 'string', size: 500, required: false, array: false },
+    { key: 'currency', type: 'string', size: 10, required: false, array: false },
+    { key: 'source', type: 'enum', elements: ['manual', 'integration', 'import'], required: false, array: false },
+    { key: 'merchant', type: 'string', size: 255, required: false, array: false },
+    { key: 'tags', type: 'string', size: 500, required: false, array: false },
+    { key: 'is_recurring', type: 'boolean', required: false },
+    { key: 'data', type: 'string', size: 16000, required: false, array: false }, // JSON field for remaining data
     { key: 'created_at', type: 'datetime', required: true },
     { key: 'updated_at', type: 'datetime', required: true },
   ],
@@ -369,6 +377,9 @@ export const transactionsSchema = {
     { key: 'idx_type', type: 'key', attributes: ['type'] },
     { key: 'idx_status', type: 'key', attributes: ['status'] },
     { key: 'idx_account_id', type: 'key', attributes: ['account_id'], orders: ['ASC'] },
+    { key: 'idx_category', type: 'key', attributes: ['category'] },
+    { key: 'idx_source', type: 'key', attributes: ['source'] },
+    { key: 'idx_merchant', type: 'key', attributes: ['merchant'] },
   ],
 };
 
@@ -381,8 +392,15 @@ export interface Transaction {
   type: 'income' | 'expense' | 'transfer';
   date: string;
   status: 'pending' | 'completed' | 'failed' | 'cancelled';
-  account_id?: string; // Account reference for balance sync
-  data?: string; // JSON string containing all other fields
+  account_id?: string;
+  category?: string;
+  description?: string;
+  currency?: string;
+  source?: 'manual' | 'integration' | 'import';
+  merchant?: string;
+  tags?: string;
+  is_recurring?: boolean;
+  data?: string; // JSON string for remaining data (location, receipt_url, recurring_pattern, etc.)
   created_at: string;
   updated_at: string;
 }
@@ -510,4 +528,60 @@ export interface CreditCardData {
   brand?: 'visa' | 'mastercard' | 'elo' | 'amex' | 'other';
   network?: string;
   color?: string;
+}
+
+// ============================================
+// Collection: credit_card_transactions
+// ============================================
+export const creditCardTransactionsSchema = {
+  collectionId: COLLECTIONS.CREDIT_CARD_TRANSACTIONS,
+  name: 'Credit Card Transactions',
+  permissions: ['read("any")', 'write("any")'],
+  rowSecurity: true,
+  attributes: [
+    { key: 'user_id', type: 'string', size: 255, required: true, array: false },
+    { key: 'credit_card_id', type: 'string', size: 255, required: true, array: false },
+    { key: 'amount', type: 'float', required: true },
+    { key: 'date', type: 'datetime', required: true },
+    { key: 'purchase_date', type: 'datetime', required: true },
+    { key: 'category', type: 'string', size: 100, required: false, array: false },
+    { key: 'description', type: 'string', size: 500, required: false, array: false },
+    { key: 'merchant', type: 'string', size: 255, required: false, array: false },
+    { key: 'installment', type: 'integer', required: false, min: 1 },
+    { key: 'installments', type: 'integer', required: false, min: 1 },
+    { key: 'is_recurring', type: 'boolean', required: false, default: false },
+    { key: 'status', type: 'enum', elements: ['pending', 'completed', 'cancelled'], required: true, array: false },
+    { key: 'created_at', type: 'datetime', required: true },
+    { key: 'updated_at', type: 'datetime', required: true },
+  ],
+  indexes: [
+    { key: 'idx_user_id', type: 'key', attributes: ['user_id'], orders: ['ASC'] },
+    { key: 'idx_credit_card_id', type: 'key', attributes: ['credit_card_id'], orders: ['ASC'] },
+    { key: 'idx_date', type: 'key', attributes: ['date'], orders: ['DESC'] },
+    { key: 'idx_purchase_date', type: 'key', attributes: ['purchase_date'], orders: ['DESC'] },
+    { key: 'idx_category', type: 'key', attributes: ['category'] },
+    { key: 'idx_status', type: 'key', attributes: ['status'] },
+    { key: 'idx_installments', type: 'key', attributes: ['installments'], orders: ['ASC'] },
+    { key: 'idx_is_recurring', type: 'key', attributes: ['is_recurring'] },
+  ],
+};
+
+export interface CreditCardTransaction {
+  $id: string;
+  $createdAt: string;
+  $updatedAt: string;
+  user_id: string;
+  credit_card_id: string;
+  amount: number;
+  date: string; // Bill due date
+  purchase_date: string; // Original purchase date
+  category?: string;
+  description?: string;
+  merchant?: string;
+  installment?: number; // Current installment (1, 2, 3...)
+  installments?: number; // Total installments (12 for 12x)
+  is_recurring?: boolean; // Is this a recurring subscription?
+  status: 'pending' | 'completed' | 'cancelled';
+  created_at: string;
+  updated_at: string;
 }

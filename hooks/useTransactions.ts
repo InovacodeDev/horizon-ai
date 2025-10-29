@@ -7,7 +7,8 @@ import type {
   TransactionType,
   UpdateTransactionDto,
 } from '@/lib/types';
-import { useCallback, useOptimistic, useState, useTransition } from 'react';
+import { cacheManager, getCacheKey, invalidateCache } from '@/lib/utils/cache';
+import { useCallback, useEffect, useOptimistic, useState, useTransition } from 'react';
 
 interface TransactionFilters {
   userId?: string;
@@ -65,10 +66,23 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
   );
 
   const fetchTransactions = useCallback(
-    async (filters?: TransactionFilters) => {
+    async (filters?: TransactionFilters, skipCache = false) => {
       if (!userId) {
         setLoading(false);
         return;
+      }
+
+      // Check cache first
+      if (!skipCache) {
+        const cacheKey = getCacheKey.transactions(userId);
+        const cached = cacheManager.get<{ data: Transaction[]; total: number }>(cacheKey);
+
+        if (cached) {
+          setTransactions(cached.data);
+          setTotal(cached.total);
+          setLoading(false);
+          return;
+        }
       }
 
       setLoading(true);
@@ -99,6 +113,10 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
         if (data.success) {
           setTransactions(data.data);
           setTotal(data.total);
+
+          // Cache the result
+          const cacheKey = getCacheKey.transactions(userId);
+          cacheManager.set(cacheKey, { data: data.data, total: data.total });
         } else {
           throw new Error('API returned unsuccessful response');
         }
@@ -112,6 +130,13 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
     },
     [userId],
   );
+
+  // Auto-fetch on mount
+  useEffect(() => {
+    if (userId && !initialTransactions) {
+      fetchTransactions();
+    }
+  }, [userId, initialTransactions, fetchTransactions]);
 
   const createTransaction = useCallback(
     async (input: CreateTransactionDto) => {
@@ -161,6 +186,12 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
         // Update with real data
         setTransactions((prev) => [newTransaction, ...prev.filter((t) => t.$id !== tempId)]);
         setTotal((prev) => prev + 1);
+
+        // Invalidate cache
+        if (userId) {
+          invalidateCache.transactions(userId);
+        }
+
         return newTransaction;
       } catch (err: any) {
         console.error('Error creating transaction:', err);
@@ -210,6 +241,12 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
 
         // Update with real data
         setTransactions((prev) => prev.map((t) => (t.$id === transactionId ? updatedTransaction : t)));
+
+        // Invalidate cache
+        if (userId) {
+          invalidateCache.transactions(userId);
+        }
+
         return updatedTransaction;
       } catch (err: any) {
         console.error('Error updating transaction:', err);
@@ -246,6 +283,11 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
         // Confirm deletion
         setTransactions((prev) => prev.filter((t) => t.$id !== transactionId));
         setTotal((prev) => Math.max(0, prev - 1));
+
+        // Invalidate cache
+        if (userId) {
+          invalidateCache.transactions(userId);
+        }
       } catch (err: any) {
         console.error('Error deleting transaction:', err);
         setError(err.message || 'Failed to delete transaction');

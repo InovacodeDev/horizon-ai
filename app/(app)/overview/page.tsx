@@ -17,11 +17,15 @@ import { useTransactions } from "@/hooks/useTransactions";
 import { useFinancialInsights } from "@/hooks/useFinancialInsights";
 import { useTotalBalance } from "@/hooks/useTotalBalance";
 import { useAccounts } from "@/hooks/useAccounts";
+import { useCreditCardTransactions } from "@/hooks/useCreditCardTransactions";
+import { useCreditCardsWithCache } from "@/hooks/useCreditCardsWithCache";
 import { AVAILABLE_CATEGORY_ICONS } from "@/lib/constants";
 import { getCategoryById } from "@/lib/constants/categories";
 import type { Transaction, FinancialInsight, InsightType } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { getAppwriteUsers } from "@/lib/appwrite/client";
+import { useUser } from "@/lib/contexts/UserContext";
 
 // --- Helper Functions for Date Filtering ---
 const getMonthKey = (date: Date): string => {
@@ -286,7 +290,6 @@ const StatCard: React.FC<{
         isPositive && (isNet || label.toLowerCase().includes("income")) ? "+" : ""
     }${value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`;
 
-    // Calculate percentage change
     let percentageChange: number | null = null;
     let isImprovement = false;
     
@@ -294,8 +297,6 @@ const StatCard: React.FC<{
         const change = value - previousValue;
         percentageChange = (change / Math.abs(previousValue)) * 100;
         
-        // For income and net: increase is improvement
-        // For expenses: decrease is improvement
         if (label.toLowerCase().includes("expense")) {
             isImprovement = change < 0;
         } else {
@@ -319,7 +320,7 @@ const StatCard: React.FC<{
                             ) : (
                                 <TrendingDownIcon className="w-4 h-4" />
                             )}
-                            <span>{Math.abs(percentageChange).toFixed(1)}%</span>
+                            <span> {Math.abs(percentageChange).toFixed(1)}%</span>
                         </div>
                     )}
                 </div>
@@ -373,48 +374,61 @@ const TransactionItem: React.FC<{ transaction: Transaction }> = ({ transaction }
 
 export default function OverviewPage() {
     const router = useRouter();
-    
-    // Get user ID from session (you'll need to implement this based on your auth setup)
-    const userId = "default-user"; // TODO: Get from session
-    
+
+    const { user } = useUser();
     const { 
         transactions: apiTransactions, 
         loading: isLoadingTransactions,
         refetch 
-    } = useTransactions({ userId });
+    } = useTransactions({ userId: user.$id ?? 'default-user' });
     const { accounts, loading: loadingAccounts } = useAccounts();
+    const { creditCards } = useCreditCardsWithCache();
     
-    // Calculate total balance from accounts
+    // Get current month date range for credit card transactions
+    const currentMonthStart = useMemo(() => {
+        const now = new Date();
+        return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    }, []);
+    
+    const currentMonthEnd = useMemo(() => {
+        const now = new Date();
+        return new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    }, []);
+
+    const { 
+        transactions: creditCardTransactions, 
+        loading: loadingCreditCardTransactions 
+    } = useCreditCardTransactions({
+        startPurchaseDate: currentMonthStart,
+        endPurchaseDate: currentMonthEnd,
+        limit: 100,
+    });
+
     const totalBalance = useMemo(() => {
         return accounts.reduce((sum, account) => sum + (account.balance || 0), 0);
     }, [accounts]);
     
     const loadingBalance = loadingAccounts;
 
-    // Generate AI insights based on real transaction data
     const aiInsights = useFinancialInsights(apiTransactions);
 
     const handleNavigateToTransactions = () => {
         router.push('/transactions');
     };
 
-    // Fetch transactions and accounts on mount
     useEffect(() => {
-        if (userId) {
+        if (user) {
             refetch();
         }
-    }, [userId, refetch]);
+    }, [user, refetch]);
 
-    // Convert API transactions to UI format
     const transactions: Transaction[] = useMemo(() => {
         return apiTransactions.map((apiTx) => {
-            // Get icon for category using new category system
             const category = getCategoryById(apiTx.category || '');
             const categoryIcon = category?.icon || AVAILABLE_CATEGORY_ICONS.find(
                 (cat) => cat.name.toLowerCase() === apiTx.category?.toLowerCase()
             )?.component || SwapIcon;
 
-            // Find account name from accountId
             const account = accounts.find((acc) => acc.$id === apiTx.account_id);
             const accountName = account?.name || (apiTx.account_id ? apiTx.account_id : 'Manual Entry');
 
@@ -436,20 +450,16 @@ export default function OverviewPage() {
         });
     }, [apiTransactions, accounts]);
 
-    // Calculate monthly metrics from real transactions (only from user's accounts)
     const monthlyMetrics = useMemo(() => {
         const currentMonthKey = getCurrentMonthKey();
         const previousMonthKey = getPreviousMonthKey();
-        
-        // Get user's account IDs
+
         const userAccountIds = new Set(accounts.map(acc => acc.$id));
-        
-        // Filter transactions to only include those from user's accounts
+
         const userTransactions = apiTransactions.filter(tx => 
             tx.account_id && userAccountIds.has(tx.account_id)
         );
-        
-        // Group transactions by month
+
         const transactionsByMonth = userTransactions.reduce((acc, tx) => {
             const txDate = new Date(tx.date);
             const monthKey = getMonthKey(txDate);
@@ -466,31 +476,39 @@ export default function OverviewPage() {
             
             return acc;
         }, {} as Record<string, { income: number; expenses: number }>);
+        const creditCardTransactionsByMonth = creditCardTransactions.reduce((acc, tx) => {
+            const txDate = new Date(tx.date);
+            console.log({ txDate });
+
+            return acc;
+        }, {} as Record<string, { income: number; expenses: number; }>);
         
-        // Current month metrics
         const currentMonth = transactionsByMonth[currentMonthKey] || { income: 0, expenses: 0 };
         const currentIncome = currentMonth.income;
-        const currentExpenses = -currentMonth.expenses; // Negative for display
+        const currentExpenses = -currentMonth.expenses;
+        const currentCreditCardBill = 0;
         const currentNet = currentIncome + currentExpenses;
         
-        // Previous month metrics
         const previousMonth = transactionsByMonth[previousMonthKey] || { income: 0, expenses: 0 };
         const previousIncome = previousMonth.income;
         const previousExpenses = -previousMonth.expenses;
+        const previousCreditCardBill = 0;
         const previousNet = previousIncome + previousExpenses;
-        
+
         return {
             currentIncome,
             currentExpenses,
+            currentCreditCardBill,
             currentNet,
             previousIncome,
             previousExpenses,
+            previousCreditCardBill,
             previousNet,
             transactionsByMonth,
+            creditCardTransactionsByMonth,
         };
-    }, [apiTransactions, accounts]);
+    }, [apiTransactions, creditCardTransactions, accounts]);
 
-    // Generate chart data for last 6 months
     const chartData = useMemo(() => {
         const lastSixMonths = getLastSixMonths();
         return lastSixMonths.map((monthKey) => {
@@ -503,7 +521,6 @@ export default function OverviewPage() {
         });
     }, [monthlyMetrics]);
 
-    // Check if we have any transactions
     const hasTransactions = apiTransactions.length > 0;
 
     if (isLoadingTransactions || loadingBalance) {
@@ -515,14 +532,11 @@ export default function OverviewPage() {
         currency: "BRL",
     });
 
-    // TODO: Get user name from session
-    const userName = "Usuário";
-
     return (
         <>
             <header className="mb-8 flex justify-between items-end">
                 <div>
-                    <h1 className="text-4xl font-light text-on-surface">Olá, {userName}!</h1>
+                    <h1 className="text-4xl font-light text-on-surface">Olá, {user.name}!</h1>
                     <p className="text-base text-on-surface-variant mt-1">Bem-vindo ao seu painel financeiro.</p>
                 </div>
                 <div className="text-right">
@@ -532,7 +546,7 @@ export default function OverviewPage() {
             </header>
 
             <main className="space-y-8">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     <StatCard
                         label="Receitas do mês"
                         value={monthlyMetrics.currentIncome}
@@ -544,6 +558,13 @@ export default function OverviewPage() {
                         value={monthlyMetrics.currentExpenses}
                         previousValue={monthlyMetrics.previousExpenses}
                         icon={<ArrowDownCircleIcon className="text-error" />}
+                    />
+                    <StatCard
+                        label="Fatura do mês"
+                        value={monthlyMetrics.currentCreditCardBill}
+                        previousValue={monthlyMetrics.previousCreditCardBill}
+                        icon={<TrendingUpIcon className={monthlyMetrics.currentCreditCardBill > 0 ? "text-secondary" : "text-error"} />}
+                        isNet
                     />
                     <StatCard
                         label="Saldo do mês"
@@ -595,6 +616,95 @@ export default function OverviewPage() {
                         )}
                     </ul>
                 </Card>
+
+                {/* Credit Card Transactions Section */}
+                {creditCards.length > 0 && (
+                    <>
+                        <Card className="p-6">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-xl font-medium text-on-surface">Compras no Cartão - Este Mês</h3>
+                                <Button onClick={() => router.push('/credit-card-bills')} variant="text">
+                                    Ver Faturas
+                                </Button>
+                            </div>
+                            {loadingCreditCardTransactions ? (
+                                <div className="space-y-3">
+                                    <Skeleton className="h-16" />
+                                    <Skeleton className="h-16" />
+                                    <Skeleton className="h-16" />
+                                </div>
+                            ) : (
+                                <>
+                                    {creditCardTransactions.length > 0 && (
+                                        <div className="mb-4 p-4 bg-primary/10 rounded-lg">
+                                            <p className="text-sm text-on-surface-variant mb-1">Total em Cartões</p>
+                                            <p className="text-3xl font-bold text-primary">
+                                                {new Intl.NumberFormat('pt-BR', {
+                                                    style: 'currency',
+                                                    currency: 'BRL',
+                                                }).format(creditCardTransactions.reduce((sum, tx) => sum + tx.amount, 0))}
+                                            </p>
+                                            <p className="text-xs text-on-surface-variant mt-1">
+                                                {creditCardTransactions.length} transação(ões) este mês
+                                            </p>
+                                        </div>
+                                    )}
+                                    <ul className="divide-y divide-outline">
+                                        {creditCardTransactions.length > 0 ? (
+                                            creditCardTransactions.slice(0, 5).map((tx) => {
+                                                const card = creditCards.find(c => c.$id === tx.credit_card_id);
+                                                return (
+                                                    <li key={tx.$id} className="py-3 flex items-center justify-between">
+                                                        <div className="flex-1">
+                                                            <p className="font-medium text-on-surface">
+                                                                {tx.description || tx.merchant || 'Compra no cartão'}
+                                                            </p>
+                                                            <div className="flex items-center gap-2 mt-1">
+                                                                <span className="text-xs text-on-surface-variant">
+                                                                    {card?.name || 'Cartão'}
+                                                                </span>
+                                                                <span className="text-xs text-on-surface-variant">•</span>
+                                                                <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded">
+                                                                    {tx.category}
+                                                                </span>
+                                                                {tx.installments && tx.installments > 1 && (
+                                                                    <>
+                                                                        <span className="text-xs text-on-surface-variant">•</span>
+                                                                        <span className="text-xs text-secondary">
+                                                                            {tx.installment}/{tx.installments}x
+                                                                        </span>
+                                                                    </>
+                                                                )}
+                                                                {tx.is_recurring && (
+                                                                    <>
+                                                                        <span className="text-xs text-on-surface-variant">•</span>
+                                                                        <span className="text-xs text-tertiary">
+                                                                            Recorrente
+                                                                        </span>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <p className="font-semibold text-error">
+                                                            {new Intl.NumberFormat('pt-BR', {
+                                                                style: 'currency',
+                                                                currency: 'BRL',
+                                                            }).format(tx.amount)}
+                                                        </p>
+                                                    </li>
+                                                );
+                                            })
+                                        ) : (
+                                            <li className="py-8 text-center text-on-surface-variant">
+                                                Nenhuma compra no cartão este mês
+                                            </li>
+                                        )}
+                                    </ul>
+                                </>
+                            )}
+                        </Card>
+                    </>
+                )}
             </main>
         </>
     );

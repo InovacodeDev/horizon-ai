@@ -1,7 +1,8 @@
 'use client';
 
 import type { CreateCreditCardDto, CreditCard, UpdateCreditCardDto } from '@/lib/types';
-import { useCallback, useOptimistic, useState, useTransition } from 'react';
+import { cacheManager, getCacheKey, invalidateCache } from '@/lib/utils/cache';
+import { useCallback, useEffect, useOptimistic, useState, useTransition } from 'react';
 
 interface UseCreditCardsOptions {
   accountId?: string | null;
@@ -35,34 +36,60 @@ export function useCreditCards(options: UseCreditCardsOptions = {}) {
     },
   );
 
-  const fetchCreditCards = useCallback(async () => {
-    if (!accountId) {
-      setCreditCards([]);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await fetch(`/api/credit-cards/account/${accountId}`, {
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch credit cards');
+  const fetchCreditCards = useCallback(
+    async (skipCache = false) => {
+      if (!accountId) {
+        setCreditCards([]);
+        setLoading(false);
+        return;
       }
 
-      const data = await response.json();
-      setCreditCards(data);
-    } catch (err: any) {
-      console.error('Error fetching credit cards:', err);
-      setError(err.message || 'Failed to fetch credit cards');
-    } finally {
-      setLoading(false);
+      try {
+        // Check cache first
+        if (!skipCache) {
+          const cacheKey = getCacheKey.creditCards('user');
+          const cached = cacheManager.get<CreditCard[]>(cacheKey);
+
+          if (cached) {
+            setCreditCards(cached);
+            setLoading(false);
+            return;
+          }
+        }
+
+        setLoading(true);
+        setError(null);
+
+        const response = await fetch(`/api/credit-cards/account/${accountId}`, {
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch credit cards');
+        }
+
+        const data = await response.json();
+        setCreditCards(data);
+
+        // Cache the result
+        const cacheKey = getCacheKey.creditCards('user');
+        cacheManager.set(cacheKey, data);
+      } catch (err: any) {
+        console.error('Error fetching credit cards:', err);
+        setError(err.message || 'Failed to fetch credit cards');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [accountId],
+  );
+
+  // Auto-fetch on mount
+  useEffect(() => {
+    if (accountId && !initialCreditCards) {
+      fetchCreditCards();
     }
-  }, [accountId]);
+  }, [accountId, initialCreditCards, fetchCreditCards]);
 
   const createCreditCard = useCallback(
     async (input: CreateCreditCardDto) => {
@@ -108,6 +135,10 @@ export function useCreditCards(options: UseCreditCardsOptions = {}) {
 
         // Update with real data
         setCreditCards((prev) => [...prev.filter((c) => c.$id !== tempId), newCard]);
+
+        // Invalidate cache
+        invalidateCache.creditCards('user');
+
         return newCard;
       } catch (err: any) {
         console.error('Error creating credit card:', err);
@@ -157,6 +188,10 @@ export function useCreditCards(options: UseCreditCardsOptions = {}) {
 
         // Update with real data
         setCreditCards((prev) => prev.map((c) => (c.$id === creditCardId ? updatedCard : c)));
+
+        // Invalidate cache
+        invalidateCache.creditCards('user');
+
         return updatedCard;
       } catch (err: any) {
         console.error('Error updating credit card:', err);
@@ -192,6 +227,9 @@ export function useCreditCards(options: UseCreditCardsOptions = {}) {
 
         // Confirm deletion
         setCreditCards((prev) => prev.filter((c) => c.$id !== creditCardId));
+
+        // Invalidate cache
+        invalidateCache.creditCards('user');
       } catch (err: any) {
         console.error('Error deleting credit card:', err);
         setError(err.message || 'Failed to delete credit card');
@@ -242,6 +280,10 @@ export function useCreditCards(options: UseCreditCardsOptions = {}) {
 
         // Update with real data
         setCreditCards((prev) => prev.map((c) => (c.$id === creditCardId ? updatedCard : c)));
+
+        // Invalidate cache
+        invalidateCache.creditCards('user');
+
         return updatedCard;
       } catch (err: any) {
         console.error('Error updating used limit:', err);

@@ -1,5 +1,6 @@
 import { getAppwriteDatabases } from '@/lib/appwrite/client';
 import { COLLECTIONS, DATABASE_ID, Transaction } from '@/lib/appwrite/schema';
+import { dateToUserTimezone } from '@/lib/utils/timezone';
 import { ID, Query } from 'node-appwrite';
 
 /**
@@ -32,6 +33,9 @@ export interface CreateTransactionData {
     endDate?: string;
   };
   status?: 'pending' | 'completed' | 'failed' | 'cancelled';
+  installment?: number; // Current installment number (1, 2, 3...)
+  installments?: number; // Total number of installments (12 for 12x)
+  creditCardTransactionCreatedAt?: string; // Original purchase date on credit card
 }
 
 export interface CreateIntegrationTransactionData extends CreateTransactionData {
@@ -62,6 +66,9 @@ export interface UpdateTransactionData {
     endDate?: string;
   };
   status?: 'pending' | 'completed' | 'failed' | 'cancelled';
+  installment?: number; // Current installment number
+  installments?: number; // Total number of installments
+  creditCardTransactionCreatedAt?: string; // Original purchase date
 }
 
 export interface TransactionFilter {
@@ -75,6 +82,7 @@ export interface TransactionFilter {
   minAmount?: number;
   maxAmount?: number;
   search?: string;
+  creditCardId?: string;
   limit?: number;
   offset?: number;
 }
@@ -114,42 +122,59 @@ export class TransactionService {
     const id = ID.unique();
     const now = new Date().toISOString();
 
-    // Build data object with ALL fields except core indexed ones
-    const transactionData: any = {
-      category: data.category,
-      description: data.description,
-      currency: data.currency,
-      source: 'manual',
-    };
-
-    // Add optional fields if present (except account_id which is now a column)
-    if (data.creditCardId) transactionData.credit_card_id = data.creditCardId;
-    if (data.merchant) transactionData.merchant = data.merchant;
-    if (data.tags) transactionData.tags = data.tags;
+    // Build data object only for fields that don't have dedicated columns
+    const transactionData: any = {};
     if (data.location) transactionData.location = data.location;
     if (data.receiptUrl) transactionData.receipt_url = data.receiptUrl;
-    if (data.isRecurring) transactionData.is_recurring = data.isRecurring;
     if (data.recurringPattern) transactionData.recurring_pattern = data.recurringPattern;
+
+    // Convert date to user's timezone (ensures consistency)
+    const dateInUserTimezone = data.date.includes('T') ? data.date : dateToUserTimezone(data.date);
 
     const payload: any = {
       user_id: data.userId,
       amount: data.amount,
       type: data.type,
-      date: data.date,
+      date: dateInUserTimezone,
       status: data.status || 'completed',
-      data: this.stringifyJSON(transactionData),
+      category: data.category,
+      description: data.description,
+      currency: data.currency,
+      source: 'manual',
+      merchant: data.merchant,
+      tags: data.tags ? data.tags.join(',') : undefined,
+      is_recurring: data.isRecurring || false,
+      data: Object.keys(transactionData).length > 0 ? this.stringifyJSON(transactionData) : undefined,
       created_at: now,
       updated_at: now,
     };
 
-    // Add account_id as a dedicated column
+    // Add account_id and credit_card_id as dedicated columns
     if (data.accountId) {
       payload.account_id = data.accountId;
+    }
+    if (data.creditCardId) {
+      payload.credit_card_id = data.creditCardId;
+    }
+
+    // Add installment fields if provided
+    if (data.installment !== undefined) {
+      payload.installment = data.installment;
+    }
+    if (data.installments !== undefined) {
+      payload.installments = data.installments;
+    }
+    if (data.creditCardTransactionCreatedAt) {
+      // Convert purchase date to user's timezone
+      const purchaseDateInUserTimezone = data.creditCardTransactionCreatedAt.includes('T')
+        ? data.creditCardTransactionCreatedAt
+        : dateToUserTimezone(data.creditCardTransactionCreatedAt);
+      payload.credit_card_transaction_created_at = purchaseDateInUserTimezone;
     }
 
     const document = await this.dbAdapter.createDocument(DATABASE_ID, COLLECTIONS.TRANSACTIONS, id, payload);
 
-    // Sync account balance if transaction is linked to an account
+    // Sync account balance if transaction is linked to an account (but not a credit card)
     if (data.accountId && !data.creditCardId) {
       try {
         const { BalanceSyncService } = await import('./balance-sync.service');
@@ -158,6 +183,18 @@ export class TransactionService {
       } catch (error: any) {
         console.error('Failed to sync account balance after transaction creation:', error);
         // Don't fail the transaction creation if balance sync fails
+      }
+    }
+
+    // Sync credit card used limit if transaction is linked to a credit card
+    if (data.creditCardId) {
+      try {
+        const { CreditCardService } = await import('./credit-card.service');
+        const creditCardService = new CreditCardService();
+        await creditCardService.syncUsedLimit(data.creditCardId);
+      } catch (error: any) {
+        console.error('Failed to sync credit card used limit after transaction creation:', error);
+        // Don't fail the transaction creation if sync fails
       }
     }
 
@@ -172,32 +209,39 @@ export class TransactionService {
     const now = new Date().toISOString();
 
     // Build data object with ALL fields except core indexed ones
-    const transactionData: any = {
-      category: data.category,
-      description: data.description,
-      currency: data.currency,
-      source: 'integration',
-    };
+    const transactionData: any = {};
 
-    // Add optional/integration fields if present (except account_id which is now a column)
-    if (data.merchant) transactionData.merchant = data.merchant;
     if (data.integrationId) transactionData.integration_id = data.integrationId;
     if (data.integrationData) transactionData.integration_data = data.integrationData;
     if (data.tags) transactionData.tags = data.tags;
     if (data.location) transactionData.location = data.location;
     if (data.receiptUrl) transactionData.receipt_url = data.receiptUrl;
-    if (data.isRecurring) transactionData.is_recurring = data.isRecurring;
     if (data.recurringPattern) transactionData.recurring_pattern = data.recurringPattern;
+
+    // Convert date to user's timezone
+    const dateInUserTimezone = data.date.includes('T') ? data.date : dateToUserTimezone(data.date);
 
     const payload: any = {
       user_id: data.userId,
       amount: data.amount,
       type: data.type,
-      date: data.date,
+      date: dateInUserTimezone,
       status: data.status || 'completed',
       data: this.stringifyJSON(transactionData),
       created_at: now,
       updated_at: now,
+      category: data.category,
+      description: data.description,
+      currency: data.currency,
+      source: 'integration',
+      accountId: data.accountId,
+      creditCardId: data.creditCardId,
+      merchant: data.merchant,
+      tags: data.tags,
+      location: data.location,
+      receiptUrl: data.receiptUrl,
+      isRecurring: data.isRecurring,
+      recurringPattern: data.recurringPattern,
     };
 
     // Add account_id as a dedicated column
@@ -278,12 +322,30 @@ export class TransactionService {
       // Core indexed fields that can be updated directly
       if (data.amount !== undefined) updatePayload.amount = data.amount;
       if (data.type !== undefined) updatePayload.type = data.type;
-      if (data.date !== undefined) updatePayload.date = data.date;
+      if (data.date !== undefined) {
+        // Convert date to user's timezone
+        updatePayload.date = data.date.includes('T') ? data.date : dateToUserTimezone(data.date);
+      }
       if (data.status !== undefined) updatePayload.status = data.status;
 
       // Update account_id if changed
       if (data.accountId !== undefined) {
         updatePayload.account_id = data.accountId;
+      }
+
+      // Update installment fields if provided
+      if (data.installment !== undefined) {
+        updatePayload.installment = data.installment;
+      }
+      if (data.installments !== undefined) {
+        updatePayload.installments = data.installments;
+      }
+      if (data.creditCardTransactionCreatedAt !== undefined) {
+        // Convert purchase date to user's timezone
+        const purchaseDateInUserTimezone = data.creditCardTransactionCreatedAt.includes('T')
+          ? data.creditCardTransactionCreatedAt
+          : dateToUserTimezone(data.creditCardTransactionCreatedAt);
+        updatePayload.credit_card_transaction_created_at = purchaseDateInUserTimezone;
       }
 
       // Update data JSON field
@@ -417,6 +479,11 @@ export class TransactionService {
         queries.push(Query.search('description', filters.search));
       }
 
+      // Credit card filter - now using dedicated column
+      if (filters.creditCardId) {
+        queries.push(Query.equal('credit_card_id', filters.creditCardId));
+      }
+
       // Pagination
       const limit = filters.limit || 50;
       const offset = filters.offset || 0;
@@ -428,8 +495,10 @@ export class TransactionService {
 
       const response = await this.dbAdapter.listDocuments(DATABASE_ID, COLLECTIONS.TRANSACTIONS, queries);
 
+      const transactions = response.documents.map((doc: any) => this.formatTransaction(doc));
+
       return {
-        transactions: response.documents.map((doc: any) => this.formatTransaction(doc)),
+        transactions,
         total: response.total || 0,
       };
     } catch (error) {
@@ -524,6 +593,13 @@ export class TransactionService {
       date: document.date,
       status: document.status,
       account_id: document.account_id,
+      category: document.category,
+      description: document.description,
+      currency: document.currency,
+      source: document.source,
+      merchant: document.merchant,
+      tags: document.tags,
+      is_recurring: document.is_recurring,
       data: document.data,
       created_at: document.created_at,
       updated_at: document.updated_at,

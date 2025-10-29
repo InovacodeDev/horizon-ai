@@ -1,55 +1,161 @@
 import { getAppwriteDatabases } from '@/lib/appwrite/client';
-import { COLLECTIONS, CreditCard, CreditCardData, DATABASE_ID } from '@/lib/appwrite/schema';
-import { ID, Query } from 'node-appwrite';
+import { COLLECTIONS, CreditCard, DATABASE_ID } from '@/lib/appwrite/schema';
+import { Query } from 'node-appwrite';
+import AppwriteDBAdapter from '../appwrite/adapter';
 
 /**
  * Credit Card Service
- * Handles credit card CRUD operations
+ * Handles credit card operations and limit calculations
  */
 
-export interface CreateCreditCardData {
-  account_id: string;
-  name: string;
-  last_digits: string;
-  credit_limit: number;
-  used_limit?: number;
-  closing_day: number;
-  due_day: number;
-  brand?: 'visa' | 'mastercard' | 'elo' | 'amex' | 'other';
-  network?: string;
-  color?: string;
-}
-
-export interface UpdateCreditCardData {
-  name?: string;
-  credit_limit?: number;
-  used_limit?: number;
-  closing_day?: number;
-  due_day?: number;
-  brand?: 'visa' | 'mastercard' | 'elo' | 'amex' | 'other';
-  network?: string;
-  color?: string;
-}
-
 export class CreditCardService {
-  private dbAdapter: any;
+  private dbAdapter: AppwriteDBAdapter;
 
   constructor() {
     this.dbAdapter = getAppwriteDatabases();
   }
 
   /**
-   * Create a new credit card for an account
+   * Get credit card by ID
    */
-  async createCreditCard(data: CreateCreditCardData): Promise<CreditCard> {
+  async getCreditCardById(creditCardId: string): Promise<CreditCard | null> {
     try {
-      const cardData: CreditCardData = {
-        brand: data.brand,
-        network: data.network,
-        color: data.color,
-      };
+      const document = await this.dbAdapter.getDocument(DATABASE_ID, COLLECTIONS.CREDIT_CARDS, creditCardId);
+      return this.formatCreditCard(document);
+    } catch (error: any) {
+      if (error.code === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
 
-      const document = await this.dbAdapter.createDocument(DATABASE_ID, COLLECTIONS.CREDIT_CARDS, ID.unique(), {
+  /**
+   * Calculate available limit for a credit card
+   * Limit = credit_limit - sum of all transactions linked to this card
+   */
+  async calculateAvailableLimit(creditCardId: string): Promise<{
+    creditLimit: number;
+    usedLimit: number;
+    availableLimit: number;
+  }> {
+    try {
+      // Get credit card
+      const creditCard = await this.getCreditCardById(creditCardId);
+      if (!creditCard) {
+        throw new Error('Credit card not found');
+      }
+
+      // Get all transactions for this credit card
+      const transactionsResponse = await this.dbAdapter.listDocuments(DATABASE_ID, COLLECTIONS.CREDIT_CARD_TRANSACTIONS, [
+        Query.equal('credit_card_id', creditCardId),
+        Query.equal('status', 'completed'),
+        Query.limit(10000), // Get all transactions
+      ]);
+
+      // Calculate used limit (sum of all transaction amounts)
+      const usedLimit = transactionsResponse.documents.reduce((sum: number, doc: any) => {
+        return sum + (doc.amount || 0);
+      }, 0);
+
+      const availableLimit = creditCard.credit_limit - usedLimit;
+
+      return {
+        creditLimit: creditCard.credit_limit,
+        usedLimit,
+        availableLimit,
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Update credit card used limit
+   * This should be called after creating/updating/deleting transactions
+   */
+  async syncUsedLimit(creditCardId: string): Promise<void> {
+    try {
+      const { usedLimit } = await this.calculateAvailableLimit(creditCardId);
+
+      await this.dbAdapter.updateDocument(DATABASE_ID, COLLECTIONS.CREDIT_CARDS, creditCardId, {
+        used_limit: usedLimit,
+        updated_at: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      console.error('Failed to sync credit card used limit:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all credit cards for a user (via account)
+   */
+  async getCreditCardsByAccountId(accountId: string): Promise<CreditCard[]> {
+    try {
+      const response = await this.dbAdapter.listDocuments(DATABASE_ID, COLLECTIONS.CREDIT_CARDS, [
+        Query.equal('account_id', accountId),
+        Query.orderDesc('created_at'),
+      ]);
+
+      return response.documents.map((doc: any) => this.formatCreditCard(doc));
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Get all credit cards for a user
+   * Note: This requires fetching all accounts first, then all cards for those accounts
+   */
+  async getAllCreditCards(userId: string): Promise<CreditCard[]> {
+    try {
+      // First, get all accounts for the user
+      const accountsResponse = await this.dbAdapter.listDocuments(DATABASE_ID, COLLECTIONS.ACCOUNTS, [
+        Query.equal('user_id', userId),
+      ]);
+
+      if (accountsResponse.documents.length === 0) {
+        return [];
+      }
+
+      // Get all credit cards for all accounts
+      const accountIds = accountsResponse.documents.map((doc: any) => doc.$id);
+      const cardsPromises = accountIds.map((accountId: string) => this.getCreditCardsByAccountId(accountId));
+      const cardsArrays = await Promise.all(cardsPromises);
+
+      return cardsArrays.flat();
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Create a new credit card
+   */
+  async createCreditCard(data: {
+    account_id: string;
+    name: string;
+    last_digits: string;
+    credit_limit: number;
+    used_limit?: number;
+    closing_day: number;
+    due_day: number;
+    brand?: 'visa' | 'mastercard' | 'elo' | 'amex' | 'other';
+    network?: string;
+    color?: string;
+  }): Promise<CreditCard> {
+    try {
+      const now = new Date().toISOString();
+      const { ID } = await import('node-appwrite');
+
+      // Build data object for brand, network, color
+      const cardData: any = {};
+      if (data.brand) cardData.brand = data.brand;
+      if (data.network) cardData.network = data.network;
+      if (data.color) cardData.color = data.color;
+
+      const payload: any = {
         account_id: data.account_id,
         name: data.name,
         last_digits: data.last_digits,
@@ -57,183 +163,79 @@ export class CreditCardService {
         used_limit: data.used_limit || 0,
         closing_day: data.closing_day,
         due_day: data.due_day,
-        data: JSON.stringify(cardData),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      });
+        data: Object.keys(cardData).length > 0 ? JSON.stringify(cardData) : undefined,
+        created_at: now,
+        updated_at: now,
+      };
 
-      return this.deserializeCreditCard(document);
-    } catch (error: any) {
-      throw new Error(`Failed to create credit card: ${error.message}`);
-    }
-  }
+      const document = await this.dbAdapter.createDocument(DATABASE_ID, COLLECTIONS.CREDIT_CARDS, ID.unique(), payload);
 
-  /**
-   * Get all credit cards for a user
-   */
-  async getAllCreditCards(userId: string): Promise<CreditCard[]> {
-    try {
-      const result = await this.dbAdapter.listDocuments(DATABASE_ID, COLLECTIONS.CREDIT_CARDS, [
-        Query.orderDesc('created_at'),
-      ]);
-
-      const documents = result.documents || [];
-      return documents.map((doc: any) => this.deserializeCreditCard(doc));
-    } catch (error: any) {
-      throw new Error(`Failed to fetch credit cards: ${error.message}`);
-    }
-  }
-
-  /**
-   * Get credit cards by account (alias for getCreditCardsByAccountId)
-   */
-  async getCreditCardsByAccount(accountId: string): Promise<CreditCard[]> {
-    return this.getCreditCardsByAccountId(accountId);
-  }
-
-  /**
-   * Get all credit cards for an account
-   */
-  async getCreditCardsByAccountId(accountId: string): Promise<CreditCard[]> {
-    try {
-      const result = await this.dbAdapter.listDocuments(DATABASE_ID, COLLECTIONS.CREDIT_CARDS, [
-        Query.equal('account_id', accountId),
-        Query.orderDesc('created_at'),
-      ]);
-
-      const documents = result.documents || [];
-      const creditCards = documents.map((doc: any) => this.deserializeCreditCard(doc));
-
-      // Calculate real used limit based on transactions for each credit card
-      for (const card of creditCards) {
-        const realUsedLimit = await this.calculateUsedLimit(card.$id, card.account_id);
-        card.used_limit = realUsedLimit;
-      }
-
-      return creditCards;
-    } catch (error: any) {
-      throw new Error(`Failed to fetch credit cards: ${error.message}`);
-    }
-  }
-
-  /**
-   * Calculate credit card used limit based on transactions
-   */
-  async calculateUsedLimit(creditCardId: string, accountId: string): Promise<number> {
-    try {
-      // Get the account to get user_id
-      const accountDoc = await this.dbAdapter.getDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, accountId);
-
-      // Get all transactions for this user
-      const transactionsResult = await this.dbAdapter.listDocuments(DATABASE_ID, COLLECTIONS.TRANSACTIONS, [
-        Query.equal('user_id', accountDoc.user_id),
-        Query.limit(10000), // Get all transactions
-      ]);
-
-      let usedLimit = 0;
-
-      for (const transaction of transactionsResult.documents || []) {
-        // Parse transaction data to check if it's for this credit card
-        let transactionData: any = {};
-        if (transaction.data) {
-          try {
-            transactionData = typeof transaction.data === 'string' ? JSON.parse(transaction.data) : transaction.data;
-          } catch {
-            transactionData = {};
-          }
-        }
-
-        // Only include expense transactions for this credit card
-        if (transactionData.credit_card_id === creditCardId && transaction.type === 'expense') {
-          usedLimit += transaction.amount;
-        }
-      }
-
-      return usedLimit;
-    } catch (error: any) {
-      console.error(`Error calculating used limit for credit card ${creditCardId}:`, error);
-      // Return the stored used_limit as fallback
-      try {
-        const cardDoc = await this.dbAdapter.getDocument(DATABASE_ID, COLLECTIONS.CREDIT_CARDS, creditCardId);
-        return cardDoc.used_limit || 0;
-      } catch {
-        return 0;
-      }
-    }
-  }
-
-  /**
-   * Get a specific credit card by ID
-   */
-  async getCreditCardById(creditCardId: string): Promise<CreditCard> {
-    try {
-      const document = await this.dbAdapter.getDocument(DATABASE_ID, COLLECTIONS.CREDIT_CARDS, creditCardId);
-
-      return this.deserializeCreditCard(document);
-    } catch (error: any) {
-      throw new Error(`Credit card not found`);
+      return this.formatCreditCard(document);
+    } catch (error) {
+      throw error;
     }
   }
 
   /**
    * Update a credit card
    */
-  async updateCreditCard(creditCardId: string, data: UpdateCreditCardData): Promise<CreditCard> {
+  async updateCreditCard(
+    creditCardId: string,
+    data: {
+      name?: string;
+      last_digits?: string;
+      credit_limit?: number;
+      used_limit?: number;
+      closing_day?: number;
+      due_day?: number;
+      brand?: 'visa' | 'mastercard' | 'elo' | 'amex' | 'other';
+      network?: string;
+      color?: string;
+    },
+  ): Promise<CreditCard> {
     try {
-      // First verify the credit card exists
-      const existingCard = await this.getCreditCardById(creditCardId);
+      const now = new Date().toISOString();
 
-      const updateData: Record<string, any> = {
-        updated_at: new Date().toISOString(),
+      // Get existing card to merge data
+      const existing = await this.getCreditCardById(creditCardId);
+      if (!existing) {
+        throw new Error('Credit card not found');
+      }
+
+      // Parse existing data
+      const existingData = existing.data ? JSON.parse(existing.data) : {};
+
+      // Build updated data object
+      const updatedData: any = { ...existingData };
+      if (data.brand !== undefined) updatedData.brand = data.brand;
+      if (data.network !== undefined) updatedData.network = data.network;
+      if (data.color !== undefined) updatedData.color = data.color;
+
+      const updatePayload: any = {
+        updated_at: now,
       };
 
-      if (data.name !== undefined) {
-        updateData.name = data.name;
-      }
+      if (data.name !== undefined) updatePayload.name = data.name;
+      if (data.last_digits !== undefined) updatePayload.last_digits = data.last_digits;
+      if (data.credit_limit !== undefined) updatePayload.credit_limit = data.credit_limit;
+      if (data.used_limit !== undefined) updatePayload.used_limit = data.used_limit;
+      if (data.closing_day !== undefined) updatePayload.closing_day = data.closing_day;
+      if (data.due_day !== undefined) updatePayload.due_day = data.due_day;
 
-      if (data.credit_limit !== undefined) {
-        updateData.credit_limit = data.credit_limit;
-      }
-
-      if (data.used_limit !== undefined) {
-        updateData.used_limit = data.used_limit;
-      }
-
-      if (data.closing_day !== undefined) {
-        updateData.closing_day = data.closing_day;
-      }
-
-      if (data.due_day !== undefined) {
-        updateData.due_day = data.due_day;
-      }
-
-      // Update data JSON field if any data fields changed
-      if (data.brand !== undefined || data.network !== undefined || data.color !== undefined) {
-        const currentData = existingCard.data
-          ? typeof existingCard.data === 'string'
-            ? JSON.parse(existingCard.data)
-            : existingCard.data
-          : {};
-
-        const newData: CreditCardData = {
-          ...currentData,
-          ...(data.brand && { brand: data.brand }),
-          ...(data.network && { network: data.network }),
-          ...(data.color && { color: data.color }),
-        };
-        updateData.data = JSON.stringify(newData);
+      if (Object.keys(updatedData).length > 0) {
+        updatePayload.data = JSON.stringify(updatedData);
       }
 
       const document = await this.dbAdapter.updateDocument(
         DATABASE_ID,
         COLLECTIONS.CREDIT_CARDS,
         creditCardId,
-        updateData,
+        updatePayload,
       );
 
-      return this.deserializeCreditCard(document);
-    } catch (error: any) {
-      throw new Error(`Failed to update credit card: ${error.message}`);
+      return this.formatCreditCard(document);
+    } catch (error) {
+      throw error;
     }
   }
 
@@ -242,45 +244,19 @@ export class CreditCardService {
    */
   async deleteCreditCard(creditCardId: string): Promise<void> {
     try {
-      // First verify the credit card exists
-      await this.getCreditCardById(creditCardId);
-
       await this.dbAdapter.deleteDocument(DATABASE_ID, COLLECTIONS.CREDIT_CARDS, creditCardId);
     } catch (error: any) {
-      throw new Error(`Failed to delete credit card: ${error.message}`);
-    }
-  }
-
-  /**
-   * Update credit card used limit (used by transactions)
-   */
-  async updateUsedLimit(creditCardId: string, newUsedLimit: number): Promise<CreditCard> {
-    try {
-      const document = await this.dbAdapter.updateDocument(DATABASE_ID, COLLECTIONS.CREDIT_CARDS, creditCardId, {
-        used_limit: newUsedLimit,
-        updated_at: new Date().toISOString(),
-      });
-
-      return this.deserializeCreditCard(document);
-    } catch (error: any) {
-      throw new Error(`Failed to update used limit: ${error.message}`);
-    }
-  }
-
-  /**
-   * Deserialize Appwrite document to CreditCard type
-   */
-  private deserializeCreditCard(document: any): CreditCard {
-    let data: CreditCardData | undefined;
-
-    if (document.data) {
-      try {
-        data = typeof document.data === 'string' ? JSON.parse(document.data) : document.data;
-      } catch {
-        data = undefined;
+      if (error.code === 404) {
+        throw new Error('Credit card not found');
       }
+      throw error;
     }
+  }
 
+  /**
+   * Format credit card document
+   */
+  private formatCreditCard(document: any): CreditCard {
     return {
       $id: document.$id,
       $createdAt: document.$createdAt,
@@ -292,7 +268,7 @@ export class CreditCardService {
       used_limit: document.used_limit,
       closing_day: document.closing_day,
       due_day: document.due_day,
-      data: data ? JSON.stringify(data) : undefined,
+      data: document.data,
       created_at: document.created_at,
       updated_at: document.updated_at,
     };

@@ -78,7 +78,10 @@ export class BalanceSyncService {
 
       // Somar/subtrair todas as transações
       for (const transaction of transactions) {
-        // Verificar se não é transação de cartão de crédito
+        // Ignorar transações de cartão de crédito
+        // Verifica tanto a coluna dedicada quanto o campo no JSON (para compatibilidade)
+        if (transaction.credit_card_id) continue;
+
         let data: any = {};
         if (transaction.data) {
           try {
@@ -88,7 +91,6 @@ export class BalanceSyncService {
           }
         }
 
-        // Ignorar transações de cartão de crédito
         if (data.credit_card_id) continue;
 
         if (transaction.type === 'income') {
@@ -107,6 +109,9 @@ export class BalanceSyncService {
       const updatedSyncedIds = transactions
         .filter((t: any) => {
           // Filtrar transações de cartão de crédito
+          // Verifica tanto a coluna dedicada quanto o campo no JSON
+          if (t.credit_card_id) return false;
+
           try {
             const data = typeof t.data === 'string' ? JSON.parse(t.data) : t.data;
             return !data?.credit_card_id;

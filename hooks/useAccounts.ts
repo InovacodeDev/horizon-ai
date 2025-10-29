@@ -1,6 +1,7 @@
 'use client';
 
 import type { Account, CreateAccountDto, UpdateAccountDto } from '@/lib/types';
+import { cacheManager, getCacheKey, invalidateCache } from '@/lib/utils/cache';
 import { useCallback, useEffect, useState, useTransition } from 'react';
 
 interface UseAccountsOptions {
@@ -20,8 +21,20 @@ export function useAccounts(options: UseAccountsOptions = {}) {
   const [isPending, startTransition] = useTransition();
   const [initialized, setInitialized] = useState(false);
 
-  const fetchAccounts = useCallback(async () => {
+  const fetchAccounts = useCallback(async (skipCache = false) => {
     try {
+      // Check cache first
+      if (!skipCache) {
+        const cacheKey = getCacheKey.accounts('user');
+        const cached = cacheManager.get<Account[]>(cacheKey);
+
+        if (cached) {
+          setAccounts(cached);
+          setInitialized(true);
+          return;
+        }
+      }
+
       setLoading(true);
       setError(null);
 
@@ -35,6 +48,12 @@ export function useAccounts(options: UseAccountsOptions = {}) {
 
       const data = await response.json();
       setAccounts(data.data);
+
+      // Cache the result
+      const cacheKey = getCacheKey.accounts('user');
+      cacheManager.set(cacheKey, data.data);
+
+      setInitialized(true);
     } catch (err: any) {
       console.error('Error fetching accounts:', err);
       setError(err.message || 'Failed to fetch accounts');
@@ -92,6 +111,10 @@ export function useAccounts(options: UseAccountsOptions = {}) {
         const currentAccounts = Array.isArray(prev) ? prev : [];
         return [...currentAccounts.filter((a) => a.$id !== tempId), newAccount.data];
       });
+
+      // Invalidate cache
+      invalidateCache.accounts('user');
+
       return newAccount;
     } catch (err: any) {
       console.error('Error creating account:', err);
@@ -146,6 +169,10 @@ export function useAccounts(options: UseAccountsOptions = {}) {
 
       // Update with real data
       setAccounts((prev) => prev.map((a) => (a.$id === accountId ? updatedAccount : a)));
+
+      // Invalidate cache
+      invalidateCache.accounts('user');
+
       return updatedAccount;
     } catch (err: any) {
       console.error('Error updating account:', err);
@@ -176,6 +203,9 @@ export function useAccounts(options: UseAccountsOptions = {}) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to delete account');
       }
+
+      // Invalidate cache
+      invalidateCache.accounts('user');
     } catch (err: any) {
       console.error('Error deleting account:', err);
       setError(err.message || 'Failed to delete account');

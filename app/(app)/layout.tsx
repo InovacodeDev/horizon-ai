@@ -1,6 +1,6 @@
 import React from 'react';
 import { redirect } from 'next/navigation';
-import DashboardLayout from '@/components/layout/DashboardLayout';
+import ClientLayoutWrapper from '@/components/layout/ClientLayoutWrapper';
 import { getCurrentUser } from '@/lib/auth/session';
 import { User } from '@/lib/types';
 
@@ -37,8 +37,8 @@ export default async function AppLayout({
   };
 
   return (
-    <DashboardLayout user={userData}>
+    <ClientLayoutWrapper user={userData}>
       {children}
-    </DashboardLayout>
+    </ClientLayoutWrapper>
   );
 }

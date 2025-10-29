@@ -11,6 +11,7 @@ import { useTotalBalance } from "@/hooks/useTotalBalance";
 import { useCreditCardsWithCache } from "@/hooks/useCreditCardsWithCache";
 import { AddAccountModal } from "@/components/modals/AddAccountModal";
 import { AddCreditCardModal } from "@/components/modals/AddCreditCardModal";
+import { EditCreditCardModal } from "@/components/modals/EditCreditCardModal";
 import type { Account, AccountStatus, CreditCard } from "@/lib/types";
 import { useRouter } from "next/navigation";
 
@@ -53,9 +54,10 @@ interface CreditCardItemProps {
     card: CreditCard;
     onDelete: () => void;
     onViewStatement: () => void;
+    onEdit: () => void;
 }
 
-const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, onDelete, onViewStatement }) => {
+const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, onDelete, onViewStatement, onEdit }) => {
     const usagePercentage = (card.used_limit / card.credit_limit) * 100;
     const data = card.data ? (typeof card.data === 'string' ? JSON.parse(card.data) : card.data) : {};
     
@@ -106,12 +108,23 @@ const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, onDelete, onViewS
                     onClick={onViewStatement}
                     className="flex-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50 py-1.5 px-2 rounded text-xs font-medium"
                 >
-                    Ver Extrato
+                    Ver Fatura
+                </button>
+                <button
+                    onClick={onEdit}
+                    className="text-gray-400 hover:text-blue-600 hover:bg-blue-50 p-1.5 rounded"
+                    aria-label="Edit card"
+                    title="Editar cartão"
+                >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
                 </button>
                 <button
                     onClick={onDelete}
                     className="text-gray-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded"
                     aria-label="Delete card"
+                    title="Excluir cartão"
                 >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -128,16 +141,19 @@ interface AccountCardProps {
     onDelete: (accountId: string) => void;
     onAddCreditCard: () => void;
     onDeleteCreditCard: (cardId: string) => void;
+    onEditCreditCard: (card: CreditCard) => void;
     onViewCreditCardStatement: (cardId: string) => void;
 }
 
-const AccountCard: React.FC<AccountCardProps> = ({ 
-    account,
-    onDelete, 
-    onAddCreditCard,
-    onViewCreditCardStatement
+const AccountCard: React.FC<AccountCardProps> = ({
+  account,
+  onDelete,
+  onAddCreditCard,
+  onDeleteCreditCard,
+  onEditCreditCard,
+  onViewCreditCardStatement,
 }) => {
-    const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
     const { creditCards, deleteCreditCard: deleteCreditCardFromHook, fetchCreditCards } = useCreditCardsWithCache({
         accountId: account.$id,
@@ -156,15 +172,6 @@ const AccountCard: React.FC<AccountCardProps> = ({
         savings: "Poupança",
         investment: "Investimento",
         other: "Outro",
-    };
-
-    const onDeleteCreditCard = async (creditCardId: string) => {
-        try {
-            await deleteCreditCardFromHook(creditCardId);
-        } catch (error) {
-            console.error('Error deleting credit card:', error);
-            throw error;
-        }
     };
 
     return (
@@ -253,6 +260,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
                                     key={card.$id || `card-${index}`} 
                                     card={card}
                                     onViewStatement={() => onViewCreditCardStatement(card.$id)}
+                                    onEdit={() => onEditCreditCard(card)}
                                     onDelete={() => {
                                         if (confirm(`Tem certeza que deseja excluir o cartão "${card.name}"?`)) {
                                             onDeleteCreditCard(card.$id);
@@ -282,7 +290,9 @@ export default function AccountsPage() {
     
     const [isAddAccountModalOpen, setIsAddAccountModalOpen] = useState(false);
     const [isAddCardModalOpen, setIsAddCardModalOpen] = useState(false);
+    const [isEditCardModalOpen, setIsEditCardModalOpen] = useState(false);
     const [activeAccountForCard, setActiveAccountForCard] = useState<string>('');
+    const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
 
     const handleAddCreditCard = (accountId: string) => {
         setActiveAccountForCard(accountId);
@@ -319,12 +329,38 @@ export default function AccountsPage() {
     };
 
     const handleViewCreditCardStatement = (creditCardId: string) => {
-        // Calculate current month for filtering
-        const now = new Date();
-        const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        
-        // Navigate to transactions screen with filters
-        router.push(`/transactions?creditCardId=${creditCardId}&month=${month}`);
+        // Navigate to credit card bills page with the specific card selected
+        router.push(`/credit-card-bills?cardId=${creditCardId}`);
+    };
+
+    const handleEditCreditCard = (card: CreditCard) => {
+        setEditingCard(card);
+        setIsEditCardModalOpen(true);
+    };
+
+    const handleUpdateCreditCard = async (input: any) => {
+        if (!editingCard) return;
+
+        try {
+            const response = await fetch(`/api/credit-cards/${editingCard.$id}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(input),
+                credentials: 'include',
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to update credit card');
+            }
+
+            // Refresh credit cards
+            await fetchCreditCards();
+        } catch (error) {
+            console.error('Error updating credit card:', error);
+            throw error;
+        }
     };
 
     // Filter credit cards by account
@@ -377,6 +413,7 @@ export default function AccountsPage() {
                             onDelete={deleteAccount}
                             onAddCreditCard={() => handleAddCreditCard(account.$id)}
                             onDeleteCreditCard={handleDeleteCreditCard}
+                            onEditCreditCard={handleEditCreditCard}
                             onViewCreditCardStatement={handleViewCreditCardStatement}
                         />
                     ))
@@ -414,6 +451,18 @@ export default function AccountsPage() {
                 onSubmit={handleCreateCreditCard}
                 accountId={activeAccountForCard}
             />
+
+            {editingCard && (
+                <EditCreditCardModal
+                    isOpen={isEditCardModalOpen}
+                    onClose={() => {
+                        setIsEditCardModalOpen(false);
+                        setEditingCard(null);
+                    }}
+                    onSubmit={handleUpdateCreditCard}
+                    creditCard={editingCard}
+                />
+            )}
         </>
     );
 }

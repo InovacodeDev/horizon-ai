@@ -120,10 +120,17 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }
     }
 
+    if (body.last_digits !== undefined) {
+      if (typeof body.last_digits !== 'string' || !/^\d{4}$/.test(body.last_digits)) {
+        return NextResponse.json({ message: 'Last digits must be exactly 4 numeric characters' }, { status: 400 });
+      }
+    }
+
     // Update credit card
     const creditCardService = new CreditCardService();
     const creditCard = await creditCardService.updateCreditCard(creditCardId, {
       name: body.name,
+      last_digits: body.last_digits,
       credit_limit: body.credit_limit,
       used_limit: body.used_limit,
       closing_day: body.closing_day,

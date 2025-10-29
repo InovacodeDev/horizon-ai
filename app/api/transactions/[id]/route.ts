@@ -203,9 +203,39 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     // Update transaction
     const updatedTransaction = await transactionService.updateTransaction(transactionId, updateData);
 
+    // If applyToFutureInstallments is true, update future installments
+    if (body.applyToFutureInstallments && body.creditCardId && body.purchaseDate) {
+      try {
+        // Import database adapter
+        const { getAppwriteDatabases } = await import('@/lib/appwrite/client');
+        const { COLLECTIONS, DATABASE_ID } = await import('@/lib/appwrite/schema');
+        const { Query } = await import('node-appwrite');
+
+        const databases = getAppwriteDatabases();
+
+        // Find all future installments from the same purchase
+        const futureInstallments = await databases.listDocuments(DATABASE_ID, COLLECTIONS.TRANSACTIONS, [
+          Query.equal('user_id', userId),
+          Query.equal('credit_card_id', body.creditCardId),
+          Query.equal('credit_card_transaction_created_at', body.purchaseDate),
+          Query.greaterThan('installment', existingTransaction.installment || 1),
+          Query.limit(100),
+        ]);
+
+        // Update each future installment
+        for (const futureInstallment of futureInstallments.documents) {
+          await transactionService.updateTransaction(futureInstallment.$id, updateData);
+        }
+      } catch (error) {
+        console.error('Error updating future installments:', error);
+        // Don't fail the main update if future installments fail
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: updatedTransaction,
+      futureInstallmentsUpdated: body.applyToFutureInstallments || false,
     });
   } catch (error: any) {
     console.error('PATCH /api/transactions/[id] error:', error);
@@ -250,12 +280,50 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
     }
 
+    // Check if we should delete future installments
+    const { searchParams } = new URL(request.url);
+    const applyToFutureInstallments = searchParams.get('applyToFutureInstallments') === 'true';
+    const creditCardId = searchParams.get('creditCardId');
+    const purchaseDate = searchParams.get('purchaseDate');
+
     // Delete transaction
     await transactionService.deleteTransaction(transactionId);
 
+    // If applyToFutureInstallments is true, delete future installments
+    let deletedCount = 1;
+    if (applyToFutureInstallments && creditCardId && purchaseDate) {
+      try {
+        // Import database adapter
+        const { getAppwriteDatabases } = await import('@/lib/appwrite/client');
+        const { COLLECTIONS, DATABASE_ID } = await import('@/lib/appwrite/schema');
+        const { Query } = await import('node-appwrite');
+
+        const databases = getAppwriteDatabases();
+
+        // Find all future installments from the same purchase
+        const futureInstallments = await databases.listDocuments(DATABASE_ID, COLLECTIONS.TRANSACTIONS, [
+          Query.equal('user_id', userId),
+          Query.equal('credit_card_id', creditCardId),
+          Query.equal('credit_card_transaction_created_at', purchaseDate),
+          Query.greaterThan('installment', existingTransaction.installment || 1),
+          Query.limit(100),
+        ]);
+
+        // Delete each future installment
+        for (const futureInstallment of futureInstallments.documents) {
+          await transactionService.deleteTransaction(futureInstallment.$id);
+          deletedCount++;
+        }
+      } catch (error) {
+        console.error('Error deleting future installments:', error);
+        // Don't fail the main deletion if future installments fail
+      }
+    }
+
     return NextResponse.json({
       success: true,
-      message: 'Transaction deleted successfully',
+      message: `Transaction${deletedCount > 1 ? 's' : ''} deleted successfully`,
+      deletedCount,
     });
   } catch (error: any) {
     console.error('DELETE /api/transactions/[id] error:', error);

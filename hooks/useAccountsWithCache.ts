@@ -1,6 +1,7 @@
 'use client';
 
 import type { Account, CreateAccountDto, UpdateAccountDto } from '@/lib/types';
+import { cacheManager, getCacheKey, invalidateCache } from '@/lib/utils/cache';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface UseAccountsOptions {
@@ -8,33 +9,18 @@ interface UseAccountsOptions {
   cacheTime?: number; // milliseconds
 }
 
-const CACHE_KEY = 'accounts_cache';
-const CACHE_TIMESTAMP_KEY = 'accounts_cache_timestamp';
-
 /**
  * Hook for managing bank accounts with cache and realtime updates
+ * Now uses centralized cache manager with 12h TTL
  */
 export function useAccountsWithCache(options: UseAccountsOptions = {}) {
-  const { enableRealtime = true, cacheTime = 5 * 60 * 1000 } = options; // 5 minutes default
+  const { enableRealtime = true, cacheTime = 12 * 60 * 60 * 1000 } = options; // 12 hours default
 
   const [accounts, setAccounts] = useState<Account[]>(() => {
     // Try to load from cache
-    if (typeof window !== 'undefined') {
-      try {
-        const cached = localStorage.getItem(CACHE_KEY);
-        const timestamp = localStorage.getItem(CACHE_TIMESTAMP_KEY);
-
-        if (cached && timestamp) {
-          const age = Date.now() - parseInt(timestamp);
-          if (age < cacheTime) {
-            return JSON.parse(cached);
-          }
-        }
-      } catch (err) {
-        console.error('Error loading cache:', err);
-      }
-    }
-    return [];
+    const cacheKey = getCacheKey.accounts('user');
+    const cached = cacheManager.get<Account[]>(cacheKey);
+    return cached || [];
   });
 
   const [loading, setLoading] = useState(false);
@@ -43,16 +29,13 @@ export function useAccountsWithCache(options: UseAccountsOptions = {}) {
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Save to cache
-  const saveToCache = useCallback((data: Account[]) => {
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-        localStorage.setItem(CACHE_TIMESTAMP_KEY, Date.now().toString());
-      } catch (err) {
-        console.error('Error saving to cache:', err);
-      }
-    }
-  }, []);
+  const saveToCache = useCallback(
+    (data: Account[]) => {
+      const cacheKey = getCacheKey.accounts('user');
+      cacheManager.set(cacheKey, data, cacheTime);
+    },
+    [cacheTime],
+  );
 
   const fetchAccounts = useCallback(
     async (silent = false) => {
@@ -281,11 +264,8 @@ export function useAccountsWithCache(options: UseAccountsOptions = {}) {
     [saveToCache],
   );
 
-  const invalidateCache = useCallback(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(CACHE_KEY);
-      localStorage.removeItem(CACHE_TIMESTAMP_KEY);
-    }
+  const invalidateCacheAndRefetch = useCallback(() => {
+    invalidateCache.accounts('user');
     fetchAccounts();
   }, [fetchAccounts]);
 
@@ -297,6 +277,6 @@ export function useAccountsWithCache(options: UseAccountsOptions = {}) {
     createAccount,
     updateAccount,
     deleteAccount,
-    invalidateCache,
+    invalidateCache: invalidateCacheAndRefetch,
   };
 }

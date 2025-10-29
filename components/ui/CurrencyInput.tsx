@@ -43,32 +43,22 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
 
   // Initialize display value
   useEffect(() => {
-    if (value === 0 && displayValue === '') {
-      return; // Don't format empty input
-    }
     setDisplayValue(formatToCurrency(value));
   }, [value]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target.value;
 
-    // Allow empty input
-    if (input === '') {
-      setDisplayValue('');
-      onChange(0);
-      return;
-    }
-
     // Remove all non-numeric characters
     const numericOnly = input.replace(/\D/g, '');
 
     if (numericOnly === '') {
-      setDisplayValue('');
+      setDisplayValue('0,00');
       onChange(0);
       return;
     }
 
-    // Convert to cents (last 2 digits are decimals)
+    // Convert to cents (all digits represent cents, last 2 are decimals)
     const cents = parseInt(numericOnly, 10);
     const valueInReais = cents / 100;
 
@@ -84,9 +74,11 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
 
   const handleBlur = () => {
     // Ensure proper formatting on blur
-    if (displayValue === '') {
+    if (displayValue === '' || displayValue === '0' || displayValue === '0,00') {
       setDisplayValue(formatToCurrency(0));
-      onChange(0);
+      if (value !== 0) {
+        onChange(0);
+      }
     }
   };
 

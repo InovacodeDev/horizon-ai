@@ -17,6 +17,10 @@ import { migration as migrateAccountIdAndSyncBalances } from './20251027_000012_
 import { migration as createInvestmentsTable } from './20251027_000013_create_investments_table';
 import { migration as createCreditCardBillsTable } from './20251027_000014_create_credit_card_bills_table';
 import { migration as expandTransactionsColumns } from './20251028_000015_expand_transactions_columns';
+import { migration as addCreditCardIdToTransactions } from './20251029_000016_add_credit_card_id_to_transactions';
+import { migration as addInstallmentColumnsToTransactions } from './20251029_000017_add_installment_columns_to_transactions';
+import { migration as createCreditCardTransactionsTable } from './20251029_000018_create_credit_card_transactions_table';
+import { migration as migrateCreditCardData } from './20251029_000019_migrate_credit_card_data';
 import { Migration } from './migration.interface';
 
 /**
@@ -40,4 +44,8 @@ export const migrations: Migration[] = [
   createInvestmentsTable,
   createCreditCardBillsTable,
   expandTransactionsColumns,
+  addCreditCardIdToTransactions,
+  addInstallmentColumnsToTransactions,
+  createCreditCardTransactionsTable,
+  migrateCreditCardData,
 ];

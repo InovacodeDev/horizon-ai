@@ -1,6 +1,7 @@
 'use client';
 
 import type { CreditCard } from '@/lib/types';
+import { cacheManager, getCacheKey as getKey, invalidateCache as invalidateCacheUtil } from '@/lib/utils/cache';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useAccounts } from './useAccounts';
@@ -11,37 +12,19 @@ interface UseCreditCardsOptions {
   cacheTime?: number;
 }
 
-const getCacheKey = (accountId?: string) => (accountId ? `credit_cards_cache_${accountId}` : 'credit_cards_cache_all');
-
-const getTimestampKey = (accountId?: string) =>
-  accountId ? `credit_cards_timestamp_${accountId}` : 'credit_cards_timestamp_all';
-
 /**
  * Hook for managing credit cards with cache and realtime updates
+ * Now uses centralized cache manager with 12h TTL
  */
 export function useCreditCardsWithCache(options: UseCreditCardsOptions = {}) {
-  const { accountId, enableRealtime = true, cacheTime = 5 * 60 * 1000 } = options;
+  const { accounts } = useAccounts();
+  const { accountId, enableRealtime = true, cacheTime = 12 * 60 * 60 * 1000 } = options; // 12 hours default
 
   const [creditCards, setCreditCards] = useState<CreditCard[]>(() => {
     // Try to load from cache
-    if (typeof window !== 'undefined') {
-      try {
-        const cacheKey = getCacheKey(accountId);
-        const timestampKey = getTimestampKey(accountId);
-        const cached = localStorage.getItem(cacheKey);
-        const timestamp = localStorage.getItem(timestampKey);
-
-        if (cached && timestamp) {
-          const age = Date.now() - parseInt(timestamp);
-          if (age < cacheTime) {
-            return JSON.parse(cached);
-          }
-        }
-      } catch (err) {
-        console.error('Error loading cache:', err);
-      }
-    }
-    return [];
+    const cacheKey = getKey.creditCards('user');
+    const cached = cacheManager.get<CreditCard[]>(cacheKey);
+    return cached || [];
   });
 
   const [loading, setLoading] = useState(false);
@@ -51,18 +34,10 @@ export function useCreditCardsWithCache(options: UseCreditCardsOptions = {}) {
 
   const saveToCache = useCallback(
     (data: CreditCard[]) => {
-      if (typeof window !== 'undefined') {
-        try {
-          const cacheKey = getCacheKey(accountId);
-          const timestampKey = getTimestampKey(accountId);
-          localStorage.setItem(cacheKey, JSON.stringify(data));
-          localStorage.setItem(timestampKey, Date.now().toString());
-        } catch (err) {
-          console.error('Error saving to cache:', err);
-        }
-      }
+      const cacheKey = getKey.creditCards('user');
+      cacheManager.set(cacheKey, data, cacheTime);
     },
-    [accountId],
+    [cacheTime],
   );
 
   const fetchCreditCards = useCallback(
@@ -73,13 +48,10 @@ export function useCreditCardsWithCache(options: UseCreditCardsOptions = {}) {
 
         let url = '/api/credit-cards';
 
-        // If specific account ID provided via options
         if (accountId) {
           url = `/api/credit-cards/account/${accountId}`;
-        }
-        // If multiple account IDs provided as parameter
-        else if (accountIds && accountIds.length > 0) {
-          url = `/api/credit-cards?account_ids=${accountIds.join(',')}`;
+        } else if (accounts && accounts.length > 0) {
+          url = `/api/credit-cards?account_ids=${accounts.map((a) => a.$id).join(',')}`;
         }
 
         const response = await fetch(url, {
@@ -179,14 +151,9 @@ export function useCreditCardsWithCache(options: UseCreditCardsOptions = {}) {
   );
 
   const invalidateCache = useCallback(() => {
-    if (typeof window !== 'undefined') {
-      const cacheKey = getCacheKey(accountId);
-      const timestampKey = getTimestampKey(accountId);
-      localStorage.removeItem(cacheKey);
-      localStorage.removeItem(timestampKey);
-    }
+    invalidateCacheUtil.creditCards('user');
     fetchCreditCards();
-  }, [accountId, fetchCreditCards]);
+  }, [fetchCreditCards]);
 
   return {
     creditCards,

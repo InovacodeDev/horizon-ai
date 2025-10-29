@@ -80,7 +80,7 @@ export function getAppwriteAccount(): Account {
 /**
  * Get Appwrite Databases service
  */
-export function getAppwriteDatabases(): any {
+export function getAppwriteDatabases(): AppwriteDBAdapter {
   if (!dbAdapter) {
     initializeAppwrite();
   }
