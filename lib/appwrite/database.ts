@@ -18,7 +18,7 @@ export async function listDocuments<T = any>(
   const result = await databases.listDocuments(DATABASE_ID, collectionId, queries);
 
   return {
-    documents: result.documents || [],
+    documents: (result.documents || []) as T[],
     total: result.total || result.documents?.length || 0,
   };
 }
@@ -28,7 +28,7 @@ export async function listDocuments<T = any>(
  */
 export async function getDocument<T = any>(collectionId: string, documentId: string): Promise<T> {
   const databases = getAppwriteDatabases();
-  return await databases.getDocument(DATABASE_ID, collectionId, documentId);
+  return (await databases.getDocument(DATABASE_ID, collectionId, documentId)) as T;
 }
 
 /**
@@ -41,7 +41,7 @@ export async function createDocument<T = any>(
   permissions?: string[],
 ): Promise<T> {
   const databases = getAppwriteDatabases();
-  return await databases.createDocument(DATABASE_ID, collectionId, documentId, data, permissions);
+  return (await databases.createDocument(DATABASE_ID, collectionId, documentId, data, permissions)) as T;
 }
 
 /**
@@ -49,7 +49,7 @@ export async function createDocument<T = any>(
  */
 export async function updateDocument<T = any>(collectionId: string, documentId: string, data: any): Promise<T> {
   const databases = getAppwriteDatabases();
-  return await databases.updateDocument(DATABASE_ID, collectionId, documentId, data);
+  return (await databases.updateDocument(DATABASE_ID, collectionId, documentId, data)) as T;
 }
 
 /**

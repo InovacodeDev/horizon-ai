@@ -40,7 +40,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Category is required' }, { status: 400 });
     }
 
-    console.log({ body });
     if (!body.account_id) {
       return NextResponse.json({ message: 'Account ID is required' }, { status: 400 });
     }
@@ -64,13 +63,19 @@ export async function POST(request: NextRequest) {
     const purchaseYear = purchaseDate.getFullYear();
 
     // Calculate which bill this purchase belongs to
-    // If purchase is on or before closing day, it goes to current month's bill
-    // If purchase is after closing day, it goes to next month's bill
+    // A bill period goes from closingDay of previous month to (closingDay - 1) of current month
+    // The bill is named after the month when it CLOSES
+    // Example: "Fatura de Novembro" includes transactions from 05/10 to 04/11 (closes on 05/11)
     let firstInstallmentMonth = purchaseMonth;
     let firstInstallmentYear = purchaseYear;
 
-    // If purchase is after closing day, first installment goes to next month's bill
-    if (purchaseDay > closingDay) {
+    // If purchase day is before closing day, it belongs to the bill that closes in this month
+    // Otherwise, it belongs to the bill that closes in the next month
+    if (purchaseDay < closingDay) {
+      // Purchase is before closing day, so it belongs to current month's bill
+      // (which started on closingDay of previous month)
+    } else {
+      // Purchase is on or after closing day, so it belongs to next month's bill
       firstInstallmentMonth += 1;
       if (firstInstallmentMonth > 11) {
         firstInstallmentMonth = 0;

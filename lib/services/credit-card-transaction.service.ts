@@ -244,7 +244,7 @@ export class CreditCardTransactionService {
       queries.push(Query.equal('is_recurring', filters.isRecurring));
     }
 
-    const limit = filters.limit || 50;
+    const limit = filters.limit || 1000;
     const offset = filters.offset || 0;
     queries.push(Query.limit(limit));
     queries.push(Query.offset(offset));

@@ -360,6 +360,7 @@ export const transactionsSchema = {
       array: false,
     },
     { key: 'account_id', type: 'string', size: 255, required: false, array: false },
+    { key: 'credit_card_id', type: 'string', size: 255, required: false, array: false },
     { key: 'category', type: 'string', size: 100, required: false, array: false },
     { key: 'description', type: 'string', size: 500, required: false, array: false },
     { key: 'currency', type: 'string', size: 10, required: false, array: false },
@@ -367,6 +368,9 @@ export const transactionsSchema = {
     { key: 'merchant', type: 'string', size: 255, required: false, array: false },
     { key: 'tags', type: 'string', size: 500, required: false, array: false },
     { key: 'is_recurring', type: 'boolean', required: false },
+    { key: 'installment', type: 'integer', required: false, min: 1 },
+    { key: 'installments', type: 'integer', required: false, min: 1 },
+    { key: 'credit_card_transaction_created_at', type: 'datetime', required: false },
     { key: 'data', type: 'string', size: 16000, required: false, array: false }, // JSON field for remaining data
     { key: 'created_at', type: 'datetime', required: true },
     { key: 'updated_at', type: 'datetime', required: true },
@@ -377,9 +381,11 @@ export const transactionsSchema = {
     { key: 'idx_type', type: 'key', attributes: ['type'] },
     { key: 'idx_status', type: 'key', attributes: ['status'] },
     { key: 'idx_account_id', type: 'key', attributes: ['account_id'], orders: ['ASC'] },
+    { key: 'idx_credit_card_id', type: 'key', attributes: ['credit_card_id'], orders: ['ASC'] },
     { key: 'idx_category', type: 'key', attributes: ['category'] },
     { key: 'idx_source', type: 'key', attributes: ['source'] },
     { key: 'idx_merchant', type: 'key', attributes: ['merchant'] },
+    { key: 'idx_installments', type: 'key', attributes: ['installments'], orders: ['ASC'] },
   ],
 };
 
@@ -393,6 +399,7 @@ export interface Transaction {
   date: string;
   status: 'pending' | 'completed' | 'failed' | 'cancelled';
   account_id?: string;
+  credit_card_id?: string;
   category?: string;
   description?: string;
   currency?: string;
@@ -400,6 +407,9 @@ export interface Transaction {
   merchant?: string;
   tags?: string;
   is_recurring?: boolean;
+  installment?: number; // Current installment number (1, 2, 3...)
+  installments?: number; // Total number of installments (12 for 12x)
+  credit_card_transaction_created_at?: string; // Original purchase date on credit card
   data?: string; // JSON string for remaining data (location, receipt_url, recurring_pattern, etc.)
   created_at: string;
   updated_at: string;

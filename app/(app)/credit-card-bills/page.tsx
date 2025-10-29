@@ -31,6 +31,7 @@ interface Bill {
   totalAmount: number;
   isPaid: boolean;
   isOpen: boolean;
+  isClosed?: boolean;
 }
 
 const CreditCardBillsPage: React.FC = () => {
@@ -69,21 +70,17 @@ const CreditCardBillsPage: React.FC = () => {
 
       setLoadingTransactions(true);
       try {
-        console.log('Fetching credit card transactions for card:', selectedCardId);
-        const response = await fetch(`/api/credit-cards/transactions?credit_card_id=${selectedCardId}`, {
+        const start_date = new Date();
+        start_date.setMonth(new Date().getMonth() - 6); // Get last 6 months of transactions
+        const response = await fetch(`/api/credit-cards/transactions?credit_card_id=${selectedCardId}&start_date=${start_date.toISOString()}`, {
           credentials: 'include',
         });
 
-        console.log('Response status:', response.status);
-
         if (response.ok) {
           const result = await response.json();
-          console.log('API Response:', result);
           
           // API returns data for transactions
           const transactionsData = result.data || [];
-          console.log('Transactions data:', transactionsData);
-          console.log('Number of transactions:', transactionsData.length);
           
           // Map API response to local Transaction interface
           const mappedTransactions = transactionsData.map((t: any) => ({
@@ -99,7 +96,6 @@ const CreditCardBillsPage: React.FC = () => {
             credit_card_transaction_created_at: t.purchase_date,
           }));
           
-          console.log('Mapped transactions:', mappedTransactions);
           setTransactions(mappedTransactions);
         } else {
           console.error('Response not OK:', await response.text());
@@ -170,19 +166,30 @@ const CreditCardBillsPage: React.FC = () => {
     const settings = getCardSettings(selectedCard);
     const billsMap = new Map<string, Bill>();
     const today = new Date();
+    today.setHours(12, 0, 0, 0); // Reset time for accurate date comparison
 
     transactions.forEach((transaction) => {
       const transactionDate = new Date(transaction.date);
+      transactionDate.setHours(0, 0, 0, 0);
       const transactionDay = transactionDate.getDate();
       const transactionMonth = transactionDate.getMonth();
       const transactionYear = transactionDate.getFullYear();
 
       // Determine which bill this transaction belongs to
+      // A bill period goes from closingDay of previous month to (closingDay - 1) of current month
+      // The bill is named after the month when it CLOSES
+      // Example: "Fatura de Novembro" includes transactions from 05/10 to 04/11 (closes on 05/11)
+
       let billMonth = transactionMonth;
       let billYear = transactionYear;
 
-      // If transaction is after closing day, it goes to next month's bill
-      if (transactionDay >= settings.closingDay) {
+      // If transaction day is before closing day, it belongs to the bill that closes in this month
+      // Otherwise, it belongs to the bill that closes in the next month
+      if (transactionDay < settings.closingDay) {
+        // Transaction is before closing day, so it belongs to current month's bill
+        // (which started on closingDay of previous month)
+      } else {
+        // Transaction is on or after closing day, so it belongs to next month's bill
         billMonth += 1;
         if (billMonth > 11) {
           billMonth = 0;
@@ -192,17 +199,24 @@ const CreditCardBillsPage: React.FC = () => {
 
       const billKey = `${billYear}-${String(billMonth + 1).padStart(2, '0')}`;
 
-      // Calculate closing and due dates for this bill
+      // Calculate closing date for this bill (the day when bill closes)
       const closingDate = new Date(billYear, billMonth, settings.closingDay);
-      const dueDate = new Date(billYear, billMonth, settings.dueDay);
+      closingDate.setHours(0, 0, 0, 0);
 
-      // If due day is before closing day, due date is in next month
-      if (settings.dueDay < settings.closingDay) {
+      // Calculate due date for this bill
+      let dueDate = new Date(billYear, billMonth, settings.dueDay);
+      
+      // If due day is before or equal to closing day, due date is in next month
+      if (settings.dueDay <= settings.closingDay) {
         dueDate.setMonth(dueDate.getMonth() + 1);
       }
+      dueDate.setHours(23, 59, 59, 999);
 
-      // Check if bill is still open (before due date)
-      const isOpen = dueDate >= today;
+      // Bill is visible until the day after due date
+      const isOpen = today <= dueDate;
+
+      // Bill is closed if today is after closing date
+      const isClosed = today > closingDate;
 
       if (!billsMap.has(billKey)) {
         billsMap.set(billKey, {
@@ -214,6 +228,7 @@ const CreditCardBillsPage: React.FC = () => {
           totalAmount: 0,
           isPaid: false,
           isOpen,
+          isClosed,
         });
       }
 
@@ -239,10 +254,15 @@ const CreditCardBillsPage: React.FC = () => {
     return filteredBills;
   }, [bills]);
 
-  // Calculate current bill total and available limit
+  // Calculate current bill total and available limit (only open/not closed bills)
   const currentBillTotal = useMemo(() => {
     if (openBills.length === 0) return 0;
-    return openBills[0].totalAmount;
+    // Only count bills that are not closed yet
+    return openBills
+      .filter((bill) => !bill.isClosed)
+      .reduce((acc, bill) => {
+        return acc + bill.totalAmount;
+      }, 0);
   }, [openBills]);
 
   const availableLimit = useMemo(() => {
@@ -268,7 +288,9 @@ const CreditCardBillsPage: React.FC = () => {
       if (!selectedCardId) return;
 
       try {
-        const response = await fetch(`/api/credit-cards/transactions?credit_card_id=${selectedCardId}`, {
+        const start_date = new Date();
+        start_date.setMonth(new Date().getMonth() - 6); // Get last 6 months of transactions
+        const response = await fetch(`/api/credit-cards/transactions?credit_card_id=${selectedCardId}&start_date=${start_date.toISOString()}`, {
           credentials: 'include',
         });
 
@@ -468,12 +490,24 @@ const CreditCardBillsPage: React.FC = () => {
             <div className='p-6'>
               <div className='flex items-center justify-between mb-6'>
                 <div>
-                  <h2 className='text-xl font-semibold text-on-surface'>
-                    {selectedBill ? `Fatura de ${formatMonthYear(selectedBill.month, selectedBill.year)}` : `Faturas de ${selectedCard.name}`}
-                  </h2>
+                  <div className='flex items-center gap-3'>
+                    <h2 className='text-xl font-semibold text-on-surface'>
+                      {selectedBill ? `Fatura de ${formatMonthYear(selectedBill.month, selectedBill.year)}` : `Faturas de ${selectedCard.name}`}
+                    </h2>
+                    {selectedBill && selectedBill.isClosed && (
+                      <span className='inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-error/10 text-error'>
+                        Fechada
+                      </span>
+                    )}
+                    {selectedBill && !selectedBill.isClosed && (
+                      <span className='inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-success/10 text-success'>
+                        Aberta
+                      </span>
+                    )}
+                  </div>
                   {selectedBill && (
                     <p className='text-sm text-on-surface-variant mt-1'>
-                      Vencimento: {formatDate(selectedBill.dueDate.toISOString())}
+                      Fechamento: {formatDate(selectedBill.closingDate.toISOString())} • Vencimento: {formatDate(selectedBill.dueDate.toISOString())}
                     </p>
                   )}
                 </div>
