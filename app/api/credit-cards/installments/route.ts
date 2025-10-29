@@ -47,8 +47,15 @@ export async function POST(request: NextRequest) {
 
     const closingDay = body.closing_day || 10;
 
-    // Calculate installment amount
-    const installmentAmount = body.total_amount / body.installments;
+    // Calculate installment amounts
+    // Round down to 2 decimal places for regular installments
+    const regularInstallmentAmount = Math.floor((body.total_amount / body.installments) * 100) / 100;
+
+    // Calculate the total of regular installments
+    const regularInstallmentsTotal = regularInstallmentAmount * (body.installments - 1);
+
+    // First installment gets the remainder to ensure total is exact
+    const firstInstallmentAmount = Math.round((body.total_amount - regularInstallmentsTotal) * 100) / 100;
 
     // Determine the first installment date based on purchase date and closing day
     const purchaseDate = new Date(body.purchase_date);
@@ -119,9 +126,12 @@ export async function POST(request: NextRequest) {
         ? `${body.description} (${i + 1}/${body.installments})`
         : `Parcela ${i + 1}/${body.installments}`;
 
+      // Use first installment amount for the first installment, regular amount for others
+      const currentInstallmentAmount = i === 0 ? firstInstallmentAmount : regularInstallmentAmount;
+
       const transaction = await creditCardTransactionService.createTransaction({
         userId,
-        amount: installmentAmount,
+        amount: currentInstallmentAmount,
         category: body.category,
         description,
         date: installmentDate.toISOString(), // Bill due date
@@ -141,7 +151,8 @@ export async function POST(request: NextRequest) {
       data: {
         installments: body.installments,
         total_amount: body.total_amount,
-        installment_amount: installmentAmount,
+        first_installment_amount: firstInstallmentAmount,
+        regular_installment_amount: regularInstallmentAmount,
         transactions: createdTransactions,
       },
     });
