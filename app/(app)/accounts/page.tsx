@@ -201,8 +201,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
                 <DropdownMenu
                     trigger={
                         <button
-                            onClick={(e) => e.stopPropagation()}
-                            className="text-gray-400 hover:text-gray-600 p-2"
+                            className="text-gray-400 hover:text-gray-600 p-2 rounded-lg hover:bg-gray-100 transition-colors"
                             aria-label="Account menu"
                         >
                             <DotsVerticalIcon className="h-5 w-5" />
