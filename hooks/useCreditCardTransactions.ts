@@ -104,6 +104,38 @@ export function useCreditCardTransactions(options: UseCreditCardTransactionsOpti
     fetchTransactions();
   }, [fetchTransactions]);
 
+  // Setup realtime subscription for credit card transactions
+  useEffect(() => {
+    const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID;
+    if (!databaseId) {
+      console.warn('NEXT_PUBLIC_APPWRITE_DATABASE_ID not set, realtime disabled for credit card transactions');
+      return;
+    }
+
+    try {
+      const { getAppwriteBrowserClient } = require('@/lib/appwrite/client-browser');
+      const client = getAppwriteBrowserClient();
+
+      const channels = [`databases.${databaseId}.collections.credit_card_transactions.documents`];
+
+      const unsubscribe = client.subscribe(channels, (response: any) => {
+        console.log('📡 Realtime event received for credit card transactions:', response.events);
+
+        // Refetch transactions on any change
+        fetchTransactions(true);
+      });
+
+      console.log('✅ Subscribed to credit card transactions realtime updates');
+
+      return () => {
+        unsubscribe();
+        console.log('🔌 Unsubscribed from credit card transactions realtime');
+      };
+    } catch (error) {
+      console.error('❌ Error setting up realtime for credit card transactions:', error);
+    }
+  }, [fetchTransactions]);
+
   return {
     transactions,
     loading,

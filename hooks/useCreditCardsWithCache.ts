@@ -97,19 +97,55 @@ export function useCreditCardsWithCache(options: UseCreditCardsOptions = {}) {
     }
   }, [initialized, fetchCreditCards]);
 
-  // Setup realtime polling
+  // Setup realtime subscription
   useEffect(() => {
     if (!enableRealtime || !initialized) return;
 
-    pollingIntervalRef.current = setInterval(() => {
-      fetchCreditCards(true);
-    }, 30000);
+    const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID;
+    if (!databaseId) {
+      console.warn('NEXT_PUBLIC_APPWRITE_DATABASE_ID not set, falling back to polling');
+      // Fallback to polling
+      pollingIntervalRef.current = setInterval(() => {
+        fetchCreditCards(true);
+      }, 30000);
+      return () => {
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+        }
+      };
+    }
 
-    return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-      }
-    };
+    try {
+      const { getAppwriteBrowserClient } = require('@/lib/appwrite/client-browser');
+      const client = getAppwriteBrowserClient();
+
+      const channels = [`databases.${databaseId}.collections.credit_cards.documents`];
+
+      const unsubscribe = client.subscribe(channels, (response: any) => {
+        console.log('📡 Realtime event received for credit cards:', response.events);
+
+        // Refetch credit cards on any change
+        fetchCreditCards(true);
+      });
+
+      console.log('✅ Subscribed to credit cards realtime updates');
+
+      return () => {
+        unsubscribe();
+        console.log('🔌 Unsubscribed from credit cards realtime');
+      };
+    } catch (error) {
+      console.error('❌ Error setting up realtime for credit cards:', error);
+      // Fallback to polling on error
+      pollingIntervalRef.current = setInterval(() => {
+        fetchCreditCards(true);
+      }, 30000);
+      return () => {
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+        }
+      };
+    }
   }, [enableRealtime, initialized, fetchCreditCards]);
 
   const deleteCreditCard = useCallback(

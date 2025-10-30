@@ -80,20 +80,55 @@ export function useAccountsWithCache(options: UseAccountsOptions = {}) {
     }
   }, [initialized, fetchAccounts]);
 
-  // Setup realtime polling (simple implementation)
+  // Setup realtime subscription
   useEffect(() => {
     if (!enableRealtime || !initialized) return;
 
-    // Poll every 30 seconds for updates
-    pollingIntervalRef.current = setInterval(() => {
-      fetchAccounts(true); // Silent fetch
-    }, 30000);
+    const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID;
+    if (!databaseId) {
+      console.warn('NEXT_PUBLIC_APPWRITE_DATABASE_ID not set, falling back to polling');
+      // Fallback to polling
+      pollingIntervalRef.current = setInterval(() => {
+        fetchAccounts(true);
+      }, 30000);
+      return () => {
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+        }
+      };
+    }
 
-    return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-      }
-    };
+    try {
+      const { getAppwriteBrowserClient } = require('@/lib/appwrite/client-browser');
+      const client = getAppwriteBrowserClient();
+
+      const channels = [`databases.${databaseId}.collections.accounts.documents`];
+
+      const unsubscribe = client.subscribe(channels, (response: any) => {
+        console.log('📡 Realtime event received for accounts:', response.events);
+
+        // Refetch accounts on any change
+        fetchAccounts(true);
+      });
+
+      console.log('✅ Subscribed to accounts realtime updates');
+
+      return () => {
+        unsubscribe();
+        console.log('🔌 Unsubscribed from accounts realtime');
+      };
+    } catch (error) {
+      console.error('❌ Error setting up realtime for accounts:', error);
+      // Fallback to polling on error
+      pollingIntervalRef.current = setInterval(() => {
+        fetchAccounts(true);
+      }, 30000);
+      return () => {
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+        }
+      };
+    }
   }, [enableRealtime, initialized, fetchAccounts]);
 
   const createAccount = useCallback(

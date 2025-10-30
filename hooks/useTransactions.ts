@@ -138,6 +138,40 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
     }
   }, [userId, initialTransactions, fetchTransactions]);
 
+  // Setup realtime subscription for transactions
+  useEffect(() => {
+    if (!userId) return;
+
+    const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID;
+    if (!databaseId) {
+      console.warn('NEXT_PUBLIC_APPWRITE_DATABASE_ID not set, realtime disabled for transactions');
+      return;
+    }
+
+    try {
+      const { getAppwriteBrowserClient } = require('@/lib/appwrite/client-browser');
+      const client = getAppwriteBrowserClient();
+
+      const channels = [`databases.${databaseId}.collections.transactions.documents`];
+
+      const unsubscribe = client.subscribe(channels, (response: any) => {
+        console.log('📡 Realtime event received for transactions:', response.events);
+
+        // Refetch transactions on any change
+        fetchTransactions(undefined, true);
+      });
+
+      console.log('✅ Subscribed to transactions realtime updates');
+
+      return () => {
+        unsubscribe();
+        console.log('🔌 Unsubscribed from transactions realtime');
+      };
+    } catch (error) {
+      console.error('❌ Error setting up realtime for transactions:', error);
+    }
+  }, [userId, fetchTransactions]);
+
   const createTransaction = useCallback(
     async (input: CreateTransactionDto) => {
       const tempId = `temp-${Date.now()}`;

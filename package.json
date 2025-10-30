@@ -24,10 +24,12 @@
     "test:auth": "tsx tests/auth-flow.test.ts",
     "test:accounts": "tsx tests/accounts-crud.test.ts",
     "test:transactions": "tsx tests/transactions-crud.test.ts",
-    "test:credit-cards": "tsx tests/credit-cards-crud.test.ts"
+    "test:credit-cards": "tsx tests/credit-cards-crud.test.ts",
+    "test:realtime": "tsx scripts/test-realtime.ts"
   },
   "dependencies": {
     "@google/genai": "^1.25.0",
+    "appwrite": "^21.3.0",
     "dotenv": "^17.2.3",
     "febraban-bank-holidays": "^1.2.0",
     "jose": "^6.1.0",
