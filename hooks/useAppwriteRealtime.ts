@@ -1,6 +1,7 @@
 'use client';
 
 import { getAppwriteBrowserClient } from '@/lib/appwrite/client-browser';
+import { Realtime } from 'appwrite';
 import { useEffect, useRef } from 'react';
 
 type RealtimeEvent = 'create' | 'update' | 'delete';

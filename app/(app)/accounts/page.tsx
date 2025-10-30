@@ -12,6 +12,7 @@ import { useCreditCardsWithCache } from "@/hooks/useCreditCardsWithCache";
 import { AddAccountModal } from "@/components/modals/AddAccountModal";
 import { AddCreditCardModal } from "@/components/modals/AddCreditCardModal";
 import { EditCreditCardModal } from "@/components/modals/EditCreditCardModal";
+import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import type { Account, AccountStatus, CreditCard } from "@/lib/types";
 import { useRouter } from "next/navigation";
 
@@ -143,6 +144,8 @@ interface AccountCardProps {
     onDeleteCreditCard: (cardId: string) => void;
     onEditCreditCard: (card: CreditCard) => void;
     onViewCreditCardStatement: (cardId: string) => void;
+    onConfirmDelete: (accountId: string, accountName: string) => void;
+    onConfirmDeleteCard: (cardId: string, cardName: string) => void;
 }
 
 const AccountCard: React.FC<AccountCardProps> = ({
@@ -152,6 +155,8 @@ const AccountCard: React.FC<AccountCardProps> = ({
   onDeleteCreditCard,
   onEditCreditCard,
   onViewCreditCardStatement,
+  onConfirmDelete,
+  onConfirmDeleteCard,
 }) => {
   const [expanded, setExpanded] = useState(false);
 
@@ -222,11 +227,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
                         Integrar com Open Finance
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                        onClick={() => {
-                            if (confirm(`Tem certeza que deseja excluir a conta "${account.name}"?`)) {
-                                onDelete(account.$id);
-                            }
-                        }}
+                        onClick={() => onConfirmDelete(account.$id, account.name)}
                         icon={
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -260,11 +261,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
                                     card={card}
                                     onViewStatement={() => onViewCreditCardStatement(card.$id)}
                                     onEdit={() => onEditCreditCard(card)}
-                                    onDelete={() => {
-                                        if (confirm(`Tem certeza que deseja excluir o cartão "${card.name}"?`)) {
-                                            onDeleteCreditCard(card.$id);
-                                        }
-                                    }}
+                                    onDelete={() => onConfirmDeleteCard(card.$id, card.name)}
                                 />
                             ))}
                         </div>
@@ -292,6 +289,20 @@ export default function AccountsPage() {
     const [isEditCardModalOpen, setIsEditCardModalOpen] = useState(false);
     const [activeAccountForCard, setActiveAccountForCard] = useState<string>('');
     const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
+    
+    // Confirmation modal states
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        onConfirm: () => void;
+        variant?: 'danger' | 'warning' | 'info';
+    }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        onConfirm: () => {},
+    });
 
     const handleAddCreditCard = (accountId: string) => {
         setActiveAccountForCard(accountId);
@@ -414,6 +425,24 @@ export default function AccountsPage() {
                             onDeleteCreditCard={handleDeleteCreditCard}
                             onEditCreditCard={handleEditCreditCard}
                             onViewCreditCardStatement={handleViewCreditCardStatement}
+                            onConfirmDelete={(accountId, accountName) => {
+                                setConfirmModal({
+                                    isOpen: true,
+                                    title: 'Excluir Conta',
+                                    message: `Tem certeza que deseja excluir a conta "${accountName}"? Esta ação não pode ser desfeita.`,
+                                    onConfirm: () => deleteAccount(accountId),
+                                    variant: 'danger',
+                                });
+                            }}
+                            onConfirmDeleteCard={(cardId, cardName) => {
+                                setConfirmModal({
+                                    isOpen: true,
+                                    title: 'Excluir Cartão de Crédito',
+                                    message: `Tem certeza que deseja excluir o cartão "${cardName}"? Esta ação não pode ser desfeita.`,
+                                    onConfirm: () => handleDeleteCreditCard(cardId),
+                                    variant: 'danger',
+                                });
+                            }}
                         />
                     ))
                 ) : (
@@ -462,6 +491,17 @@ export default function AccountsPage() {
                     creditCard={editingCard}
                 />
             )}
+
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                onConfirm={confirmModal.onConfirm}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                variant={confirmModal.variant}
+                confirmText="Excluir"
+                cancelText="Cancelar"
+            />
         </>
     );
 }
