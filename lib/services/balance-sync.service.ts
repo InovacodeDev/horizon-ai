@@ -61,20 +61,9 @@ export class BalanceSyncService {
         return false;
       });
 
-      // Recalcular balance do zero
-      const initialBalance = account.balance || 0;
-
-      // Se não há transações sincronizadas ainda, o balance atual É o initial_balance
-      // Caso contrário, precisamos recalcular
+      // Recalcular balance do zero baseado apenas nas transações
+      // O balance sempre começa em 0 e é calculado pela soma das transações
       let newBalance = 0;
-
-      if (syncedIds.length === 0) {
-        // Primeira sincronização: balance atual é o initial_balance
-        newBalance = initialBalance;
-      } else {
-        // Já houve sincronização: recalcular do zero
-        newBalance = 0;
-      }
 
       // Somar/subtrair todas as transações
       for (const transaction of transactions) {
@@ -98,11 +87,6 @@ export class BalanceSyncService {
         } else if (transaction.type === 'expense') {
           newBalance -= transaction.amount;
         }
-      }
-
-      // Adicionar initial_balance se for primeira sincronização
-      if (syncedIds.length === 0) {
-        newBalance += initialBalance;
       }
 
       // Atualizar conta com novo balance e IDs sincronizados

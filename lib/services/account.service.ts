@@ -51,7 +51,7 @@ export class AccountService {
         user_id: userId,
         name: data.name,
         account_type: data.account_type,
-        balance: data.initial_balance || 0,
+        balance: 0, // Balance sempre começa em 0 e é calculado pelas transações
         is_manual: data.is_manual ?? true,
         data: JSON.stringify(accountData),
         created_at: new Date().toISOString(),
