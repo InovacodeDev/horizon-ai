@@ -196,6 +196,9 @@ export default function TransactionsPage() {
         flow: "expense",
         accountId: "",
         creditCardId: "",
+        isRecurring: false,
+        recurringFrequency: "monthly" as 'daily' | 'weekly' | 'monthly' | 'yearly',
+        recurringEndDate: "",
     };
     const [newTransaction, setNewTransaction] = useState(initialNewTransactionState);
 
@@ -317,6 +320,12 @@ export default function TransactionsPage() {
                 credit_card_id: newTransaction.creditCardId || undefined,
                 merchant: newTransaction.bankName,
                 tags: newTransaction.notes ? [newTransaction.notes] : undefined,
+                is_recurring: newTransaction.isRecurring,
+                recurring_pattern: newTransaction.isRecurring ? {
+                    frequency: newTransaction.recurringFrequency,
+                    interval: 1,
+                    endDate: newTransaction.recurringEndDate || undefined,
+                } : undefined,
             });
 
             await refetch();
@@ -783,6 +792,64 @@ export default function TransactionsPage() {
                             onChange={(e) => setNewTransaction({ ...newTransaction, notes: e.target.value })}
                             className="w-full p-3 bg-surface border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:outline-none"
                         />
+
+                        {/* Recurring Transaction Options */}
+                        <div className="border-t border-outline pt-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={newTransaction.isRecurring}
+                                    onChange={(e) => setNewTransaction({ 
+                                        ...newTransaction, 
+                                        isRecurring: e.target.checked 
+                                    })}
+                                    className="w-5 h-5 rounded border-outline text-primary focus:ring-2 focus:ring-primary"
+                                />
+                                <span className="text-sm font-medium text-on-surface">
+                                    Transação Recorrente
+                                </span>
+                            </label>
+                            <p className="text-xs text-on-surface-variant mt-1 ml-7">
+                                Marque se esta transação se repete regularmente
+                            </p>
+
+                            {newTransaction.isRecurring && (
+                                <div className="mt-4 space-y-4 ml-7">
+                                    <div>
+                                        <label htmlFor="frequency" className="block text-sm font-medium text-on-surface-variant mb-1">
+                                            Frequência *
+                                        </label>
+                                        <select
+                                            id="frequency"
+                                            value={newTransaction.recurringFrequency}
+                                            onChange={(e) => setNewTransaction({ 
+                                                ...newTransaction, 
+                                                recurringFrequency: e.target.value as any 
+                                            })}
+                                            className="w-full h-12 px-3 bg-surface border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:outline-none"
+                                        >
+                                            <option value="daily">Diária</option>
+                                            <option value="weekly">Semanal</option>
+                                            <option value="monthly">Mensal</option>
+                                            <option value="yearly">Anual</option>
+                                        </select>
+                                    </div>
+
+                                    <DateInput
+                                        label="Data de Término (opcional)"
+                                        id="recurringEndDate"
+                                        value={newTransaction.recurringEndDate}
+                                        onChange={(value) => setNewTransaction({ 
+                                            ...newTransaction, 
+                                            recurringEndDate: value 
+                                        })}
+                                    />
+                                    <p className="text-xs text-on-surface-variant">
+                                        Deixe em branco para recorrência indefinida
+                                    </p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                     <div className="p-4 bg-surface-variant/20 flex justify-end gap-3">
                         <Button type="button" variant="outlined" onClick={() => setIsAddModalOpen(false)}>

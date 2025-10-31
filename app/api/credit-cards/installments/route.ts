@@ -57,25 +57,20 @@ export async function POST(request: NextRequest) {
     const firstInstallmentAmount = Math.round((body.total_amount - regularInstallmentsTotal) * 100) / 100;
 
     // Determine the first installment date based on purchase date and closing day
-    const purchaseDate = new Date(body.purchase_date);
-    const purchaseDay = purchaseDate.getDate();
-    const purchaseMonth = purchaseDate.getMonth();
-    const purchaseYear = purchaseDate.getFullYear();
+    // Parse the purchase date in YYYY-MM-DD format to avoid timezone issues
+    const [purchaseYear, purchaseMonth, purchaseDay] = body.purchase_date.split('-').map(Number);
 
-    // Calculate which bill this purchase belongs to
-    // A bill period goes from closingDay of previous month to (closingDay - 1) of current month
-    // The bill is named after the month when it CLOSES
-    // Example: "Fatura de Novembro" includes transactions from 05/10 to 04/11 (closes on 05/11)
-    let firstInstallmentMonth = purchaseMonth;
+    // Simple logic: if purchase is before closing day, it goes to current month's bill
+    // If purchase is on or after closing day, it goes to next month's bill
+    // Example with closing day 30:
+    // - Purchase on 20/08 (day 20 < 30) -> August bill
+    // - Purchase on 30/08 (day 30 >= 30) -> September bill
+
+    let firstInstallmentMonth = purchaseMonth - 1; // Convert to 0-indexed (August = 7)
     let firstInstallmentYear = purchaseYear;
 
-    // If purchase day is before closing day, it belongs to the bill that closes in this month
-    // Otherwise, it belongs to the bill that closes in the next month
-    if (purchaseDay < closingDay) {
-      // Purchase is before closing day, so it belongs to current month's bill
-      // (which started on closingDay of previous month)
-    } else {
-      // Purchase is on or after closing day, so it belongs to next month's bill
+    // If purchase is on or after closing day, move to next month
+    if (purchaseDay >= closingDay) {
       firstInstallmentMonth += 1;
       if (firstInstallmentMonth > 11) {
         firstInstallmentMonth = 0;
@@ -102,13 +97,13 @@ export async function POST(request: NextRequest) {
       return Math.min(day, lastDay);
     };
 
-    // Create transactions for each installment
+    // Prepare all transactions for bulk creation
     const creditCardTransactionService = new CreditCardTransactionService();
-    const createdTransactions = [];
+    const transactionsToCreate = [];
 
     for (let i = 0; i < body.installments; i++) {
       // Calculate the month and year for this installment
-      let installmentMonth = firstInstallmentMonth - 1 + i;
+      let installmentMonth = firstInstallmentMonth + i;
       let installmentYear = firstInstallmentYear;
 
       while (installmentMonth > 11) {
@@ -116,15 +111,26 @@ export async function POST(request: NextRequest) {
         installmentYear += 1;
       }
 
-      // The transaction date should be in the bill month, using the purchase day
-      // This ensures the transaction appears in the correct bill
-      // For example: purchase on 22/09 with closing on day 10
-      // - First installment should be dated 22/10 (appears in October bill)
-      // - Second installment should be dated 22/11 (appears in November bill)
-      const adjustedPurchaseDay = adjustDayForMonth(installmentYear, installmentMonth, purchaseDay);
+      // The transaction date should be the purchase date, but in the corresponding month
+      // For example: purchase on 04/03
+      // - First installment: 04/03 (appears in March bill if before closing, or April if after)
+      // - Second installment: 04/04 (appears in April bill if before closing, or May if after)
+      // - Third installment: 04/05 (appears in May bill if before closing, or June if after)
 
-      // Create the installment date using the bill month and purchase day
-      const installmentDate = new Date(installmentYear, installmentMonth, adjustedPurchaseDay);
+      // Calculate the actual month for this installment's purchase date
+      let actualMonth = purchaseMonth - 1 + i; // Start from purchase month
+      let actualYear = purchaseYear;
+
+      while (actualMonth > 11) {
+        actualMonth -= 12;
+        actualYear += 1;
+      }
+
+      // Adjust day if the month doesn't have that day (e.g., Feb 30 -> Feb 28)
+      const adjustedPurchaseDay = adjustDayForMonth(actualYear, actualMonth, purchaseDay);
+
+      // Create the installment date using the actual month and purchase day
+      const installmentDate = new Date(actualYear, actualMonth, adjustedPurchaseDay);
 
       // Create description with installment info
       const description = body.description
@@ -134,12 +140,12 @@ export async function POST(request: NextRequest) {
       // Use first installment amount for the first installment, regular amount for others
       const currentInstallmentAmount = i === 0 ? firstInstallmentAmount : regularInstallmentAmount;
 
-      const transaction = await creditCardTransactionService.createTransaction({
+      transactionsToCreate.push({
         userId,
         amount: currentInstallmentAmount,
         category: body.category,
         description,
-        date: installmentDate.toISOString(), // Bill due date
+        date: installmentDate.toISOString(), // Transaction date (same day as purchase, but in corresponding month)
         purchaseDate: dateToUserTimezone(body.purchase_date),
         creditCardId: body.credit_card_id,
         merchant: body.merchant,
@@ -147,9 +153,10 @@ export async function POST(request: NextRequest) {
         installment: i + 1, // Current installment number (1, 2, 3...)
         installments: body.installments, // Total installments (12 for 12x)
       });
-
-      createdTransactions.push(transaction);
     }
+
+    // Create all transactions in bulk
+    const createdTransactions = await creditCardTransactionService.bulkCreateTransactions(transactionsToCreate);
 
     return NextResponse.json({
       success: true,

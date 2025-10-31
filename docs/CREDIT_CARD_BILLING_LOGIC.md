@@ -2,45 +2,70 @@
 
 ## Regra de Fechamento de Fatura
 
-A lógica de faturamento de cartão de crédito segue a seguinte regra:
+A lógica de faturamento de cartão de crédito segue uma regra simples:
 
-### Período da Fatura
+### Regra Principal
 
-**Regra:** Uma fatura é nomeada pelo **mês em que fecha** e inclui todas as transações do **dia de fechamento do mês anterior** até o **dia anterior ao fechamento do mês atual**.
+**Uma compra entra na fatura do mês em que foi feita, a menos que seja feita no dia de fechamento ou depois.**
 
-### Exemplos de Período
+- **Compra ANTES do dia de fechamento:** Entra na fatura do mês atual
+- **Compra NO dia de fechamento ou DEPOIS:** Entra na fatura do próximo mês
 
-#### Exemplo 1: Fechamento no dia 5
+### Nome da Fatura
 
-- **Fatura de Novembro/2024:** Inclui transações de **05/10/2024** até **04/11/2024** (fecha em 05/11)
-- **Fatura de Dezembro/2024:** Inclui transações de **05/11/2024** até **04/12/2024** (fecha em 05/12)
+**O nome da fatura é baseado no mês do VENCIMENTO, não no mês de fechamento.**
 
-#### Exemplo 2: Fechamento no dia 30
+Exemplo:
 
-- **Fatura de Novembro/2024:** Inclui transações de **30/10/2024** até **29/11/2024** (fecha em 30/11)
-- **Fatura de Dezembro/2024:** Inclui transações de **30/11/2024** até **29/12/2024** (fecha em 30/12)
+- Fechamento: 30/10
+- Vencimento: 10/11
+- Nome: **"Fatura de Novembro"** ✅ (não "Fatura de Outubro")
+
+### Exemplos Práticos
+
+#### Exemplo 1: Fechamento dia 30, Vencimento dia 10
+
+- **Compra no dia 20/08:**
+  - Entra na fatura que fecha em 30/08
+  - Vence em 10/09
+  - Nome: **"Fatura de Setembro"** ✅
+- **Compra no dia 30/08:**
+  - Entra na fatura que fecha em 30/09
+  - Vence em 10/10
+  - Nome: **"Fatura de Outubro"** ✅
+
+#### Exemplo 2: Fechamento dia 5, Vencimento dia 15
+
+- **Compra no dia 03/10:**
+  - Entra na fatura que fecha em 05/10
+  - Vence em 15/10
+  - Nome: **"Fatura de Outubro"** ✅
+- **Compra no dia 05/10:**
+  - Entra na fatura que fecha em 05/11
+  - Vence em 15/11
+  - Nome: **"Fatura de Novembro"** ✅
 
 ### Quando uma transação aparece em uma fatura?
 
-Considerando um cartão com **dia de fechamento = 5**:
+Considerando um cartão com **dia de fechamento = 30**:
 
-#### Exemplo 1: Transação no dia 10/10
+#### Exemplo 1: Transação no dia 20/08
 
-- Data da transação: 10/10/2024
-- Dia da transação (10) >= Dia de fechamento (5)? **SIM**
-- **Resultado:** Aparece na fatura de **Novembro/2024** (período: 05/10 a 04/11, fecha em 05/11)
+- Data da transação: 20/08/2024
+- Dia da transação (20) < Dia de fechamento (30)? **SIM**
+- **Resultado:** Aparece na fatura de **Agosto/2024**
 
-#### Exemplo 2: Transação no dia 03/11
+#### Exemplo 2: Transação no dia 30/08 (dia de fechamento)
 
-- Data da transação: 03/11/2024
-- Dia da transação (03) < Dia de fechamento (5)? **SIM**
-- **Resultado:** Aparece na fatura de **Novembro/2024** (período: 05/10 a 04/11, fecha em 05/11)
+- Data da transação: 30/08/2024
+- Dia da transação (30) >= Dia de fechamento (30)? **SIM**
+- **Resultado:** Aparece na fatura de **Setembro/2024**
 
-#### Exemplo 3: Transação no dia 05/11 (exatamente no dia de fechamento)
+#### Exemplo 3: Transação no dia 31/08
 
-- Data da transação: 05/11/2024
-- Dia da transação (05) >= Dia de fechamento (5)? **SIM**
-- **Resultado:** Aparece na fatura de **Dezembro/2024** (período: 05/11 a 04/12, fecha em 05/12)
+- Data da transação: 31/08/2024
+- Dia da transação (31) >= Dia de fechamento (30)? **SIM**
+- **Resultado:** Aparece na fatura de **Setembro/2024**
 
 ## Status da Fatura
 
@@ -123,20 +148,20 @@ Quando uma compra parcelada é criada:
 
 ### Exemplo de Parcelamento
 
-Compra de R$ 1.200,00 em 12x no dia 22/10/2024, com fechamento no dia 5:
+Compra de R$ 1.200,00 em 12x no dia 20/08/2024, com fechamento no dia 30:
 
-- Dia da compra (22) >= Dia de fechamento (5)? **SIM**
-- Primeira parcela: **Novembro/2024** (data: 22/10/2024, período da fatura: 05/10 a 04/11, fecha em 05/11)
-- Segunda parcela: **Dezembro/2024** (data: 22/11/2024, período da fatura: 05/11 a 04/12, fecha em 05/12)
-- Terceira parcela: **Janeiro/2025** (data: 22/12/2024, período da fatura: 05/12 a 04/01, fecha em 05/01)
+- Dia da compra (20) < Dia de fechamento (30)? **SIM**
+- Primeira parcela: **Agosto/2024** (compra em 20/08)
+- Segunda parcela: **Setembro/2024** (compra em 20/09)
+- Terceira parcela: **Outubro/2024** (compra em 20/10)
 - ... e assim por diante
 
-Se a mesma compra fosse feita no dia 03/11/2024:
+Se a mesma compra fosse feita no dia 30/08/2024:
 
-- Dia da compra (03) < Dia de fechamento (5)? **SIM**
-- Primeira parcela: **Novembro/2024** (data: 03/11/2024, período da fatura: 05/10 a 04/11, fecha em 05/11)
-- Segunda parcela: **Dezembro/2024** (data: 03/12/2024, período da fatura: 05/11 a 04/12, fecha em 05/12)
-- Terceira parcela: **Janeiro/2025** (data: 03/01/2025, período da fatura: 05/12 a 04/01, fecha em 05/01)
+- Dia da compra (30) >= Dia de fechamento (30)? **SIM**
+- Primeira parcela: **Setembro/2024** (compra em 30/08)
+- Segunda parcela: **Outubro/2024** (compra em 30/09)
+- Terceira parcela: **Novembro/2024** (compra em 30/10)
 - ... e assim por diante
 
 ## UI/UX

@@ -215,6 +215,71 @@ export class AccountService {
   }
 
   /**
+   * Transfer balance between accounts
+   */
+  async transferBalance(
+    userId: string,
+    data: {
+      fromAccountId: string;
+      toAccountId: string;
+      amount: number;
+      description?: string;
+    },
+  ): Promise<void> {
+    try {
+      // Verify both accounts exist and belong to the user
+      const fromAccount = await this.getAccountById(data.fromAccountId, userId);
+      const toAccount = await this.getAccountById(data.toAccountId, userId);
+
+      // Check if source account has sufficient balance
+      if (fromAccount.balance < data.amount) {
+        throw new Error('Saldo insuficiente na conta de origem');
+      }
+
+      // Create transfer log
+      const { COLLECTIONS, DATABASE_ID } = await import('@/lib/appwrite/schema');
+      await this.dbAdapter.createDocument(DATABASE_ID, COLLECTIONS.TRANSFER_LOGS, ID.unique(), {
+        user_id: userId,
+        from_account_id: data.fromAccountId,
+        to_account_id: data.toAccountId,
+        amount: data.amount,
+        description: data.description || `Transferência de ${fromAccount.name} para ${toAccount.name}`,
+        status: 'completed',
+        created_at: new Date().toISOString(),
+      });
+
+      // Update balances
+      await this.dbAdapter.updateDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, data.fromAccountId, {
+        balance: fromAccount.balance - data.amount,
+        updated_at: new Date().toISOString(),
+      });
+
+      await this.dbAdapter.updateDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, data.toAccountId, {
+        balance: toAccount.balance + data.amount,
+        updated_at: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      // Log failed transfer
+      try {
+        const { COLLECTIONS, DATABASE_ID } = await import('@/lib/appwrite/schema');
+        await this.dbAdapter.createDocument(DATABASE_ID, COLLECTIONS.TRANSFER_LOGS, ID.unique(), {
+          user_id: userId,
+          from_account_id: data.fromAccountId,
+          to_account_id: data.toAccountId,
+          amount: data.amount,
+          description: data.description || 'Transferência',
+          status: 'failed',
+          created_at: new Date().toISOString(),
+        });
+      } catch (logError) {
+        console.error('Failed to log transfer error:', logError);
+      }
+
+      throw new Error(`Falha ao transferir saldo: ${error.message}`);
+    }
+  }
+
+  /**
    * Deserialize Appwrite document to Account type
    */
   private deserializeAccount(document: any): Account {

@@ -226,3 +226,75 @@ export async function getAccountByIdAction(accountId: string) {
     throw new Error(error instanceof Error ? error.message : 'Failed to fetch account');
   }
 }
+
+/**
+ * Transfer balance between accounts action
+ */
+export async function transferBalanceAction(
+  prevState: AccountActionState | null,
+  formData: FormData,
+): Promise<AccountActionState> {
+  try {
+    // Require authentication
+    const user = await requireAuth();
+
+    // Extract form data
+    const fromAccountId = formData.get('from_account_id') as string;
+    const toAccountId = formData.get('to_account_id') as string;
+    const amount = parseFloat(formData.get('amount') as string);
+    const description = formData.get('description') as string;
+
+    // Validation
+    if (!fromAccountId) {
+      return {
+        success: false,
+        error: 'Conta de origem é obrigatória',
+      };
+    }
+
+    if (!toAccountId) {
+      return {
+        success: false,
+        error: 'Conta de destino é obrigatória',
+      };
+    }
+
+    if (fromAccountId === toAccountId) {
+      return {
+        success: false,
+        error: 'As contas de origem e destino devem ser diferentes',
+      };
+    }
+
+    if (!amount || amount <= 0) {
+      return {
+        success: false,
+        error: 'Valor da transferência deve ser maior que zero',
+      };
+    }
+
+    // Perform transfer
+    const accountService = new AccountService();
+    await accountService.transferBalance(user.sub, {
+      fromAccountId,
+      toAccountId,
+      amount,
+      description,
+    });
+
+    // Revalidate paths that display accounts
+    revalidatePath('/accounts');
+    revalidatePath('/overview');
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error('Transfer balance action error:', error);
+
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Falha ao transferir saldo',
+    };
+  }
+}

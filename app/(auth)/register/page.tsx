@@ -20,19 +20,19 @@ export default function RegisterPage() {
 
   const validatePassword = (pwd: string) => {
     if (pwd.length < 8) {
-      setPasswordError('Password must be at least 8 characters');
+      setPasswordError('A senha deve ter pelo menos 8 caracteres');
       return false;
     }
     if (!/(?=.*[a-z])/.test(pwd)) {
-      setPasswordError('Password must contain at least one lowercase letter');
+      setPasswordError('A senha deve conter pelo menos uma letra minúscula');
       return false;
     }
     if (!/(?=.*[A-Z])/.test(pwd)) {
-      setPasswordError('Password must contain at least one uppercase letter');
+      setPasswordError('A senha deve conter pelo menos uma letra maiúscula');
       return false;
     }
     if (!/(?=.*\d)/.test(pwd)) {
-      setPasswordError('Password must contain at least one number');
+      setPasswordError('A senha deve conter pelo menos um número');
       return false;
     }
     setPasswordError('');
@@ -95,14 +95,14 @@ export default function RegisterPage() {
         <Link href="/">
           <Button variant="outlined" className="border-none !px-2">
             <ArrowLeftIcon className="w-5 h-5 mr-2" />
-            Back to Home
+            Voltar para Início
           </Button>
         </Link>
       </div>
       <Card className="p-8">
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-medium text-on-surface">Create your account</h1>
-          <p className="text-on-surface-variant">Start your journey to financial clarity.</p>
+          <h1 className="text-2xl font-medium text-on-surface">Crie sua conta</h1>
+          <p className="text-on-surface-variant">Comece sua jornada para clareza financeira.</p>
         </div>
         <form className="space-y-4" onSubmit={handleSubmit}>
           {error && (
@@ -112,7 +112,7 @@ export default function RegisterPage() {
           )}
           <Input
             id="firstName"
-            label="First Name"
+            label="Nome"
             type="text"
             placeholder="Mariana"
             required
@@ -122,7 +122,7 @@ export default function RegisterPage() {
           />
           <Input
             id="lastName"
-            label="Last Name"
+            label="Sobrenome"
             type="text"
             placeholder="Silva"
             value={lastName}
@@ -131,9 +131,9 @@ export default function RegisterPage() {
           />
           <Input
             id="email"
-            label="Email Address"
+            label="Endereço de Email"
             type="email"
-            placeholder="you@example.com"
+            placeholder="voce@exemplo.com"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -142,9 +142,9 @@ export default function RegisterPage() {
           <div>
             <Input
               id="password"
-              label="Password"
+              label="Senha"
               type="password"
-              placeholder="Min. 8 characters"
+              placeholder="Mín. 8 caracteres"
               required
               minLength={8}
               value={password}
@@ -153,17 +153,17 @@ export default function RegisterPage() {
             />
             {passwordError && <p className="text-sm text-red-500 mt-1">{passwordError}</p>}
             <p className="text-xs text-on-surface-variant mt-1">
-              Must contain uppercase, lowercase, and number
+              Deve conter maiúscula, minúscula e número
             </p>
           </div>
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? 'Creating Account...' : 'Create Account'}
+            {isLoading ? 'Criando Conta...' : 'Criar Conta'}
           </Button>
         </form>
         <p className="text-center text-sm text-on-surface-variant mt-6">
-          Already have an account?{' '}
+          Já tem uma conta?{' '}
           <Link href="/login" className="font-medium text-primary hover:underline">
-            Sign in
+            Entre
           </Link>
         </p>
       </Card>

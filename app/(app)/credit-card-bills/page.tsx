@@ -5,9 +5,11 @@ import { useSearchParams } from 'next/navigation';
 import { CreditCardIcon, CalendarIcon, DollarSignIcon, PlusIcon, EditIcon } from '@/components/assets/Icons';
 import Card from '@/components/ui/Card';
 import Skeleton from '@/components/ui/Skeleton';
+import Button from '@/components/ui/Button';
 import { useCreditCardsWithCache } from '@/hooks/useCreditCardsWithCache';
 import CreateTransactionModal from './CreateTransactionModal';
 import EditTransactionModal from './EditTransactionModal';
+import PayBillModal from './PayBillModal';
 
 interface Transaction {
   id: string;
@@ -43,6 +45,7 @@ const CreditCardBillsPage: React.FC = () => {
   const [loadingTransactions, setLoadingTransactions] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [payingBill, setPayingBill] = useState<Bill | null>(null);
 
   // Check URL params for cardId and select it
   useEffect(() => {
@@ -169,27 +172,23 @@ const CreditCardBillsPage: React.FC = () => {
     today.setHours(12, 0, 0, 0); // Reset time for accurate date comparison
 
     transactions.forEach((transaction) => {
+      // Parse the date string to avoid timezone issues
       const transactionDate = new Date(transaction.date);
-      transactionDate.setHours(0, 0, 0, 0);
-      const transactionDay = transactionDate.getDate();
-      const transactionMonth = transactionDate.getMonth();
-      const transactionYear = transactionDate.getFullYear();
+      const transactionDay = transactionDate.getUTCDate();
+      const transactionMonth = transactionDate.getUTCMonth();
+      const transactionYear = transactionDate.getUTCFullYear();
 
-      // Determine which bill this transaction belongs to
-      // A bill period goes from closingDay of previous month to (closingDay - 1) of current month
-      // The bill is named after the month when it CLOSES
-      // Example: "Fatura de Novembro" includes transactions from 05/10 to 04/11 (closes on 05/11)
+      // Simple logic: transaction goes to the bill of its month
+      // unless it's on or after the closing day, then it goes to next month
+      // Example with closing day 30:
+      // - Transaction on 20/08 (day 20 < 30) -> August bill
+      // - Transaction on 30/08 (day 30 >= 30) -> September bill
 
       let billMonth = transactionMonth;
       let billYear = transactionYear;
 
-      // If transaction day is before closing day, it belongs to the bill that closes in this month
-      // Otherwise, it belongs to the bill that closes in the next month
-      if (transactionDay < settings.closingDay) {
-        // Transaction is before closing day, so it belongs to current month's bill
-        // (which started on closingDay of previous month)
-      } else {
-        // Transaction is on or after closing day, so it belongs to next month's bill
+      // If transaction is on or after closing day, it goes to next month's bill
+      if (transactionDay >= settings.closingDay) {
         billMonth += 1;
         if (billMonth > 11) {
           billMonth = 0;
@@ -197,20 +196,28 @@ const CreditCardBillsPage: React.FC = () => {
         }
       }
 
-      const billKey = `${billYear}-${String(billMonth + 1).padStart(2, '0')}`;
-
       // Calculate closing date for this bill (the day when bill closes)
       const closingDate = new Date(billYear, billMonth, settings.closingDay);
       closingDate.setHours(0, 0, 0, 0);
 
       // Calculate due date for this bill
-      let dueDate = new Date(billYear, billMonth, settings.dueDay);
+      let dueMonth = billMonth;
+      let dueYear = billYear;
       
       // If due day is before or equal to closing day, due date is in next month
       if (settings.dueDay <= settings.closingDay) {
-        dueDate.setMonth(dueDate.getMonth() + 1);
+        dueMonth += 1;
+        if (dueMonth > 11) {
+          dueMonth = 0;
+          dueYear += 1;
+        }
       }
+      
+      const dueDate = new Date(dueYear, dueMonth, settings.dueDay);
       dueDate.setHours(23, 59, 59, 999);
+
+      // Bill name is based on the due date month (not closing month)
+      const billKey = `${dueYear}-${String(dueMonth + 1).padStart(2, '0')}`;
 
       // Bill is visible until the day after due date
       const isOpen = today <= dueDate;
@@ -220,8 +227,8 @@ const CreditCardBillsPage: React.FC = () => {
 
       if (!billsMap.has(billKey)) {
         billsMap.set(billKey, {
-          month: String(billMonth + 1).padStart(2, '0'),
-          year: billYear,
+          month: String(dueMonth + 1).padStart(2, '0'),
+          year: dueYear,
           closingDate,
           dueDate,
           transactions: [],
@@ -254,22 +261,27 @@ const CreditCardBillsPage: React.FC = () => {
     return filteredBills;
   }, [bills]);
 
-  // Calculate current bill total and available limit (only open/not closed bills)
+  // Calculate current bill total (only the first open bill)
   const currentBillTotal = useMemo(() => {
     if (openBills.length === 0) return 0;
-    // Only count bills that are not closed yet
+    // Show only the first open bill (the one that will be paid next)
+    return openBills[0].totalAmount;
+  }, [openBills]);
+
+  // Calculate total used limit (all open bills that are not closed yet)
+  const totalUsedLimit = useMemo(() => {
+    if (openBills.length === 0) return 0;
+    // Sum all bills that are not closed yet
     return openBills
       .filter((bill) => !bill.isClosed)
-      .reduce((acc, bill) => {
-        return acc + bill.totalAmount;
-      }, 0);
+      .reduce((acc, bill) => acc + bill.totalAmount, 0);
   }, [openBills]);
 
   const availableLimit = useMemo(() => {
     if (!selectedCard) return 0;
     const settings = getCardSettings(selectedCard);
-    return settings.limit - currentBillTotal;
-  }, [selectedCard, currentBillTotal]);
+    return settings.limit - totalUsedLimit;
+  }, [selectedCard, totalUsedLimit]);
 
   // Auto-select first open bill
   useEffect(() => {
@@ -519,6 +531,18 @@ const CreditCardBillsPage: React.FC = () => {
                 )}
               </div>
 
+              {selectedBill && !selectedBill.isPaid && (
+                <div className="mb-4">
+                  <Button
+                    onClick={() => setPayingBill(selectedBill)}
+                    variant="filled"
+                    className="w-full sm:w-auto"
+                  >
+                    Pagar Fatura - {formatCurrency(selectedBill.totalAmount)}
+                  </Button>
+                </div>
+              )}
+
               {loadingTransactions ? (
                 <div className='space-y-3'>
                   <Skeleton className='h-16' />
@@ -739,6 +763,19 @@ const CreditCardBillsPage: React.FC = () => {
           creditCard={selectedCard}
           onClose={() => setEditingTransaction(null)}
           onSuccess={handleTransactionCreated}
+        />
+      )}
+
+      {/* Pay Bill Modal */}
+      {payingBill && selectedCard && (
+        <PayBillModal
+          bill={payingBill}
+          creditCard={selectedCard}
+          onClose={() => setPayingBill(null)}
+          onSuccess={() => {
+            handleTransactionCreated();
+            setPayingBill(null);
+          }}
         />
       )}
     </div>

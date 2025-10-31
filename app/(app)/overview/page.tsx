@@ -26,6 +26,8 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { getAppwriteUsers } from "@/lib/appwrite/client";
 import { useUser } from "@/lib/contexts/UserContext";
+import CashFlowProjection from "@/components/CashFlowProjection";
+import { useProjections } from "@/hooks/useProjections";
 
 // --- Helper Functions for Date Filtering ---
 const getMonthKey = (date: Date): string => {
@@ -280,7 +282,7 @@ const StatCard: React.FC<{
     let colorClass = "text-on-surface";
     if (isNet) {
         colorClass = isPositive ? "text-secondary" : "text-error";
-    } else if (label.toLowerCase().includes("income")) {
+    } else if (label.toLowerCase().includes("income") || label.toLowerCase().includes("receitas")) {
         colorClass = "text-secondary";
     } else {
         colorClass = "text-error";
@@ -349,7 +351,7 @@ const formatDate = (isoDate: string): string => {
 
 const TransactionItem: React.FC<{ transaction: Transaction }> = ({ transaction }) => {
     const isIncome = transaction.amount > 0;
-    const amountColor = isIncome ? "text-secondary" : "text-on-surface";
+    const amountColor = isIncome ? "text-secondary" : "text-error";
     const formattedAmount = `${isIncome ? "+" : ""}${transaction.amount.toLocaleString("pt-BR", {
         style: "currency",
         currency: "BRL",
@@ -409,6 +411,9 @@ export default function OverviewPage() {
     }, [accounts]);
     
     const loadingBalance = loadingAccounts;
+
+    // Get projections for next month
+    const { projectedTransactions, loading: loadingProjections } = useProjections();
 
     const aiInsights = useFinancialInsights(apiTransactions);
 
@@ -476,24 +481,50 @@ export default function OverviewPage() {
             
             return acc;
         }, {} as Record<string, { income: number; expenses: number }>);
-        const creditCardTransactionsByMonth = creditCardTransactions.reduce((acc, tx) => {
-            const txDate = new Date(tx.date);
-            console.log({ txDate });
 
-            return acc;
-        }, {} as Record<string, { income: number; expenses: number; }>);
+        // Calculate credit card bills by month
+        const creditCardBillsByMonth = useMemo(() => {
+            const billsMap = new Map<string, number>();
+            
+            creditCards.forEach(card => {
+                const closingDay = card.closing_day || 10;
+                
+                creditCardTransactions
+                    .filter(tx => tx.credit_card_id === card.$id)
+                    .forEach(tx => {
+                        const txDate = new Date(tx.date);
+                        const txDay = txDate.getDate();
+                        let billMonth = txDate.getMonth();
+                        let billYear = txDate.getFullYear();
+                        
+                        // If transaction is on or after closing day, it belongs to next month's bill
+                        if (txDay >= closingDay) {
+                            billMonth += 1;
+                            if (billMonth > 11) {
+                                billMonth = 0;
+                                billYear += 1;
+                            }
+                        }
+                        
+                        const billKey = `${billYear}-${String(billMonth + 1).padStart(2, '0')}`;
+                        billsMap.set(billKey, (billsMap.get(billKey) || 0) + tx.amount);
+                    });
+            });
+            
+            return billsMap;
+        }, [creditCardTransactions, creditCards]);
         
         const currentMonth = transactionsByMonth[currentMonthKey] || { income: 0, expenses: 0 };
         const currentIncome = currentMonth.income;
         const currentExpenses = -currentMonth.expenses;
-        const currentCreditCardBill = 0;
-        const currentNet = currentIncome + currentExpenses;
+        const currentCreditCardBill = -(creditCardBillsByMonth.get(currentMonthKey) || 0);
+        const currentNet = currentIncome + currentExpenses + currentCreditCardBill;
         
         const previousMonth = transactionsByMonth[previousMonthKey] || { income: 0, expenses: 0 };
         const previousIncome = previousMonth.income;
         const previousExpenses = -previousMonth.expenses;
-        const previousCreditCardBill = 0;
-        const previousNet = previousIncome + previousExpenses;
+        const previousCreditCardBill = -(creditCardBillsByMonth.get(previousMonthKey) || 0);
+        const previousNet = previousIncome + previousExpenses + previousCreditCardBill;
 
         return {
             currentIncome,
@@ -505,18 +536,19 @@ export default function OverviewPage() {
             previousCreditCardBill,
             previousNet,
             transactionsByMonth,
-            creditCardTransactionsByMonth,
+            creditCardBillsByMonth,
         };
-    }, [apiTransactions, creditCardTransactions, accounts]);
+    }, [apiTransactions, creditCardTransactions, accounts, creditCards]);
 
     const chartData = useMemo(() => {
         const lastSixMonths = getLastSixMonths();
         return lastSixMonths.map((monthKey) => {
             const monthData = monthlyMetrics.transactionsByMonth[monthKey] || { income: 0, expenses: 0 };
+            const creditCardBill = monthlyMetrics.creditCardBillsByMonth.get(monthKey) || 0;
             return {
                 month: getMonthName(monthKey),
                 income: monthData.income,
-                expenses: monthData.expenses,
+                expenses: monthData.expenses + creditCardBill,
             };
         });
     }, [monthlyMetrics]);
@@ -546,7 +578,7 @@ export default function OverviewPage() {
             </header>
 
             <main className="space-y-8">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
                     <StatCard
                         label="Receitas do mês"
                         value={monthlyMetrics.currentIncome}
@@ -616,6 +648,14 @@ export default function OverviewPage() {
                         )}
                     </ul>
                 </Card>
+
+                {/* Cash Flow Projection Section */}
+                {!loadingProjections && projectedTransactions.length > 0 && (
+                    <CashFlowProjection
+                        currentBalance={totalBalance}
+                        projectedTransactions={projectedTransactions}
+                    />
+                )}
 
                 {/* Credit Card Transactions Section */}
                 {creditCards.length > 0 && (

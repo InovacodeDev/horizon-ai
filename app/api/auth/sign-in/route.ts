@@ -14,13 +14,13 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!email || !password) {
-      return NextResponse.json({ message: 'Email and password are required' }, { status: 400 });
+      return NextResponse.json({ message: 'Email e senha são obrigatórios' }, { status: 400 });
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      return NextResponse.json({ message: 'Invalid email format' }, { status: 400 });
+      return NextResponse.json({ message: 'Formato de email inválido' }, { status: 400 });
     }
 
     // Authenticate user
@@ -60,12 +60,12 @@ export async function POST(request: NextRequest) {
     // Handle specific error messages
     if (error instanceof Error) {
       if (error.message.includes('Invalid email or password')) {
-        return NextResponse.json({ message: 'Invalid email or password' }, { status: 401 });
+        return NextResponse.json({ message: 'Email ou senha inválidos' }, { status: 401 });
       }
 
-      return NextResponse.json({ message: error.message || 'Authentication failed' }, { status: 401 });
+      return NextResponse.json({ message: error.message || 'Falha na autenticação' }, { status: 401 });
     }
 
-    return NextResponse.json({ message: 'Authentication failed' }, { status: 500 });
+    return NextResponse.json({ message: 'Falha na autenticação' }, { status: 500 });
   }
 }

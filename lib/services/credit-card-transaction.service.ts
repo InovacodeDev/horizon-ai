@@ -67,7 +67,9 @@ export class CreditCardTransactionService {
     const id = ID.unique();
     const now = new Date().toISOString();
 
-    // Convert dates to user timezone
+    // Convert dates to ISO format, preserving the date as-is
+    // If the date already has time (includes 'T'), use it as-is
+    // Otherwise, treat it as YYYY-MM-DD and convert to start of day in user timezone
     const dateInUserTimezone = data.date.includes('T') ? data.date : dateToUserTimezone(data.date);
     const purchaseDateInUserTimezone = data.purchaseDate.includes('T')
       ? data.purchaseDate
@@ -258,6 +260,74 @@ export class CreditCardTransactionService {
       transactions,
       total: response.total || 0,
     };
+  }
+
+  /**
+   * Bulk create credit card transactions
+   */
+  async bulkCreateTransactions(transactions: CreateCreditCardTransactionData[]): Promise<CreditCardTransaction[]> {
+    const createdTransactions: CreditCardTransaction[] = [];
+    const now = new Date().toISOString();
+
+    // Prepare all documents
+    const documents = transactions.map((data) => {
+      const id = ID.unique();
+
+      // Convert dates to user timezone
+      const dateInUserTimezone = data.date.includes('T') ? data.date : dateToUserTimezone(data.date);
+      const purchaseDateInUserTimezone = data.purchaseDate.includes('T')
+        ? data.purchaseDate
+        : dateToUserTimezone(data.purchaseDate);
+
+      return {
+        id,
+        payload: {
+          user_id: data.userId,
+          credit_card_id: data.creditCardId,
+          amount: data.amount,
+          date: dateInUserTimezone,
+          purchase_date: purchaseDateInUserTimezone,
+          category: data.category,
+          description: data.description,
+          merchant: data.merchant,
+          installment: data.installment,
+          installments: data.installments,
+          is_recurring: data.isRecurring || false,
+          status: data.status || 'completed',
+          created_at: now,
+          updated_at: now,
+        },
+      };
+    });
+
+    // Create all documents
+    for (const { id, payload } of documents) {
+      try {
+        const document = await this.dbAdapter.createDocument(
+          DATABASE_ID,
+          COLLECTIONS.CREDIT_CARD_TRANSACTIONS,
+          id,
+          payload,
+        );
+        createdTransactions.push(this.formatTransaction(document));
+      } catch (error: any) {
+        console.error(`Failed to create transaction ${id}:`, error);
+        // Continue with other transactions
+      }
+    }
+
+    // Sync credit card used limit once after all transactions
+    if (transactions.length > 0 && transactions[0].creditCardId) {
+      try {
+        const { CreditCardService } = await import('./credit-card.service');
+        const creditCardService = new CreditCardService();
+        await creditCardService.syncUsedLimit(transactions[0].creditCardId);
+      } catch (error: any) {
+        console.error('Failed to sync credit card used limit:', error);
+      }
+    }
+
+    return createdTransactions;
   }
 
   /**

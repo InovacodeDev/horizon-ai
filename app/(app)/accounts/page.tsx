@@ -13,6 +13,7 @@ import { AddAccountModal } from "@/components/modals/AddAccountModal";
 import { AddCreditCardModal } from "@/components/modals/AddCreditCardModal";
 import { EditCreditCardModal } from "@/components/modals/EditCreditCardModal";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { TransferBalanceModal } from "@/components/modals/TransferBalanceModal";
 import type { Account, AccountStatus, CreditCard } from "@/lib/types";
 import { useRouter } from "next/navigation";
 
@@ -287,6 +288,7 @@ export default function AccountsPage() {
     const [isAddAccountModalOpen, setIsAddAccountModalOpen] = useState(false);
     const [isAddCardModalOpen, setIsAddCardModalOpen] = useState(false);
     const [isEditCardModalOpen, setIsEditCardModalOpen] = useState(false);
+    const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
     const [activeAccountForCard, setActiveAccountForCard] = useState<string>('');
     const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
     
@@ -404,12 +406,26 @@ export default function AccountsPage() {
                         <p className="text-sm font-medium text-on-surface-variant uppercase tracking-wider">Saldo Total</p>
                         <h2 className="text-3xl font-normal text-primary">{formattedBalance}</h2>
                     </div>
-                    <Button 
-                        leftIcon={<PlusIcon className="w-5 h-5" />}
-                        onClick={() => setIsAddAccountModalOpen(true)}
-                    >
-                        Adicionar Conta
-                    </Button>
+                    <div className="flex gap-3">
+                        <Button 
+                            variant="outlined"
+                            leftIcon={
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                </svg>
+                            }
+                            onClick={() => setIsTransferModalOpen(true)}
+                            disabled={accounts.length < 2}
+                        >
+                            Transferir
+                        </Button>
+                        <Button 
+                            leftIcon={<PlusIcon className="w-5 h-5" />}
+                            onClick={() => setIsAddAccountModalOpen(true)}
+                        >
+                            Adicionar Conta
+                        </Button>
+                    </div>
                 </div>
             </header>
             
@@ -491,6 +507,15 @@ export default function AccountsPage() {
                     creditCard={editingCard}
                 />
             )}
+
+            <TransferBalanceModal
+                isOpen={isTransferModalOpen}
+                onClose={() => setIsTransferModalOpen(false)}
+                accounts={accounts}
+                onSuccess={() => {
+                    // Accounts will be automatically refreshed via realtime
+                }}
+            />
 
             <ConfirmModal
                 isOpen={confirmModal.isOpen}

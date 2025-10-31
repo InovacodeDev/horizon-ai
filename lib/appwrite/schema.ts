@@ -15,6 +15,7 @@ export const COLLECTIONS = {
   ACCOUNTS: 'accounts',
   CREDIT_CARDS: 'credit_cards',
   CREDIT_CARD_TRANSACTIONS: 'credit_card_transactions',
+  TRANSFER_LOGS: 'transfer_logs',
 } as const;
 
 // Database ID - Configure no Appwrite Console
@@ -594,4 +595,42 @@ export interface CreditCardTransaction {
   status: 'pending' | 'completed' | 'cancelled';
   created_at: string;
   updated_at: string;
+}
+
+// ============================================
+// Collection: transfer_logs
+// ============================================
+export const transferLogsSchema = {
+  collectionId: COLLECTIONS.TRANSFER_LOGS,
+  name: 'Transfer Logs',
+  permissions: ['read("any")', 'write("any")'],
+  rowSecurity: true,
+  attributes: [
+    { key: 'user_id', type: 'string', size: 255, required: true, array: false },
+    { key: 'from_account_id', type: 'string', size: 255, required: true, array: false },
+    { key: 'to_account_id', type: 'string', size: 255, required: true, array: false },
+    { key: 'amount', type: 'float', required: true },
+    { key: 'description', type: 'string', size: 500, required: false, array: false },
+    { key: 'status', type: 'enum', elements: ['completed', 'failed'], required: true, array: false },
+    { key: 'created_at', type: 'datetime', required: true },
+  ],
+  indexes: [
+    { key: 'idx_user_id', type: 'key', attributes: ['user_id'], orders: ['ASC'] },
+    { key: 'idx_from_account_id', type: 'key', attributes: ['from_account_id'], orders: ['ASC'] },
+    { key: 'idx_to_account_id', type: 'key', attributes: ['to_account_id'], orders: ['ASC'] },
+    { key: 'idx_created_at', type: 'key', attributes: ['created_at'], orders: ['DESC'] },
+  ],
+};
+
+export interface TransferLog {
+  $id: string;
+  $createdAt: string;
+  $updatedAt: string;
+  user_id: string;
+  from_account_id: string;
+  to_account_id: string;
+  amount: number;
+  description?: string;
+  status: 'completed' | 'failed';
+  created_at: string;
 }

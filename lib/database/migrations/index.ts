@@ -21,6 +21,7 @@ import { migration as addCreditCardIdToTransactions } from './20251029_000016_ad
 import { migration as addInstallmentColumnsToTransactions } from './20251029_000017_add_installment_columns_to_transactions';
 import { migration as createCreditCardTransactionsTable } from './20251029_000018_create_credit_card_transactions_table';
 import { migration as migrateCreditCardData } from './20251029_000019_migrate_credit_card_data';
+import { migration as createTransferLogsTable } from './20251031_000020_create_transfer_logs_table';
 import { Migration } from './migration.interface';
 
 /**
@@ -48,4 +49,5 @@ export const migrations: Migration[] = [
   addInstallmentColumnsToTransactions,
   createCreditCardTransactionsTable,
   migrateCreditCardData,
+  createTransferLogsTable,
 ];

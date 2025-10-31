@@ -51,14 +51,14 @@ export default function LoginPage() {
         <Link href="/">
           <Button variant="outlined" className="border-none !px-2">
             <ArrowLeftIcon className="w-5 h-5 mr-2" />
-            Back to Home
+            Voltar para Início
           </Button>
         </Link>
       </div>
       <Card className="p-8">
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-medium text-on-surface">Welcome back</h1>
-          <p className="text-on-surface-variant">Sign in to continue to Horizon AI.</p>
+          <h1 className="text-2xl font-medium text-on-surface">Bem-vindo de volta</h1>
+          <p className="text-on-surface-variant">Entre para continuar no Horizon AI.</p>
         </div>
         <form className="space-y-4" onSubmit={handleSubmit}>
           {error && (
@@ -68,9 +68,9 @@ export default function LoginPage() {
           )}
           <Input
             id="email"
-            label="Email Address"
+            label="Endereço de Email"
             type="email"
-            placeholder="you@example.com"
+            placeholder="voce@exemplo.com"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -78,7 +78,7 @@ export default function LoginPage() {
           />
           <Input
             id="password"
-            label="Password"
+            label="Senha"
             type="password"
             required
             value={password}
@@ -86,13 +86,13 @@ export default function LoginPage() {
             disabled={isLoading}
           />
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? 'Signing in...' : 'Sign In'}
+            {isLoading ? 'Entrando...' : 'Entrar'}
           </Button>
         </form>
         <p className="text-center text-sm text-on-surface-variant mt-6">
-          Don't have an account?{' '}
+          Não tem uma conta?{' '}
           <Link href="/register" className="font-medium text-primary hover:underline">
-            Sign up
+            Cadastre-se
           </Link>
         </p>
       </Card>

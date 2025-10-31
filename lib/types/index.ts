@@ -616,6 +616,12 @@ export interface CreateTransactionDto {
   currency?: string;
   tags?: string[];
   receipt_url?: string;
+  is_recurring?: boolean;
+  recurring_pattern?: {
+    frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
+    interval: number;
+    endDate?: string;
+  };
 }
 
 /**

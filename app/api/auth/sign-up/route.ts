@@ -14,23 +14,23 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!email || !password || !firstName) {
-      return NextResponse.json({ message: 'Email, password, and first name are required' }, { status: 400 });
+      return NextResponse.json({ message: 'Email, senha e nome são obrigatórios' }, { status: 400 });
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      return NextResponse.json({ message: 'Invalid email format' }, { status: 400 });
+      return NextResponse.json({ message: 'Formato de email inválido' }, { status: 400 });
     }
 
     // Validate password strength (minimum 8 characters)
     if (password.length < 8) {
-      return NextResponse.json({ message: 'Password must be at least 8 characters long' }, { status: 400 });
+      return NextResponse.json({ message: 'A senha deve ter pelo menos 8 caracteres' }, { status: 400 });
     }
 
     // Validate first name
     if (firstName.trim().length === 0) {
-      return NextResponse.json({ message: 'First name cannot be empty' }, { status: 400 });
+      return NextResponse.json({ message: 'O nome não pode estar vazio' }, { status: 400 });
     }
 
     // Register user
@@ -78,16 +78,16 @@ export async function POST(request: NextRequest) {
     // Handle specific error messages
     if (error instanceof Error) {
       if (error.message.includes('Email already in use')) {
-        return NextResponse.json({ message: 'Email already in use' }, { status: 409 });
+        return NextResponse.json({ message: 'Email já está em uso' }, { status: 409 });
       }
 
       if (error.message.includes('password')) {
         return NextResponse.json({ message: error.message }, { status: 400 });
       }
 
-      return NextResponse.json({ message: error.message || 'Registration failed' }, { status: 400 });
+      return NextResponse.json({ message: error.message || 'Falha no cadastro' }, { status: 400 });
     }
 
-    return NextResponse.json({ message: 'Registration failed' }, { status: 500 });
+    return NextResponse.json({ message: 'Falha no cadastro' }, { status: 500 });
   }
 }

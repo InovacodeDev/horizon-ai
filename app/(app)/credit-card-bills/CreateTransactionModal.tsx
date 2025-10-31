@@ -43,16 +43,14 @@ const CreateTransactionModal: React.FC<CreateTransactionModalProps> = ({ creditC
 
   // Calculate which bill the first installment will fall into
   const getFirstInstallmentBillInfo = () => {
-    const purchaseDate = new Date(formData.date);
-    const purchaseDay = purchaseDate.getDate();
-    const purchaseMonth = purchaseDate.getMonth();
-    const purchaseYear = purchaseDate.getFullYear();
+    // Parse date in YYYY-MM-DD format to avoid timezone issues
+    const [purchaseYear, purchaseMonth, purchaseDay] = formData.date.split('-').map(Number);
 
-    let billMonth = purchaseMonth;
+    let billMonth = purchaseMonth - 1; // Convert to 0-indexed
     let billYear = purchaseYear;
 
-    // If purchase is after closing day, first installment goes to next month's bill
-    if (purchaseDay > cardSettings.closingDay) {
+    // If purchase is on or after closing day, first installment goes to next month's bill
+    if (purchaseDay >= cardSettings.closingDay) {
       billMonth += 1;
       if (billMonth > 11) {
         billMonth = 0;
@@ -68,7 +66,7 @@ const CreateTransactionModal: React.FC<CreateTransactionModalProps> = ({ creditC
     return {
       month: months[billMonth],
       year: billYear,
-      isNextMonth: purchaseDay > cardSettings.closingDay,
+      isNextMonth: purchaseDay >= cardSettings.closingDay,
     };
   };
 
@@ -131,13 +129,13 @@ const CreateTransactionModal: React.FC<CreateTransactionModalProps> = ({ creditC
       } else if (installments === 1) {
         // Single transaction - use credit card transactions API
         // Calculate bill date based on purchase date and closing day
-        const purchaseDate = new Date(formData.date);
-        const purchaseDay = purchaseDate.getDate();
-        let billMonth = purchaseDate.getMonth();
-        let billYear = purchaseDate.getFullYear();
+        // Parse date in YYYY-MM-DD format to avoid timezone issues
+        const [purchaseYear, purchaseMonth, purchaseDay] = formData.date.split('-').map(Number);
+        let billMonth = purchaseMonth - 1; // Convert to 0-indexed
+        let billYear = purchaseYear;
         
-        // If purchase is after closing day, it goes to next month's bill
-        if (purchaseDay > cardSettings.closingDay) {
+        // If purchase is on or after closing day, it goes to next month's bill
+        if (purchaseDay >= cardSettings.closingDay) {
           billMonth += 1;
           if (billMonth > 11) {
             billMonth = 0;

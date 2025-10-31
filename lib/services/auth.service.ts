@@ -111,6 +111,21 @@ export async function signIn(data: SignInData): Promise<AuthResponse> {
   console.log(`Sign in attempt for email: ${email}`);
 
   try {
+    // Import Users API to find user by email
+    const { getAppwriteUsers } = await import('@/lib/appwrite/client');
+    const usersApi = getAppwriteUsers();
+
+    // List users to find the one with matching email
+    const usersList = await usersApi.list();
+    const user = usersList.users.find((u) => u.email === email);
+
+    if (!user) {
+      console.warn(`User not found with email: ${email}`);
+      throw new Error('Invalid email or password');
+    }
+
+    console.log(`User found: ${user.$id}`);
+
     // Verify password by attempting to create a session with a client (no API key)
     const { Client, Account } = await import('node-appwrite');
     const sessionClient = new Client()
@@ -119,17 +134,23 @@ export async function signIn(data: SignInData): Promise<AuthResponse> {
 
     const sessionAccount = new Account(sessionClient);
 
-    let user;
     try {
       // Try to create a session to verify credentials
-      await sessionAccount.createEmailPasswordSession({ email, password });
-      // Get user details
-      user = await sessionAccount.get();
-      // Delete the session immediately as we're using JWT instead
-      await sessionAccount.deleteSession('current');
+      const session = await sessionAccount.createEmailPasswordSession(email, password);
+      console.log('Session created successfully - credentials are valid');
+
+      // Try to delete the session (optional, not critical if it fails)
+      try {
+        await sessionAccount.deleteSession('current');
+        console.log('Session deleted successfully');
+      } catch (deleteError) {
+        // Ignore deletion errors - the session will expire naturally
+        console.log('Could not delete session (not critical)');
+      }
     } catch (sessionError) {
+      console.error('Session creation error:', sessionError);
       if (sessionError instanceof AppwriteException) {
-        if (sessionError.code === 401) {
+        if (sessionError.code === 401 || sessionError.type === 'user_invalid_credentials') {
           throw new Error('Invalid email or password');
         }
         throw new Error(sessionError.message);
@@ -145,15 +166,12 @@ export async function signIn(data: SignInData): Promise<AuthResponse> {
 
     // Extract first name and last name from profile or user name
     const profileAny: any = userData.profile;
-    const profileFirst: string | undefined = profileAny?.display_name || undefined;
-    let firstName: string | undefined = undefined;
-    let lastName: string | undefined = undefined;
+    const profileFirst: string | undefined = profileAny?.first_name || profileAny?.display_name || undefined;
+    const profileLast: string | undefined = profileAny?.last_name || undefined;
+    let firstName: string | undefined = profileFirst;
+    let lastName: string | undefined = profileLast;
 
-    if (profileFirst) {
-      const parts = profileFirst.split(' ');
-      firstName = parts[0];
-      lastName = parts.slice(1).join(' ') || undefined;
-    } else if (user.name) {
+    if (!firstName && user.name) {
       const parts = user.name.split(' ');
       firstName = parts[0];
       lastName = parts.slice(1).join(' ') || undefined;
@@ -174,7 +192,7 @@ export async function signIn(data: SignInData): Promise<AuthResponse> {
       console.warn(`Sign in failed: ${error.message} - ${email}`);
 
       // Invalid credentials
-      if (error.code === 401) {
+      if (error.code === 401 || error.type === 'user_invalid_credentials') {
         throw new Error('Invalid email or password');
       }
 
