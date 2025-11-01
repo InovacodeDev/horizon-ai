@@ -191,7 +191,7 @@ export default function TransactionsPage() {
         date: new Date().toISOString().split("T")[0],
         bankName: "",
         category: "",
-        type: "credit" as Transaction['type'],
+        type: "debit" as Transaction['type'],
         notes: "",
         flow: "expense",
         accountId: "",
@@ -199,6 +199,7 @@ export default function TransactionsPage() {
         isRecurring: false,
         recurringFrequency: "monthly" as 'daily' | 'weekly' | 'monthly' | 'yearly',
         recurringEndDate: "",
+        taxAmount: undefined as number | undefined,
     };
     const [newTransaction, setNewTransaction] = useState(initialNewTransactionState);
 
@@ -307,30 +308,54 @@ export default function TransactionsPage() {
         
         try {
             const finalAmount = Math.abs(newTransaction.amount);
-            const transactionType = newTransaction.flow === "expense" ? "expense" : "income";
+            let transactionType: TransactionType;
+            
+            // Map flow to transaction type
+            if (newTransaction.flow === "salary") {
+                transactionType = "salary";
+            } else if (newTransaction.flow === "expense") {
+                transactionType = "expense";
+            } else {
+                transactionType = "income";
+            }
+
+            // For salary, set recurring automatically and description to "Salário"
+            const isRecurring = newTransaction.flow === "salary" ? true : newTransaction.isRecurring;
+            const description = newTransaction.flow === "salary" ? "Salário" : newTransaction.description;
+            const recurringPattern = newTransaction.flow === "salary" 
+                ? {
+                    frequency: 'monthly' as const,
+                    interval: 1,
+                    // No endDate for salary
+                }
+                : newTransaction.isRecurring 
+                    ? {
+                        frequency: newTransaction.recurringFrequency,
+                        interval: 1,
+                        endDate: newTransaction.recurringEndDate || undefined,
+                    }
+                    : undefined;
 
             await createTransaction({
                 amount: finalAmount,
-                type: transactionType as TransactionType,
+                type: transactionType,
                 category: newTransaction.category,
-                description: newTransaction.description,
+                description: description,
                 date: new Date(newTransaction.date).toISOString(),
                 currency: 'BRL',
                 account_id: newTransaction.accountId || undefined,
                 credit_card_id: newTransaction.creditCardId || undefined,
                 merchant: newTransaction.bankName,
                 tags: newTransaction.notes ? [newTransaction.notes] : undefined,
-                is_recurring: newTransaction.isRecurring,
-                recurring_pattern: newTransaction.isRecurring ? {
-                    frequency: newTransaction.recurringFrequency,
-                    interval: 1,
-                    endDate: newTransaction.recurringEndDate || undefined,
-                } : undefined,
+                is_recurring: isRecurring,
+                recurring_pattern: recurringPattern,
+                tax_amount: newTransaction.flow === "salary" && newTransaction.taxAmount ? newTransaction.taxAmount : undefined,
             });
 
             await refetch();
             
             setIsAddModalOpen(false);
+            setNewTransaction(initialNewTransactionState);
         } catch (error) {
             console.error('Error creating transaction:', error);
         }
@@ -355,6 +380,10 @@ export default function TransactionsPage() {
             flow: transaction.apiType === 'income' ? 'income' : 'expense',
             accountId: transaction.account_id || '',
             creditCardId: transaction.credit_card_id || '',
+            isRecurring: false,
+            recurringFrequency: 'monthly' as 'daily' | 'weekly' | 'monthly' | 'yearly',
+            recurringEndDate: '',
+            taxAmount: undefined,
         });
         setIsEditModalOpen(true);
     };
@@ -636,23 +665,17 @@ export default function TransactionsPage() {
             </main>
 
             {/* Add Transaction Modal */}
-            <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Add New Transaction">
-                <form onSubmit={handleAddNewTransaction}>
-                    <div className="p-6 space-y-4">
-                        <Input
-                            label="Description"
-                            id="description"
-                            value={newTransaction.description}
-                            onChange={(e) => setNewTransaction({ ...newTransaction, description: e.target.value })}
-                            required
-                        />
-                        <div>
+            <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Add New Transaction" maxWidth="xl">
+                <form onSubmit={handleAddNewTransaction} className="flex flex-col max-h-[80vh]">
+                    <div className="p-6 overflow-y-auto flex-1">
+                        {/* Tipo de Transação - Full Width */}
+                        <div className="mb-4">
                             <label className="block text-sm font-medium text-on-surface-variant mb-1">
                                 Tipo de Transação *
                             </label>
-                            <div className="flex gap-2">
+                            <div className="grid grid-cols-3 gap-2">
                                 <label
-                                    className={`flex-1 text-center p-3 rounded-lg border cursor-pointer transition-colors ${
+                                    className={`text-center p-3 rounded-lg border cursor-pointer transition-colors ${
                                         newTransaction.flow === "expense"
                                             ? "bg-primary-container border-primary text-on-primary-container"
                                             : "border-outline hover:bg-surface-variant/20"
@@ -664,14 +687,14 @@ export default function TransactionsPage() {
                                         value="expense"
                                         checked={newTransaction.flow === "expense"}
                                         onChange={(e) =>
-                                            setNewTransaction({ ...newTransaction, flow: e.target.value })
+                                            setNewTransaction({ ...newTransaction, flow: e.target.value, taxAmount: undefined })
                                         }
                                         className="sr-only"
                                     />
                                     <span className="font-medium">Despesa</span>
                                 </label>
                                 <label
-                                    className={`flex-1 text-center p-3 rounded-lg border cursor-pointer transition-colors ${
+                                    className={`text-center p-3 rounded-lg border cursor-pointer transition-colors ${
                                         newTransaction.flow === "income"
                                             ? "bg-primary-container border-primary text-on-primary-container"
                                             : "border-outline hover:bg-surface-variant/20"
@@ -683,118 +706,216 @@ export default function TransactionsPage() {
                                         value="income"
                                         checked={newTransaction.flow === "income"}
                                         onChange={(e) =>
-                                            setNewTransaction({ ...newTransaction, flow: e.target.value })
+                                            setNewTransaction({ ...newTransaction, flow: e.target.value, taxAmount: undefined })
                                         }
                                         className="sr-only"
                                     />
                                     <span className="font-medium">Receita</span>
                                 </label>
+                                <label
+                                    className={`text-center p-3 rounded-lg border cursor-pointer transition-colors ${
+                                        newTransaction.flow === "salary"
+                                            ? "bg-primary-container border-primary text-on-primary-container"
+                                            : "border-outline hover:bg-surface-variant/20"
+                                    }`}
+                                >
+                                    <input
+                                        type="radio"
+                                        name="flow"
+                                        value="salary"
+                                        checked={newTransaction.flow === "salary"}
+                                        onChange={(e) =>
+                                            setNewTransaction({ ...newTransaction, flow: e.target.value })
+                                        }
+                                        className="sr-only"
+                                    />
+                                    <span className="font-medium">Salário</span>
+                                </label>
                             </div>
                         </div>
-                        
-                        <CurrencyInput
-                            label="Valor"
-                            id="amount"
-                            value={newTransaction.amount}
-                            onChange={(value) => setNewTransaction({ ...newTransaction, amount: value })}
-                            required
-                        />
-                        <DateInput
-                            label="Date"
-                            id="date"
-                            value={newTransaction.date}
-                            onChange={(value) => setNewTransaction({ ...newTransaction, date: value })}
-                            required
-                        />
-                        
-                        {/* Account Selection */}
-                        <div>
-                            <label htmlFor="account" className="block text-sm font-medium text-on-surface-variant mb-1">
-                                Conta *
-                            </label>
-                            <select
-                                id="account"
-                                name="account"
-                                value={newTransaction.accountId}
-                                onChange={(e) => setNewTransaction({ ...newTransaction, accountId: e.target.value })}
-                                required
-                                className="w-full h-12 px-3 bg-surface border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:outline-none"
-                            >
-                                <option value="">Selecione uma conta</option>
-                                {accounts.map((acc) => (
-                                    <option key={acc.$id} value={acc.$id}>
-                                        {acc.name} - {acc.balance.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
 
-                        {/* Credit Card Selection */}
-                        {newTransaction.accountId && availableCreditCards.length > 0 && (
+                        {/* Two Column Grid */}
+                        <div className="grid grid-cols-2 gap-4">
+                            {/* Description - Hidden for Salary */}
+                            {newTransaction.flow !== "salary" && (
+                                <Input
+                                    label="Description"
+                                    id="description"
+                                    value={newTransaction.description}
+                                    onChange={(e) => setNewTransaction({ ...newTransaction, description: e.target.value })}
+                                    required
+                                />
+                            )}
+                            
+                            <div className={newTransaction.flow === "salary" ? "col-span-1" : ""}>
+                                <CurrencyInput
+                                    label={newTransaction.flow === "salary" ? "Valor do Salário Bruto" : "Valor"}
+                                    id="amount"
+                                    value={newTransaction.amount}
+                                    onChange={(value) => setNewTransaction({ ...newTransaction, amount: value })}
+                                    required
+                                />
+                            </div>
+                            
+                            {/* Tax Amount - Only for Salary */}
+                            {newTransaction.flow === "salary" && (
+                                <>
+                                    <div className="col-span-1">
+                                        <CurrencyInput
+                                            label="Imposto Retido na Fonte"
+                                            id="taxAmount"
+                                            value={newTransaction.taxAmount || 0}
+                                            onChange={(value) => setNewTransaction({ ...newTransaction, taxAmount: value })}
+                                        />
+                                    </div>
+                                    
+                                    {/* Net Salary Calculation */}
+                                    {newTransaction.taxAmount && newTransaction.taxAmount > 0 && (
+                                        <div className="col-span-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                            <div className="text-sm space-y-1">
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-600">Salário Bruto:</span>
+                                                    <span className="font-medium text-green-600">
+                                                        + R$ {newTransaction.amount.toFixed(2)}
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-600">Imposto:</span>
+                                                    <span className="font-medium text-red-600">
+                                                        - R$ {newTransaction.taxAmount.toFixed(2)}
+                                                    </span>
+                                                </div>
+                                                <div className="border-t border-blue-300 pt-1 mt-1 flex justify-between font-bold">
+                                                    <span>Salário Líquido:</span>
+                                                    <span className="text-blue-600">
+                                                        R$ {(newTransaction.amount - newTransaction.taxAmount).toFixed(2)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                            
+                            <DateInput
+                                label="Date"
+                                id="date"
+                                value={newTransaction.date}
+                                onChange={(value) => setNewTransaction({ ...newTransaction, date: value })}
+                                required
+                            />
+                            
+                            {/* Account Selection */}
                             <div>
-                                <label htmlFor="creditCard" className="block text-sm font-medium text-on-surface-variant mb-1">
-                                    Cartão de Crédito (opcional)
+                                <label htmlFor="account" className="block text-sm font-medium text-on-surface-variant mb-1">
+                                    Conta *
                                 </label>
                                 <select
-                                    id="creditCard"
-                                    name="creditCard"
-                                    value={newTransaction.creditCardId}
-                                    onChange={(e) => setNewTransaction({ ...newTransaction, creditCardId: e.target.value })}
+                                    id="account"
+                                    name="account"
+                                    value={newTransaction.accountId}
+                                    onChange={(e) => setNewTransaction({ ...newTransaction, accountId: e.target.value })}
+                                    required
                                     className="w-full h-12 px-3 bg-surface border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:outline-none"
                                 >
-                                    <option value="">Nenhum cartão</option>
-                                    {availableCreditCards.map((card) => (
-                                        <option key={card.$id} value={card.$id}>
-                                            {card.name} - **** {card.last_digits}
+                                    <option value="">Selecione uma conta</option>
+                                    {accounts.map((acc) => (
+                                        <option key={acc.$id} value={acc.$id}>
+                                            {acc.name} - {acc.balance.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                                         </option>
                                     ))}
                                 </select>
                             </div>
-                        )}
-                        
-                        {/* Category Selection */}
-                        <CategorySelect
-                            label="Categoria"
-                            id="category"
-                            value={newTransaction.category}
-                            onChange={(categoryId) => setNewTransaction({ ...newTransaction, category: categoryId })}
-                            type={newTransaction.flow === 'expense' ? 'expense' : 'income'}
-                            required
-                        />
-                        
-                        {/* Transaction Type Selection */}
-                        <div>
-                            <label htmlFor="type" className="block text-sm font-medium text-on-surface-variant mb-1">
-                                Tipo de Pagamento *
-                            </label>
-                            <select
-                                id="type"
-                                name="type"
-                                value={newTransaction.type}
-                                onChange={(e) =>
-                                    setNewTransaction({ ...newTransaction, type: e.target.value as Transaction['type'] })
-                                }
+
+                            {/* Credit Card Selection */}
+                            {newTransaction.accountId && availableCreditCards.length > 0 && (
+                                <div>
+                                    <label htmlFor="creditCard" className="block text-sm font-medium text-on-surface-variant mb-1">
+                                        Cartão de Crédito (opcional)
+                                    </label>
+                                    <select
+                                        id="creditCard"
+                                        name="creditCard"
+                                        value={newTransaction.creditCardId}
+                                        onChange={(e) => setNewTransaction({ ...newTransaction, creditCardId: e.target.value })}
+                                        className="w-full h-12 px-3 bg-surface border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:outline-none"
+                                    >
+                                        <option value="">Nenhum cartão</option>
+                                        {availableCreditCards.map((card) => (
+                                            <option key={card.$id} value={card.$id}>
+                                                {card.name} - **** {card.last_digits}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+                            
+                            {/* Category Selection */}
+                            <CategorySelect
+                                label="Categoria"
+                                id="category"
+                                value={newTransaction.category}
+                                onChange={(categoryId) => setNewTransaction({ ...newTransaction, category: categoryId })}
+                                type={newTransaction.flow === 'expense' ? 'expense' : 'income'}
                                 required
-                                className="w-full h-12 px-3 bg-surface border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:outline-none"
-                            >
-                                <option value="credit">Credit Card</option>
-                                <option value="debit">Debit</option>
-                                <option value="pix">Pix</option>
-                                <option value="boleto">Boleto</option>
-                            </select>
+                            />
+                            
+                            {/* Transaction Type Selection */}
+                            <div>
+                                <label htmlFor="type" className="block text-sm font-medium text-on-surface-variant mb-1">
+                                    Tipo de Pagamento *
+                                </label>
+                                <select
+                                    id="type"
+                                    name="type"
+                                    value={newTransaction.type}
+                                    onChange={(e) =>
+                                        setNewTransaction({ ...newTransaction, type: e.target.value as Transaction['type'] })
+                                    }
+                                    required
+                                    className="w-full h-12 px-3 bg-surface border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:outline-none"
+                                >
+                                    <option value="debit">Debit</option>
+                                    <option value="pix">Pix</option>
+                                    <option value="boleto">Boleto</option>
+                                </select>
+                            </div>
                         </div>
-                        
-                        <textarea
-                            id="notes"
-                            placeholder="Notes (optional)"
-                            rows={3}
-                            value={newTransaction.notes}
-                            onChange={(e) => setNewTransaction({ ...newTransaction, notes: e.target.value })}
-                            className="w-full p-3 bg-surface border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:outline-none"
-                        />
+
+                        {/* Salary Recurring Info */}
+                        {newTransaction.flow === "salary" && (
+                            <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <div className="flex items-start">
+                                    <svg className="w-5 h-5 text-blue-600 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                    </svg>
+                                    <div className="text-sm text-blue-700">
+                                        <p className="font-medium">Recorrência Automática</p>
+                                        <p className="mt-1">
+                                            Este salário será configurado como recorrente mensal sem data de término.
+                                            {newTransaction.taxAmount && newTransaction.taxAmount > 0 && (
+                                                <span> Uma transação de imposto também será criada automaticamente.</span>
+                                            )}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Notes - Full Width */}
+                        <div className="mt-4">
+                            <textarea
+                                id="notes"
+                                placeholder="Notes (optional)"
+                                rows={3}
+                                value={newTransaction.notes}
+                                onChange={(e) => setNewTransaction({ ...newTransaction, notes: e.target.value })}
+                                className="w-full p-3 bg-surface border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:outline-none"
+                            />
+                        </div>
 
                         {/* Recurring Transaction Options */}
-                        <div className="border-t border-outline pt-4">
+                        <div className="border-t border-outline pt-4 mt-4">
                             <label className="flex items-center gap-2 cursor-pointer">
                                 <input
                                     type="checkbox"
@@ -814,44 +935,46 @@ export default function TransactionsPage() {
                             </p>
 
                             {newTransaction.isRecurring && (
-                                <div className="mt-4 space-y-4 ml-7">
-                                    <div>
-                                        <label htmlFor="frequency" className="block text-sm font-medium text-on-surface-variant mb-1">
-                                            Frequência *
-                                        </label>
-                                        <select
-                                            id="frequency"
-                                            value={newTransaction.recurringFrequency}
-                                            onChange={(e) => setNewTransaction({ 
-                                                ...newTransaction, 
-                                                recurringFrequency: e.target.value as any 
-                                            })}
-                                            className="w-full h-12 px-3 bg-surface border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:outline-none"
-                                        >
-                                            <option value="daily">Diária</option>
-                                            <option value="weekly">Semanal</option>
-                                            <option value="monthly">Mensal</option>
-                                            <option value="yearly">Anual</option>
-                                        </select>
-                                    </div>
+                                <div className="mt-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label htmlFor="frequency" className="block text-sm font-medium text-on-surface-variant mb-1">
+                                                Frequência *
+                                            </label>
+                                            <select
+                                                id="frequency"
+                                                value={newTransaction.recurringFrequency}
+                                                onChange={(e) => setNewTransaction({ 
+                                                    ...newTransaction, 
+                                                    recurringFrequency: e.target.value as any 
+                                                })}
+                                                className="w-full h-12 px-3 bg-surface border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:outline-none"
+                                            >
+                                                <option value="daily">Diária</option>
+                                                <option value="weekly">Semanal</option>
+                                                <option value="monthly">Mensal</option>
+                                                <option value="yearly">Anual</option>
+                                            </select>
+                                        </div>
 
-                                    <DateInput
-                                        label="Data de Término (opcional)"
-                                        id="recurringEndDate"
-                                        value={newTransaction.recurringEndDate}
-                                        onChange={(value) => setNewTransaction({ 
-                                            ...newTransaction, 
-                                            recurringEndDate: value 
-                                        })}
-                                    />
-                                    <p className="text-xs text-on-surface-variant">
+                                        <DateInput
+                                            label="Data de Término (opcional)"
+                                            id="recurringEndDate"
+                                            value={newTransaction.recurringEndDate}
+                                            onChange={(value) => setNewTransaction({ 
+                                                ...newTransaction, 
+                                                recurringEndDate: value 
+                                            })}
+                                        />
+                                    </div>
+                                    <p className="text-xs text-on-surface-variant mt-2">
                                         Deixe em branco para recorrência indefinida
                                     </p>
                                 </div>
                             )}
                         </div>
                     </div>
-                    <div className="p-4 bg-surface-variant/20 flex justify-end gap-3">
+                    <div className="p-4 bg-surface-variant/20 flex justify-end gap-3 border-t border-outline sticky bottom-0">
                         <Button type="button" variant="outlined" onClick={() => setIsAddModalOpen(false)}>
                             Cancel
                         </Button>
@@ -861,17 +984,11 @@ export default function TransactionsPage() {
             </Modal>
 
             {/* Edit Transaction Modal */}
-            <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Editar Transação">
+            <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Editar Transação" maxWidth="xl">
                 <form onSubmit={handleUpdateTransaction}>
-                    <div className="p-6 space-y-4">
-                        <Input
-                            label="Descrição"
-                            id="description"
-                            value={newTransaction.description}
-                            onChange={(e) => setNewTransaction({ ...newTransaction, description: e.target.value })}
-                            required
-                        />
-                        <div>
+                    <div className="p-6">
+                        {/* Tipo de Transação - Full Width */}
+                        <div className="mb-4">
                             <label className="block text-sm font-medium text-on-surface-variant mb-1">
                                 Tipo de Transação *
                             </label>
@@ -916,51 +1033,63 @@ export default function TransactionsPage() {
                                 </label>
                             </div>
                         </div>
-                        
-                        <CurrencyInput
-                            label="Valor"
-                            id="amount"
-                            value={newTransaction.amount}
-                            onChange={(value) => setNewTransaction({ ...newTransaction, amount: value })}
-                            required
-                        />
-                        <DateInput
-                            label="Data"
-                            id="date"
-                            value={newTransaction.date}
-                            onChange={(value) => setNewTransaction({ ...newTransaction, date: value })}
-                            required
-                        />
-                        
-                        <div>
-                            <label htmlFor="account" className="block text-sm font-medium text-on-surface-variant mb-1">
-                                Conta *
-                            </label>
-                            <select
-                                id="account"
-                                name="account"
-                                value={newTransaction.accountId}
-                                onChange={(e) => setNewTransaction({ ...newTransaction, accountId: e.target.value })}
-                                required
-                                className="w-full h-12 px-3 bg-surface border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:outline-none"
-                            >
-                                <option value="">Selecione uma conta</option>
-                                {accounts.map((acc) => (
-                                    <option key={acc.$id} value={acc.$id}>
-                                        {acc.name} - {acc.balance.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
 
-                        <CategorySelect
-                            label="Categoria"
-                            id="category"
-                            value={newTransaction.category}
-                            onChange={(categoryId) => setNewTransaction({ ...newTransaction, category: categoryId })}
-                            type={newTransaction.flow === 'expense' ? 'expense' : 'income'}
-                            required
-                        />
+                        {/* Two Column Grid */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <Input
+                                label="Descrição"
+                                id="description"
+                                value={newTransaction.description}
+                                onChange={(e) => setNewTransaction({ ...newTransaction, description: e.target.value })}
+                                required
+                            />
+                            
+                            <CurrencyInput
+                                label="Valor"
+                                id="amount"
+                                value={newTransaction.amount}
+                                onChange={(value) => setNewTransaction({ ...newTransaction, amount: value })}
+                                required
+                            />
+                            
+                            <DateInput
+                                label="Data"
+                                id="date"
+                                value={newTransaction.date}
+                                onChange={(value) => setNewTransaction({ ...newTransaction, date: value })}
+                                required
+                            />
+                            
+                            <div>
+                                <label htmlFor="account" className="block text-sm font-medium text-on-surface-variant mb-1">
+                                    Conta *
+                                </label>
+                                <select
+                                    id="account"
+                                    name="account"
+                                    value={newTransaction.accountId}
+                                    onChange={(e) => setNewTransaction({ ...newTransaction, accountId: e.target.value })}
+                                    required
+                                    className="w-full h-12 px-3 bg-surface border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:outline-none"
+                                >
+                                    <option value="">Selecione uma conta</option>
+                                    {accounts.map((acc) => (
+                                        <option key={acc.$id} value={acc.$id}>
+                                            {acc.name} - {acc.balance.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <CategorySelect
+                                label="Categoria"
+                                id="category"
+                                value={newTransaction.category}
+                                onChange={(categoryId) => setNewTransaction({ ...newTransaction, category: categoryId })}
+                                type={newTransaction.flow === 'expense' ? 'expense' : 'income'}
+                                required
+                            />
+                        </div>
                     </div>
                     <div className="p-4 bg-surface-variant/20 flex justify-end gap-3">
                         <Button type="button" variant="outlined" onClick={() => setIsEditModalOpen(false)}>

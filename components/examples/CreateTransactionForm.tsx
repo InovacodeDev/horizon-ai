@@ -12,10 +12,11 @@ import { useFormStatus } from 'react-dom';
 interface Transaction {
   id: string;
   amount: number;
-  type: 'income' | 'expense' | 'transfer';
+  type: 'income' | 'expense' | 'transfer' | 'salary';
   category: string;
   description?: string;
   date: string;
+  taxAmount?: number;
   isPending?: boolean;
 }
 
@@ -127,10 +128,11 @@ export function CreateTransactionForm({ onTransactionCreated }: CreateTransactio
     async (prevState, formData) => {
       // Create optimistic transaction
       const amount = parseFloat(formData.get('amount') as string);
-      const type = formData.get('type') as 'income' | 'expense' | 'transfer';
+      const type = formData.get('type') as 'income' | 'expense' | 'transfer' | 'salary';
       const category = formData.get('category') as string;
       const description = formData.get('description') as string;
       const date = formData.get('date') as string;
+      const taxAmount = formData.get('tax_amount') ? parseFloat(formData.get('tax_amount') as string) : undefined;
 
       const optimisticTransaction: Transaction = {
         id: `temp-${Date.now()}`,
@@ -139,6 +141,7 @@ export function CreateTransactionForm({ onTransactionCreated }: CreateTransactio
         category,
         description,
         date,
+        taxAmount,
         isPending: true,
       };
 
@@ -206,12 +209,38 @@ export function CreateTransactionForm({ onTransactionCreated }: CreateTransactio
                 id="type"
                 name="type"
                 required
+                onChange={(e) => {
+                  const taxField = document.getElementById('tax_amount_field');
+                  if (taxField) {
+                    taxField.style.display = e.target.value === 'salary' ? 'block' : 'none';
+                  }
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="expense">Expense</option>
                 <option value="income">Income</option>
                 <option value="transfer">Transfer</option>
+                <option value="salary">Salary</option>
               </select>
+            </div>
+
+            {/* Tax Amount (only for salary) */}
+            <div id="tax_amount_field" style={{ display: 'none' }}>
+              <label htmlFor="tax_amount" className="block text-sm font-medium text-gray-700 mb-1">
+                Tax Amount (Withheld)
+              </label>
+              <input
+                type="number"
+                id="tax_amount"
+                name="tax_amount"
+                step="0.01"
+                min="0"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="0.00"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Tax withheld at source. An expense transaction will be created automatically.
+              </p>
             </div>
 
             {/* Category */}

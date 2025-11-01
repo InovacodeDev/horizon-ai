@@ -9,9 +9,17 @@ interface ModalProps {
     onClose: () => void;
     title: string;
     children: React.ReactNode;
+    maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 }
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
+const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, maxWidth = 'md' }) => {
+    const maxWidthClasses = {
+        sm: 'max-w-sm',
+        md: 'max-w-md',
+        lg: 'max-w-lg',
+        xl: 'max-w-xl',
+        '2xl': 'max-w-2xl',
+    };
     useEffect(() => {
         const handleEsc = (event: KeyboardEvent) => {
             if (event.key === "Escape") {
@@ -35,7 +43,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
             onClick={onClose}
         >
             <div
-                className="bg-surface rounded-l w-full max-w-md shadow-xl transform transition-all"
+                className={`bg-surface rounded-l w-full ${maxWidthClasses[maxWidth]} shadow-xl transform transition-all`}
                 onClick={(e) => e.stopPropagation()}
             >
                 <header className="flex items-center justify-between p-4 border-b border-outline">

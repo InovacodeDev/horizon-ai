@@ -36,12 +36,13 @@ export async function createTransactionAction(
 
     // Extract form data
     const amount = parseFloat(formData.get('amount') as string);
-    const type = formData.get('type') as 'income' | 'expense' | 'transfer';
+    const type = formData.get('type') as 'income' | 'expense' | 'transfer' | 'salary';
     const category = formData.get('category') as string;
     const description = formData.get('description') as string;
     const date = formData.get('date') as string;
     const accountId = formData.get('account_id') as string;
     const merchant = formData.get('merchant') as string;
+    const taxAmount = formData.get('tax_amount') ? parseFloat(formData.get('tax_amount') as string) : undefined;
 
     // Validation
     if (!amount || isNaN(amount)) {
@@ -72,6 +73,14 @@ export async function createTransactionAction(
       };
     }
 
+    // Validate tax amount for salary transactions
+    if (type === 'salary' && taxAmount !== undefined && (isNaN(taxAmount) || taxAmount < 0)) {
+      return {
+        success: false,
+        error: 'Valid tax amount is required for salary transactions',
+      };
+    }
+
     // Create transaction data
     const transactionData: CreateTransactionData = {
       userId: user.sub,
@@ -84,6 +93,7 @@ export async function createTransactionAction(
       accountId: accountId || undefined,
       merchant: merchant || undefined,
       status: 'completed',
+      taxAmount: taxAmount !== undefined ? Math.abs(taxAmount) : undefined,
     };
 
     // Create transaction
@@ -131,12 +141,13 @@ export async function updateTransactionAction(
 
     // Extract form data
     const amount = formData.get('amount') as string;
-    const type = formData.get('type') as 'income' | 'expense' | 'transfer';
+    const type = formData.get('type') as 'income' | 'expense' | 'transfer' | 'salary';
     const category = formData.get('category') as string;
     const description = formData.get('description') as string;
     const date = formData.get('date') as string;
     const accountId = formData.get('account_id') as string;
     const merchant = formData.get('merchant') as string;
+    const taxAmount = formData.get('tax_amount') ? parseFloat(formData.get('tax_amount') as string) : undefined;
 
     // Build update data
     const updateData: UpdateTransactionData = {};
@@ -154,6 +165,9 @@ export async function updateTransactionAction(
     if (date) updateData.date = date;
     if (accountId) updateData.accountId = accountId;
     if (merchant) updateData.merchant = merchant;
+    if (taxAmount !== undefined && !isNaN(taxAmount)) {
+      updateData.taxAmount = Math.abs(taxAmount);
+    }
 
     // Update transaction
     const transactionService = new TransactionService();

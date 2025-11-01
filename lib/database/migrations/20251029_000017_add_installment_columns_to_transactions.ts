@@ -85,7 +85,7 @@ export const migration: Migration = {
 
     // Delete index first
     try {
-      await (databases as any).deleteIndex({
+      await databases.deleteIndex({
         databaseId,
         tableId: COLLECTION_ID,
         key: 'idx_installments',
@@ -95,19 +95,19 @@ export const migration: Migration = {
     }
 
     // Delete columns
-    await (databases as any).deleteAttribute({
+    await databases.deleteColumn({
       databaseId,
       tableId: COLLECTION_ID,
       key: 'credit_card_transaction_created_at',
     });
 
-    await (databases as any).deleteAttribute({
+    await databases.deleteColumn({
       databaseId,
       tableId: COLLECTION_ID,
       key: 'installments',
     });
 
-    await (databases as any).deleteAttribute({
+    await databases.deleteColumn({
       databaseId,
       tableId: COLLECTION_ID,
       key: 'installment',

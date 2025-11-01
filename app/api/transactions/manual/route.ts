@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Transaction type is required' }, { status: 400 });
     }
 
-    const validTypes = ['income', 'expense', 'transfer'];
+    const validTypes = ['income', 'expense', 'transfer', 'salary'];
     if (!validTypes.includes(body.type)) {
       return NextResponse.json(
         {
@@ -140,6 +140,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Validate tax amount for salary transactions
+    if (body.type === 'salary' && body.taxAmount !== undefined && body.taxAmount !== null) {
+      const taxAmount = Number(body.taxAmount || body.tax_amount);
+      if (isNaN(taxAmount) || taxAmount < 0) {
+        return NextResponse.json({ message: 'Tax amount must be a non-negative number' }, { status: 400 });
+      }
+    }
+
     // Create transaction
     const transactionService = new TransactionService();
     const transaction = await transactionService.createManualTransaction({
@@ -159,6 +167,7 @@ export async function POST(request: NextRequest) {
       isRecurring: body.isRecurring || body.is_recurring,
       recurringPattern: body.recurringPattern || body.recurring_pattern,
       status: body.status,
+      taxAmount: body.taxAmount || body.tax_amount,
     });
 
     return NextResponse.json(

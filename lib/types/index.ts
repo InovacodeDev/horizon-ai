@@ -153,7 +153,7 @@ export interface CreditCardData {
 // Transaction Types
 // ============================================
 
-export type TransactionType = 'income' | 'expense' | 'transfer';
+export type TransactionType = 'income' | 'expense' | 'transfer' | 'salary';
 export type TransactionStatus = 'pending' | 'completed' | 'failed' | 'cancelled';
 export type TransactionSource = 'manual' | 'integration' | 'import';
 
@@ -622,6 +622,7 @@ export interface CreateTransactionDto {
     interval: number;
     endDate?: string;
   };
+  tax_amount?: number; // Tax amount for salary transactions
 }
 
 /**

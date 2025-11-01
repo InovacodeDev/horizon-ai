@@ -11,7 +11,7 @@ import { ID, Query } from 'node-appwrite';
 export interface CreateTransactionData {
   userId: string;
   amount: number;
-  type: 'income' | 'expense' | 'transfer';
+  type: 'income' | 'expense' | 'transfer' | 'salary';
   date: string;
   category: string;
   description?: string;
@@ -36,6 +36,8 @@ export interface CreateTransactionData {
   installment?: number; // Current installment number (1, 2, 3...)
   installments?: number; // Total number of installments (12 for 12x)
   creditCardTransactionCreatedAt?: string; // Original purchase date on credit card
+  taxAmount?: number; // Tax amount for salary transactions
+  linkedTransactionId?: string; // ID of linked transaction (e.g., tax transaction linked to salary)
 }
 
 export interface CreateIntegrationTransactionData extends CreateTransactionData {
@@ -45,7 +47,7 @@ export interface CreateIntegrationTransactionData extends CreateTransactionData 
 
 export interface UpdateTransactionData {
   amount?: number;
-  type?: 'income' | 'expense' | 'transfer';
+  type?: 'income' | 'expense' | 'transfer' | 'salary';
   date?: string;
   category?: string;
   description?: string;
@@ -69,11 +71,13 @@ export interface UpdateTransactionData {
   installment?: number; // Current installment number
   installments?: number; // Total number of installments
   creditCardTransactionCreatedAt?: string; // Original purchase date
+  taxAmount?: number; // Tax amount for salary transactions
+  linkedTransactionId?: string; // ID of linked transaction
 }
 
 export interface TransactionFilter {
   userId?: string;
-  type?: 'income' | 'expense' | 'transfer';
+  type?: 'income' | 'expense' | 'transfer' | 'salary';
   category?: string;
   status?: 'pending' | 'completed' | 'failed' | 'cancelled';
   source?: 'manual' | 'integration' | 'import';
@@ -127,9 +131,24 @@ export class TransactionService {
     if (data.location) transactionData.location = data.location;
     if (data.receiptUrl) transactionData.receipt_url = data.receiptUrl;
     if (data.recurringPattern) transactionData.recurring_pattern = data.recurringPattern;
+    if (data.linkedTransactionId) transactionData.linked_transaction_id = data.linkedTransactionId;
 
     // Convert date to user's timezone (ensures consistency)
     const dateInUserTimezone = data.date.includes('T') ? data.date : dateToUserTimezone(data.date);
+
+    // For salary transactions, automatically set as recurring monthly without end date
+    let isRecurring = data.isRecurring || false;
+    let recurringPattern = data.recurringPattern;
+
+    if (data.type === 'salary') {
+      isRecurring = true;
+      recurringPattern = {
+        frequency: 'monthly',
+        interval: 1,
+        // No endDate - salary is indefinite
+      };
+      transactionData.recurring_pattern = recurringPattern;
+    }
 
     const payload: any = {
       user_id: data.userId,
@@ -143,7 +162,7 @@ export class TransactionService {
       source: 'manual',
       merchant: data.merchant,
       tags: data.tags ? data.tags.join(',') : undefined,
-      is_recurring: data.isRecurring || false,
+      is_recurring: isRecurring,
       data: Object.keys(transactionData).length > 0 ? this.stringifyJSON(transactionData) : undefined,
       created_at: now,
       updated_at: now,
@@ -173,6 +192,59 @@ export class TransactionService {
     }
 
     const document = await this.dbAdapter.createDocument(DATABASE_ID, COLLECTIONS.TRANSACTIONS, id, payload);
+
+    // If this is a salary transaction with tax, create the tax transaction
+    if (data.type === 'salary' && data.taxAmount && data.taxAmount > 0) {
+      try {
+        const taxId = ID.unique();
+        const taxTransactionData: any = {
+          linked_transaction_id: id, // Link back to salary
+        };
+
+        const taxPayload: any = {
+          user_id: data.userId,
+          amount: data.taxAmount,
+          type: 'expense',
+          date: dateInUserTimezone,
+          status: data.status || 'completed',
+          category: 'Impostos',
+          description: `Imposto sobre salário - ${data.description || 'Salário'}`,
+          currency: data.currency,
+          source: 'manual',
+          is_recurring: true, // Tax is also recurring
+          data: this.stringifyJSON(taxTransactionData),
+          created_at: now,
+          updated_at: now,
+        };
+
+        if (data.accountId) {
+          taxPayload.account_id = data.accountId;
+        }
+
+        await this.dbAdapter.createDocument(DATABASE_ID, COLLECTIONS.TRANSACTIONS, taxId, taxPayload);
+
+        // Update the salary transaction to link to the tax transaction
+        const updatedSalaryData = this.parseJSON(document.data, {});
+        updatedSalaryData.linked_transaction_id = taxId;
+        await this.dbAdapter.updateDocument(DATABASE_ID, COLLECTIONS.TRANSACTIONS, id, {
+          data: this.stringifyJSON(updatedSalaryData),
+        });
+
+        // Sync account balance for tax transaction if needed
+        if (data.accountId) {
+          try {
+            const { BalanceSyncService } = await import('./balance-sync.service');
+            const balanceSyncService = new BalanceSyncService();
+            await balanceSyncService.syncAfterCreate(data.accountId, taxId);
+          } catch (error: any) {
+            console.error('Failed to sync account balance after tax transaction creation:', error);
+          }
+        }
+      } catch (error: any) {
+        console.error('Failed to create tax transaction for salary:', error);
+        // Don't fail the salary creation if tax transaction fails
+      }
+    }
 
     // Sync account balance if transaction is linked to an account (but not a credit card)
     if (data.accountId && !data.creditCardId) {
@@ -348,6 +420,88 @@ export class TransactionService {
         updatePayload.credit_card_transaction_created_at = purchaseDateInUserTimezone;
       }
 
+      // Handle tax amount update for salary transactions
+      if (existing.type === 'salary' && data.taxAmount !== undefined) {
+        const linkedTaxId = existingData.linked_transaction_id;
+
+        if (linkedTaxId) {
+          // Update existing tax transaction
+          try {
+            await this.dbAdapter.updateDocument(DATABASE_ID, COLLECTIONS.TRANSACTIONS, linkedTaxId, {
+              amount: data.taxAmount,
+              updated_at: now,
+            });
+
+            // Sync account balance for updated tax transaction
+            const accountId = data.accountId !== undefined ? data.accountId : oldAccountId;
+            if (accountId) {
+              try {
+                const { BalanceSyncService } = await import('./balance-sync.service');
+                const balanceSyncService = new BalanceSyncService();
+                await balanceSyncService.syncAfterUpdate(accountId, linkedTaxId);
+              } catch (error: any) {
+                console.error('Failed to sync account balance after tax transaction update:', error);
+              }
+            }
+          } catch (error: any) {
+            console.error('Failed to update linked tax transaction:', error);
+          }
+        } else if (data.taxAmount > 0) {
+          // Create new tax transaction if it doesn't exist
+          try {
+            const taxId = ID.unique();
+            const taxTransactionData: any = {
+              linked_transaction_id: transactionId,
+            };
+
+            const dateInUserTimezone = data.date
+              ? data.date.includes('T')
+                ? data.date
+                : dateToUserTimezone(data.date)
+              : existing.date;
+
+            const taxPayload: any = {
+              user_id: existing.user_id,
+              amount: data.taxAmount,
+              type: 'expense',
+              date: dateInUserTimezone,
+              status: existing.status,
+              category: 'Impostos',
+              description: `Imposto sobre salário - ${data.description || existing.description || 'Salário'}`,
+              currency: data.currency || existing.currency || 'BRL',
+              source: 'manual',
+              is_recurring: true,
+              data: this.stringifyJSON(taxTransactionData),
+              created_at: now,
+              updated_at: now,
+            };
+
+            const accountId = data.accountId !== undefined ? data.accountId : oldAccountId;
+            if (accountId) {
+              taxPayload.account_id = accountId;
+            }
+
+            await this.dbAdapter.createDocument(DATABASE_ID, COLLECTIONS.TRANSACTIONS, taxId, taxPayload);
+
+            // Link the tax transaction to the salary
+            updatedData.linked_transaction_id = taxId;
+
+            // Sync account balance for new tax transaction
+            if (accountId) {
+              try {
+                const { BalanceSyncService } = await import('./balance-sync.service');
+                const balanceSyncService = new BalanceSyncService();
+                await balanceSyncService.syncAfterCreate(accountId, taxId);
+              } catch (error: any) {
+                console.error('Failed to sync account balance after tax transaction creation:', error);
+              }
+            }
+          } catch (error: any) {
+            console.error('Failed to create tax transaction for salary:', error);
+          }
+        }
+      }
+
       // Update data JSON field
       updatePayload.data = this.stringifyJSON(updatedData);
 
@@ -400,6 +554,32 @@ export class TransactionService {
       // Get transaction before deleting to sync account balance
       const existing = await this.getTransactionById(transactionId);
       const accountId = existing?.account_id;
+
+      // If this is a salary transaction, also delete the linked tax transaction
+      if (existing && existing.type === 'salary') {
+        const existingData = this.parseJSON(existing.data, {});
+        const linkedTaxId = existingData.linked_transaction_id;
+
+        if (linkedTaxId) {
+          try {
+            await this.dbAdapter.deleteDocument(DATABASE_ID, COLLECTIONS.TRANSACTIONS, linkedTaxId);
+
+            // Sync account balance for deleted tax transaction
+            if (accountId) {
+              try {
+                const { BalanceSyncService } = await import('./balance-sync.service');
+                const balanceSyncService = new BalanceSyncService();
+                await balanceSyncService.syncAfterDelete(accountId, linkedTaxId);
+              } catch (error: any) {
+                console.error('Failed to sync account balance after tax transaction deletion:', error);
+              }
+            }
+          } catch (error: any) {
+            console.error('Failed to delete linked tax transaction:', error);
+            // Continue with salary deletion even if tax deletion fails
+          }
+        }
+      }
 
       await this.dbAdapter.deleteDocument(DATABASE_ID, COLLECTIONS.TRANSACTIONS, transactionId);
 

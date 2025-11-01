@@ -67,7 +67,7 @@ export const migration: Migration = {
       databaseId,
       tableId: 'transactions',
       key: 'type',
-      elements: ['income', 'expense', 'transfer'],
+      elements: ['income', 'expense', 'transfer', 'salary'],
       required: true,
     });
 

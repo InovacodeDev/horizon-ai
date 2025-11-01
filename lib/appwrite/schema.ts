@@ -20,7 +20,8 @@ export const COLLECTIONS = {
 } as const;
 
 // Database ID - Configure no Appwrite Console
-// Use NEXT_PUBLIC_ version as fallback since it's available in both client and server
+// Note: This is evaluated when the module is first imported
+// Make sure dotenv is loaded before importing this file in scripts
 export const DATABASE_ID =
   process.env.APPWRITE_DATABASE_ID || process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || 'horizon_ai_db';
 
@@ -354,7 +355,7 @@ export const transactionsSchema = {
   attributes: [
     { key: 'user_id', type: 'string', size: 255, required: true, array: false },
     { key: 'amount', type: 'float', required: true },
-    { key: 'type', type: 'enum', elements: ['income', 'expense', 'transfer'], required: true, array: false },
+    { key: 'type', type: 'enum', elements: ['income', 'expense', 'transfer', 'salary'], required: true, array: false },
     { key: 'date', type: 'datetime', required: true },
     {
       key: 'status',
@@ -399,7 +400,7 @@ export interface Transaction {
   $updatedAt: string;
   user_id: string;
   amount: number;
-  type: 'income' | 'expense' | 'transfer';
+  type: 'income' | 'expense' | 'transfer' | 'salary';
   date: string;
   status: 'pending' | 'completed' | 'failed' | 'cancelled';
   account_id?: string;
