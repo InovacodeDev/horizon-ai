@@ -9,6 +9,7 @@
 
 export { useAccounts } from './useAccounts';
 export { useCreditCards } from './useCreditCards';
+export { useCreditCardBills } from './useCreditCardBills';
 export { useTransactions } from './useTransactions';
 export { useFinancialInsights } from './useFinancialInsights';
 export { useTotalBalance } from './useTotalBalance';

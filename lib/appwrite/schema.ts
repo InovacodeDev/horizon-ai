@@ -15,11 +15,14 @@ export const COLLECTIONS = {
   ACCOUNTS: 'accounts',
   CREDIT_CARDS: 'credit_cards',
   CREDIT_CARD_TRANSACTIONS: 'credit_card_transactions',
+  CREDIT_CARD_BILLS: 'credit_card_bills',
   TRANSFER_LOGS: 'transfer_logs',
 } as const;
 
 // Database ID - Configure no Appwrite Console
-export const DATABASE_ID = process.env.APPWRITE_DATABASE_ID || 'horizon_ai_db';
+// Use NEXT_PUBLIC_ version as fallback since it's available in both client and server
+export const DATABASE_ID =
+  process.env.APPWRITE_DATABASE_ID || process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || 'horizon_ai_db';
 
 /**
  * Schema Definition for Appwrite Collections

@@ -41,7 +41,7 @@ export function initializeAppwrite() {
   databases = tables;
 
   // Wrap with adapter so legacy call sites keep working
-  dbAdapter = new AppwriteDBAdapter(databases);
+  dbAdapter = new AppwriteDBAdapter(tables);
 
   console.log('✅ Appwrite client initialized successfully');
   console.log('   Endpoint:', endpoint);

@@ -22,6 +22,7 @@ export class AppwriteDBAdapter {
   // listDocuments -> listRows
   async listDocuments(databaseId: string, collectionId: string, queries?: any) {
     try {
+      console.log(`[Adapter] listRows called with databaseId: ${databaseId}, tableId: ${collectionId}`);
       const res = await this.databases.listRows({
         databaseId,
         tableId: collectionId,

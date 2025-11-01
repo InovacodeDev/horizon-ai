@@ -19,6 +19,7 @@ import { useTotalBalance } from "@/hooks/useTotalBalance";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useCreditCardTransactions } from "@/hooks/useCreditCardTransactions";
 import { useCreditCardsWithCache } from "@/hooks/useCreditCardsWithCache";
+import { useCreditCardBills } from "@/hooks/useCreditCardBills";
 import { AVAILABLE_CATEGORY_ICONS } from "@/lib/constants";
 import { getCategoryById } from "@/lib/constants/categories";
 import type { Transaction, FinancialInsight, InsightType } from "@/lib/types";
@@ -47,7 +48,8 @@ const getPreviousMonthKey = (): string => {
 const getLastSixMonths = (): string[] => {
     const months: string[] = [];
     const now = new Date();
-    for (let i = 5; i >= 0; i--) {
+    // 4 meses anteriores + mês atual + próximo mês = 6 meses
+    for (let i = 4; i >= -1; i--) {
         const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
         months.push(getMonthKey(date));
     }
@@ -406,6 +408,11 @@ export default function OverviewPage() {
         limit: 100,
     });
 
+    // Get open credit card bills for cash flow calculation
+    const { bills: openBills, loading: loadingBills } = useCreditCardBills({
+        status: 'open',
+    });
+
     const totalBalance = useMemo(() => {
         return accounts.reduce((sum, account) => sum + (account.balance || 0), 0);
     }, [accounts]);
@@ -482,10 +489,11 @@ export default function OverviewPage() {
             return acc;
         }, {} as Record<string, { income: number; expenses: number }>);
 
-        // Calculate credit card bills by month
+        // Calculate credit card bills by month (including open bills)
         const creditCardBillsByMonth = useMemo(() => {
             const billsMap = new Map<string, number>();
             
+            // Add transactions grouped by bill month
             creditCards.forEach(card => {
                 const closingDay = card.closing_day || 10;
                 
@@ -511,8 +519,19 @@ export default function OverviewPage() {
                     });
             });
             
+            // Add open bills (faturas em aberto)
+            openBills.forEach(bill => {
+                const dueDate = new Date(bill.due_date);
+                const billKey = getMonthKey(dueDate);
+                const unpaidAmount = bill.total_amount - bill.paid_amount;
+                
+                if (unpaidAmount > 0) {
+                    billsMap.set(billKey, (billsMap.get(billKey) || 0) + unpaidAmount);
+                }
+            });
+            
             return billsMap;
-        }, [creditCardTransactions, creditCards]);
+        }, [creditCardTransactions, creditCards, openBills]);
         
         const currentMonth = transactionsByMonth[currentMonthKey] || { income: 0, expenses: 0 };
         const currentIncome = currentMonth.income;
@@ -538,7 +557,7 @@ export default function OverviewPage() {
             transactionsByMonth,
             creditCardBillsByMonth,
         };
-    }, [apiTransactions, creditCardTransactions, accounts, creditCards]);
+    }, [apiTransactions, creditCardTransactions, accounts, creditCards, openBills]);
 
     const chartData = useMemo(() => {
         const lastSixMonths = getLastSixMonths();
@@ -609,7 +628,10 @@ export default function OverviewPage() {
 
                 {hasTransactions && chartData.some(d => d.income > 0 || d.expenses > 0) && (
                     <Card className="p-6">
-                        <h3 className="text-xl font-medium text-on-surface mb-6">Fluxo de Caixa - Últimos 6 Meses</h3>
+                        <h3 className="text-xl font-medium text-on-surface mb-6">Fluxo de Caixa - 4 Meses Anteriores, Atual e Próximo</h3>
+                        <p className="text-sm text-on-surface-variant mb-4">
+                            Despesas incluem transações e faturas de cartão em aberto
+                        </p>
                         <BarChart data={chartData} />
                     </Card>
                 )}
