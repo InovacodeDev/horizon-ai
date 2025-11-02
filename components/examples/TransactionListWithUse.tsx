@@ -11,7 +11,7 @@ import { Suspense, use } from 'react';
 interface Transaction {
   id: string;
   amount: number;
-  type: 'income' | 'expense' | 'transfer';
+  type: 'income' | 'expense' | 'transfer' | 'salary';
   category: string;
   description?: string;
   date: string;
