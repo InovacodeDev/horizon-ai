@@ -651,26 +651,6 @@ export default function OverviewPage() {
                     </div>
                 )}
 
-                <Card className="p-6">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-xl font-medium text-on-surface">Transações Recentes</h3>
-                        <Button onClick={handleNavigateToTransactions} variant="text">
-                            Ver Todas
-                        </Button>
-                    </div>
-                    <ul className="divide-y divide-outline">
-                        {transactions.length > 0 ? (
-                            transactions.slice(0, 5).map((tx) => (
-                                <TransactionItem key={tx.$id} transaction={tx} />
-                            ))
-                        ) : (
-                            <li className="py-8 text-center text-on-surface-variant">
-                                Nenhuma transação ainda. Adicione sua primeira transação para começar!
-                            </li>
-                        )}
-                    </ul>
-                </Card>
-
                 {/* Cash Flow Projection Section */}
                 {!loadingProjections && projectedTransactions.length > 0 && (
                     <CashFlowProjection
@@ -679,94 +659,6 @@ export default function OverviewPage() {
                     />
                 )}
 
-                {/* Credit Card Transactions Section */}
-                {creditCards.length > 0 && (
-                    <>
-                        <Card className="p-6">
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-xl font-medium text-on-surface">Compras no Cartão - Este Mês</h3>
-                                <Button onClick={() => router.push('/credit-card-bills')} variant="text">
-                                    Ver Faturas
-                                </Button>
-                            </div>
-                            {loadingCreditCardTransactions ? (
-                                <div className="space-y-3">
-                                    <Skeleton className="h-16" />
-                                    <Skeleton className="h-16" />
-                                    <Skeleton className="h-16" />
-                                </div>
-                            ) : (
-                                <>
-                                    {creditCardTransactions.length > 0 && (
-                                        <div className="mb-4 p-4 bg-primary/10 rounded-lg">
-                                            <p className="text-sm text-on-surface-variant mb-1">Total em Cartões</p>
-                                            <p className="text-3xl font-bold text-primary">
-                                                {new Intl.NumberFormat('pt-BR', {
-                                                    style: 'currency',
-                                                    currency: 'BRL',
-                                                }).format(creditCardTransactions.reduce((sum, tx) => sum + tx.amount, 0))}
-                                            </p>
-                                            <p className="text-xs text-on-surface-variant mt-1">
-                                                {creditCardTransactions.length} transação(ões) este mês
-                                            </p>
-                                        </div>
-                                    )}
-                                    <ul className="divide-y divide-outline">
-                                        {creditCardTransactions.length > 0 ? (
-                                            creditCardTransactions.slice(0, 5).map((tx) => {
-                                                const card = creditCards.find(c => c.$id === tx.credit_card_id);
-                                                return (
-                                                    <li key={tx.$id} className="py-3 flex items-center justify-between">
-                                                        <div className="flex-1">
-                                                            <p className="font-medium text-on-surface">
-                                                                {tx.description || tx.merchant || 'Compra no cartão'}
-                                                            </p>
-                                                            <div className="flex items-center gap-2 mt-1">
-                                                                <span className="text-xs text-on-surface-variant">
-                                                                    {card?.name || 'Cartão'}
-                                                                </span>
-                                                                <span className="text-xs text-on-surface-variant">•</span>
-                                                                <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded">
-                                                                    {tx.category}
-                                                                </span>
-                                                                {tx.installments && tx.installments > 1 && (
-                                                                    <>
-                                                                        <span className="text-xs text-on-surface-variant">•</span>
-                                                                        <span className="text-xs text-secondary">
-                                                                            {tx.installment}/{tx.installments}x
-                                                                        </span>
-                                                                    </>
-                                                                )}
-                                                                {tx.is_recurring && (
-                                                                    <>
-                                                                        <span className="text-xs text-on-surface-variant">•</span>
-                                                                        <span className="text-xs text-tertiary">
-                                                                            Recorrente
-                                                                        </span>
-                                                                    </>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                        <p className="font-semibold text-error">
-                                                            {new Intl.NumberFormat('pt-BR', {
-                                                                style: 'currency',
-                                                                currency: 'BRL',
-                                                            }).format(tx.amount)}
-                                                        </p>
-                                                    </li>
-                                                );
-                                            })
-                                        ) : (
-                                            <li className="py-8 text-center text-on-surface-variant">
-                                                Nenhuma compra no cartão este mês
-                                            </li>
-                                        )}
-                                    </ul>
-                                </>
-                            )}
-                        </Card>
-                    </>
-                )}
             </main>
         </>
     );
