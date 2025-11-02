@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
         purchaseDate: dateToUserTimezone(body.purchase_date),
         creditCardId: body.credit_card_id,
         merchant: body.merchant,
-        status: 'completed',
+        status: 'completed' as const,
         installment: i + 1, // Current installment number (1, 2, 3...)
         installments: body.installments, // Total installments (12 for 12x)
       });
