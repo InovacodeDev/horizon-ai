@@ -35,6 +35,43 @@ import { useAccounts } from "@/hooks/useAccounts";
 import { useCreditCards } from "@/hooks/useCreditCards";
 import { useSearchParams } from "next/navigation";
 
+// Helper function to convert date string to ISO string in user's timezone
+const dateToUserTimezone = (dateString: string): string => {
+    // Parse the date string as YYYY-MM-DD in local timezone
+    const [year, month, day] = dateString.split('-').map(Number);
+    
+    // Create a date object at midnight in the local timezone
+    const date = new Date(year, month - 1, day, 0, 0, 0, 0);
+    
+    // Get the timezone offset for this specific date
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+    });
+
+    const parts = formatter.formatToParts(date);
+    const tzDate = {
+        year: parseInt(parts.find((p) => p.type === 'year')?.value || '0'),
+        month: parseInt(parts.find((p) => p.type === 'month')?.value || '0'),
+        day: parseInt(parts.find((p) => p.type === 'day')?.value || '0'),
+        hour: parseInt(parts.find((p) => p.type === 'hour')?.value || '0'),
+        minute: parseInt(parts.find((p) => p.type === 'minute')?.value || '0'),
+        second: parseInt(parts.find((p) => p.type === 'second')?.value || '0'),
+    };
+
+    // Create a date in UTC that represents the same moment
+    const utcDate = new Date(
+        Date.UTC(tzDate.year, tzDate.month - 1, tzDate.day, tzDate.hour, tzDate.minute, tzDate.second),
+    );
+
+    return utcDate.toISOString();
+};
+
 const TransactionItemSkeleton: React.FC = () => (
     <li className="flex items-center py-4 px-2">
         <Skeleton className="h-10 w-10 rounded-full mr-4" />
@@ -80,8 +117,54 @@ const TransactionTypeBadge: React.FC<{ type: Transaction['type'] }> = ({ type })
         pix: "bg-green-100 text-green-800",
         boleto: "bg-red-100 text-red-800",
     };
+    const typeLabels: Record<Transaction['type'], string> = {
+        credit: "Crédito",
+        debit: "Débito",
+        pix: "Pix",
+        boleto: "Boleto",
+    };
     return (
-        <span className={`capitalize px-2 py-0.5 text-xs font-medium rounded-full ${typeStyles[type]}`}>{type}</span>
+        <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${typeStyles[type]}`}>{typeLabels[type]}</span>
+    );
+};
+
+const TransactionCategoryBadge: React.FC<{ categoryId: string }> = ({ categoryId }) => {
+    const category = getCategoryById(categoryId);
+    if (!category) return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-800">Sem Categoria</span>;
+    
+    const categoryStyles: Record<string, string> = {
+        food: "bg-orange-100 text-orange-800",
+        groceries: "bg-green-100 text-green-800",
+        transport: "bg-blue-100 text-blue-800",
+        housing: "bg-purple-100 text-purple-800",
+        utilities: "bg-yellow-100 text-yellow-800",
+        internet: "bg-cyan-100 text-cyan-800",
+        phone: "bg-indigo-100 text-indigo-800",
+        health: "bg-red-100 text-red-800",
+        education: "bg-blue-100 text-blue-800",
+        entertainment: "bg-pink-100 text-pink-800",
+        shopping: "bg-purple-100 text-purple-800",
+        travel: "bg-teal-100 text-teal-800",
+        gifts: "bg-rose-100 text-rose-800",
+        coffee: "bg-amber-100 text-amber-800",
+        credit_card: "bg-gray-100 text-gray-800",
+        credit_card_bill: "bg-slate-100 text-slate-800",
+        taxes: "bg-red-100 text-red-800",
+        other_expense: "bg-gray-100 text-gray-800",
+        salary: "bg-emerald-100 text-emerald-800",
+        freelance: "bg-green-100 text-green-800",
+        investment: "bg-blue-100 text-blue-800",
+        bonus: "bg-yellow-100 text-yellow-800",
+        refund: "bg-cyan-100 text-cyan-800",
+        other_income: "bg-green-100 text-green-800",
+        balance: "bg-indigo-100 text-indigo-800",
+        transfer: "bg-gray-100 text-gray-800",
+    };
+    
+    return (
+        <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${categoryStyles[categoryId] || "bg-gray-100 text-gray-800"}`}>
+            {category.name}
+        </span>
     );
 };
 
@@ -108,7 +191,7 @@ const TransactionItem: React.FC<{ transaction: Transaction; onClick: () => void 
                     <div className="flex items-center gap-2 text-sm text-on-surface-variant">
                         <span>{transaction.bankName}</span>
                         <span className="text-outline">|</span>
-                        <span>{transaction.category}</span>
+                        <TransactionCategoryBadge categoryId={transaction.category} />
                         <span className="text-outline">|</span>
                         <TransactionTypeBadge type={transaction.type} />
                     </div>
@@ -233,7 +316,7 @@ export default function TransactionsPage() {
             return {
                 $id: apiTx.$id,
                 description: apiTx.description || apiTx.merchant || 'Transaction',
-                amount: apiTx.type === 'income' ? Math.abs(apiTx.amount) : -Math.abs(apiTx.amount),
+                amount: (apiTx.type === 'income' || apiTx.type === 'salary') ? Math.abs(apiTx.amount) : -Math.abs(apiTx.amount),
                 date: apiTx.date,
                 bankName: accountName,
                 category: apiTx.category || 'Uncategorized',
@@ -341,7 +424,7 @@ export default function TransactionsPage() {
                 type: transactionType,
                 category: newTransaction.category,
                 description: description,
-                date: new Date(newTransaction.date).toISOString(),
+                date: dateToUserTimezone(newTransaction.date),
                 currency: 'BRL',
                 account_id: newTransaction.accountId || undefined,
                 credit_card_id: newTransaction.creditCardId || undefined,
@@ -402,7 +485,7 @@ export default function TransactionsPage() {
                 type: transactionType as TransactionType,
                 category: newTransaction.category,
                 description: newTransaction.description,
-                date: new Date(newTransaction.date).toISOString(),
+                date: dateToUserTimezone(newTransaction.date),
                 account_id: newTransaction.accountId || undefined,
             });
 
@@ -1174,9 +1257,9 @@ export default function TransactionsPage() {
                                     {formatDateForDetails(selectedTransaction.date)}
                                 </dd>
                             </div>
-                            <div className="flex justify-between">
+                            <div className="flex justify-between items-center">
                                 <dt className="text-on-surface-variant">Categoria</dt>
-                                <dd className="font-medium text-on-surface">{selectedTransaction.category}</dd>
+                                <dd><TransactionCategoryBadge categoryId={selectedTransaction.category} /></dd>
                             </div>
                             <div className="flex justify-between">
                                 <dt className="text-on-surface-variant">Conta</dt>

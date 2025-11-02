@@ -1,7 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { XIcon, Trash2Icon } from '@/components/assets/Icons';
+import { Trash2Icon } from '@/components/assets/Icons';
+import Modal from '@/components/ui/Modal';
+import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
+import CurrencyInput from '@/components/ui/CurrencyInput';
+import CategorySelect from '@/components/ui/CategorySelect';
 
 interface EditTransactionModalProps {
   transaction: any;
@@ -142,19 +147,9 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
   };
 
   return (
-    <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50'>
-      <div className='bg-surface-container rounded-xl shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto'>
+    <Modal isOpen={true} onClose={onClose} title="Editar Transação de Cartão" maxWidth="xl">
+      {showDeleteConfirm ? (
         <div className='p-6'>
-          <div className='flex items-center justify-between mb-6'>
-            <h2 className='text-2xl font-bold text-on-surface'>Editar Transação</h2>
-            <button
-              onClick={onClose}
-              className='p-2 hover:bg-surface-variant rounded-lg transition-colors'
-            >
-              <XIcon className='w-5 h-5 text-on-surface-variant' />
-            </button>
-          </div>
-
           <div className='mb-4 p-3 bg-primary/10 rounded-lg'>
             <p className='text-sm text-on-surface'>
               <span className='font-medium'>Cartão:</span> {creditCard.name}
@@ -162,16 +157,6 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
             <p className='text-xs text-on-surface-variant mt-1'>
               Final {creditCard.last_digits}
             </p>
-            {transaction.is_recurring && (
-              <p className='text-xs text-tertiary mt-1 font-medium'>
-                ⚠️ Esta é uma assinatura recorrente
-              </p>
-            )}
-            {transaction.installments && transaction.installments > 1 && (
-              <p className='text-xs text-secondary mt-1 font-medium'>
-                ⚠️ Parcela {transaction.installment} de {transaction.installments}
-              </p>
-            )}
           </div>
 
           {error && (
@@ -180,203 +165,181 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
             </div>
           )}
 
-          {showDeleteConfirm ? (
-            <div className='space-y-4'>
-              <div className='p-4 bg-error/10 border border-error/20 rounded-lg'>
-                <p className='text-sm text-on-surface font-medium mb-3'>
-                  Tem certeza que deseja excluir esta transação?
-                </p>
-                <p className='text-xs text-on-surface-variant mb-4'>
-                  Esta ação não pode ser desfeita.
-                </p>
-                
-                {/* Option to delete future installments */}
-                {hasRemainingInstallments && (
-                  <div className='mb-4 p-3 bg-surface rounded-lg'>
-                    <label className='flex items-start gap-3 cursor-pointer'>
-                      <input
-                        type='checkbox'
-                        checked={applyToFutureInstallments}
-                        onChange={(e) => setApplyToFutureInstallments(e.target.checked)}
-                        className='mt-0.5 w-4 h-4 text-error bg-surface border-outline rounded focus:ring-2 focus:ring-error'
-                      />
-                      <div className='flex-1'>
-                        <p className='text-sm font-medium text-on-surface'>
-                          Excluir também as próximas parcelas
-                        </p>
-                        <p className='text-xs text-on-surface-variant mt-1'>
-                          Serão excluídas {remainingInstallments} parcela(s) restante(s)
-                        </p>
-                      </div>
-                    </label>
-                  </div>
-                )}
-                
-                <div className='flex gap-3'>
-                  <button
-                    onClick={() => setShowDeleteConfirm(false)}
-                    className='flex-1 px-4 py-2 bg-surface-variant text-on-surface rounded-lg hover:bg-surface-variant/80 transition-colors'
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={handleDelete}
-                    disabled={loading}
-                    className='flex-1 px-4 py-2 bg-error text-on-error rounded-lg hover:bg-error/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-                  >
-                    {loading ? 'Excluindo...' : 'Confirmar Exclusão'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit}>
-              <div className='space-y-4'>
-                <div>
-                  <label className='block text-sm font-medium text-on-surface mb-2'>
-                    Valor *
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">
-                      R$
-                    </span>
+          <div className='space-y-4'>
+            <div className='p-4 bg-error/10 border border-error/20 rounded-lg'>
+              <p className='text-sm text-on-surface font-medium mb-3'>
+                Tem certeza que deseja excluir esta transação?
+              </p>
+              <p className='text-xs text-on-surface-variant mb-4'>
+                Esta ação não pode ser desfeita.
+              </p>
+              
+              {/* Option to delete future installments */}
+              {hasRemainingInstallments && (
+                <div className='mb-4 p-3 bg-surface rounded-lg'>
+                  <label className='flex items-start gap-3 cursor-pointer'>
                     <input
-                      type='text'
-                      value={formatCurrencyDisplay(formData.amount)}
-                      onChange={(e) => {
-                        const input = e.target.value;
-                        const numericOnly = input.replace(/\D/g, '');
-                        if (numericOnly === '') {
-                          setFormData({ ...formData, amount: 0 });
-                          return;
-                        }
-                        const cents = parseInt(numericOnly, 10);
-                        const valueInReais = cents / 100;
-                        setFormData({ ...formData, amount: valueInReais });
-                      }}
-                      required
-                      placeholder='0,00'
-                      className='w-full pl-12 pr-4 py-2 bg-surface border border-outline rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-on-surface'
+                      type='checkbox'
+                      checked={applyToFutureInstallments}
+                      onChange={(e) => setApplyToFutureInstallments(e.target.checked)}
+                      className='mt-0.5 w-5 h-5 text-error bg-surface border-outline rounded focus:ring-2 focus:ring-error'
                     />
-                  </div>
-                </div>
-
-                <div>
-                  <label className='block text-sm font-medium text-on-surface mb-2'>
-                    Categoria *
+                    <div className='flex-1'>
+                      <p className='text-sm font-medium text-on-surface'>
+                        Excluir também as próximas parcelas
+                      </p>
+                      <p className='text-xs text-on-surface-variant mt-1'>
+                        Serão excluídas {remainingInstallments} parcela(s) restante(s)
+                      </p>
+                    </div>
                   </label>
-                  <select
-                    name='category'
-                    value={formData.category}
-                    onChange={handleChange}
-                    required
-                    className='w-full px-4 py-2 bg-surface border border-outline rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-on-surface'
-                  >
-                    <option value=''>Selecione uma categoria</option>
-                    {categories.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
-                  </select>
                 </div>
-
-                <div>
-                  <label className='block text-sm font-medium text-on-surface mb-2'>
-                    Estabelecimento
-                  </label>
-                  <input
-                    type='text'
-                    name='merchant'
-                    value={formData.merchant}
-                    onChange={handleChange}
-                    placeholder='Nome do estabelecimento'
-                    className='w-full px-4 py-2 bg-surface border border-outline rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-on-surface'
-                  />
-                </div>
-
-                <div>
-                  <label className='block text-sm font-medium text-on-surface mb-2'>
-                    Descrição
-                  </label>
-                  <textarea
-                    name='description'
-                    value={formData.description}
-                    onChange={handleChange}
-                    rows={3}
-                    placeholder='Descrição da transação'
-                    className='w-full px-4 py-2 bg-surface border border-outline rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-on-surface resize-none'
-                  />
-                </div>
-
-                <div>
-                  <label className='block text-sm font-medium text-on-surface mb-2'>
-                    Data *
-                  </label>
-                  <input
-                    type='date'
-                    name='date'
-                    value={formData.date}
-                    onChange={handleChange}
-                    required
-                    className='w-full px-4 py-2 bg-surface border border-outline rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-on-surface'
-                  />
-                </div>
-
-                {/* Option to apply to future installments */}
-                {hasRemainingInstallments && (
-                  <div className='p-3 bg-secondary/10 border border-secondary/20 rounded-lg'>
-                    <label className='flex items-start gap-3 cursor-pointer'>
-                      <input
-                        type='checkbox'
-                        checked={applyToFutureInstallments}
-                        onChange={(e) => setApplyToFutureInstallments(e.target.checked)}
-                        className='mt-0.5 w-4 h-4 text-secondary bg-surface border-outline rounded focus:ring-2 focus:ring-secondary'
-                      />
-                      <div className='flex-1'>
-                        <p className='text-sm font-medium text-on-surface'>
-                          Aplicar para as próximas parcelas
-                        </p>
-                        <p className='text-xs text-on-surface-variant mt-1'>
-                          Esta alteração será aplicada para as {remainingInstallments} parcela(s) restante(s) desta compra
-                        </p>
-                      </div>
-                    </label>
-                  </div>
-                )}
-              </div>
-
-              <div className='flex gap-3 mt-6'>
-                <button
-                  type='button'
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className='px-4 py-2 bg-error/10 text-error rounded-lg hover:bg-error/20 transition-colors flex items-center gap-2'
-                >
-                  <Trash2Icon className='w-4 h-4' />
-                  Excluir
-                </button>
-                <div className='flex-1 flex gap-3'>
-                  <button
-                    type='button'
-                    onClick={onClose}
-                    className='flex-1 px-4 py-2 bg-surface-variant text-on-surface rounded-lg hover:bg-surface-variant/80 transition-colors'
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type='submit'
-                    disabled={loading}
-                    className='flex-1 px-4 py-2 bg-primary text-on-primary rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-                  >
-                    {loading ? 'Salvando...' : 'Salvar'}
-                  </button>
-                </div>
-              </div>
-            </form>
-          )}
+              )}
+            </div>
+          </div>
+          
+          <div className='p-4 bg-surface-variant/20 flex justify-end gap-3 border-t border-outline sticky bottom-0'>
+            <Button variant="outlined" onClick={() => setShowDeleteConfirm(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleDelete}
+              disabled={loading}
+              className="bg-error text-on-error hover:bg-error/90"
+            >
+              {loading ? 'Excluindo...' : 'Confirmar Exclusão'}
+            </Button>
+          </div>
         </div>
-      </div>
-    </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="flex flex-col max-h-[80vh]">
+          <div className="p-6 overflow-y-auto flex-1">
+            <div className='mb-4 p-3 bg-primary/10 rounded-lg'>
+              <p className='text-sm text-on-surface'>
+                <span className='font-medium'>Cartão:</span> {creditCard.name}
+              </p>
+              <p className='text-xs text-on-surface-variant mt-1'>
+                Final {creditCard.last_digits}
+              </p>
+              {transaction.is_recurring && (
+                <p className='text-xs text-tertiary mt-1 font-medium'>
+                  ⚠️ Esta é uma assinatura recorrente
+                </p>
+              )}
+              {transaction.installments && transaction.installments > 1 && (
+                <p className='text-xs text-secondary mt-1 font-medium'>
+                  ⚠️ Parcela {transaction.installment} de {transaction.installments}
+                </p>
+              )}
+            </div>
+
+            {error && (
+              <div className='mb-4 p-3 bg-error/10 border border-error/20 rounded-lg'>
+                <p className='text-sm text-error'>{error}</p>
+              </div>
+            )}
+
+            {/* Two Column Grid */}
+            <div className='grid grid-cols-2 gap-4'>
+              <CurrencyInput
+                label="Valor"
+                id="amount"
+                value={formData.amount}
+                onChange={(value) => setFormData({ ...formData, amount: value })}
+                required
+              />
+
+              <div>
+                <label className='block text-sm font-medium text-on-surface-variant mb-1'>
+                  Data
+                </label>
+                <input
+                  type='date'
+                  name='date'
+                  value={formData.date}
+                  onChange={handleChange}
+                  required
+                  className='w-full h-12 px-3 bg-surface border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:outline-none'
+                />
+              </div>
+
+              <CategorySelect
+                label="Categoria"
+                id="category"
+                value={formData.category}
+                onChange={(categoryId) => setFormData({ ...formData, category: categoryId })}
+                type='expense'
+                required
+              />
+
+              <Input
+                label="Estabelecimento"
+                id="merchant"
+                value={formData.merchant}
+                onChange={(e) => setFormData({ ...formData, merchant: e.target.value })}
+                placeholder='Nome do estabelecimento'
+              />
+            </div>
+
+            {/* Description - Full Width */}
+            <div className='mt-4'>
+              <label className='block text-sm font-medium text-on-surface-variant mb-1'>
+                Descrição
+              </label>
+              <textarea
+                name='description'
+                value={formData.description}
+                onChange={handleChange}
+                rows={3}
+                placeholder='Descrição da transação (opcional)'
+                className='w-full p-3 bg-surface border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:outline-none'
+              />
+            </div>
+
+            {/* Option to apply to future installments */}
+            {hasRemainingInstallments && (
+              <div className='mt-4 p-3 bg-secondary/10 border border-secondary/20 rounded-lg'>
+                <label className='flex items-start gap-3 cursor-pointer'>
+                  <input
+                    type='checkbox'
+                    checked={applyToFutureInstallments}
+                    onChange={(e) => setApplyToFutureInstallments(e.target.checked)}
+                    className='mt-0.5 w-5 h-5 text-secondary bg-surface border-outline rounded focus:ring-2 focus:ring-secondary'
+                  />
+                  <div className='flex-1'>
+                    <p className='text-sm font-medium text-on-surface'>
+                      Aplicar para as próximas parcelas
+                    </p>
+                    <p className='text-xs text-on-surface-variant mt-1'>
+                      Esta alteração será aplicada para as {remainingInstallments} parcela(s) restante(s) desta compra
+                    </p>
+                  </div>
+                </label>
+              </div>
+            )}
+          </div>
+
+          <div className='p-4 bg-surface-variant/20 flex justify-between gap-3 border-t border-outline sticky bottom-0'>
+            <Button
+              type='button'
+              onClick={() => setShowDeleteConfirm(true)}
+              className='bg-error/10 text-error hover:bg-error/20'
+            >
+              <Trash2Icon className='w-4 h-4 mr-2' />
+              Excluir
+            </Button>
+            <div className='flex gap-3'>
+              <Button type="button" variant="outlined" onClick={onClose}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? 'Salvando...' : 'Salvar Alterações'}
+              </Button>
+            </div>
+          </div>
+        </form>
+      )}
+    </Modal>
   );
 };
 

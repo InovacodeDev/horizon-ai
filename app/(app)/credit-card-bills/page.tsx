@@ -7,6 +7,7 @@ import Card from '@/components/ui/Card';
 import Skeleton from '@/components/ui/Skeleton';
 import Button from '@/components/ui/Button';
 import { useCreditCardsWithCache } from '@/hooks/useCreditCardsWithCache';
+import { getCategoryById } from '@/lib/constants/categories';
 import CreateTransactionModal from './CreateTransactionModal';
 import EditTransactionModal from './EditTransactionModal';
 import PayBillModal from './PayBillModal';
@@ -35,6 +36,46 @@ interface Bill {
   isOpen: boolean;
   isClosed?: boolean;
 }
+
+const TransactionCategoryBadge: React.FC<{ categoryId: string }> = ({ categoryId }) => {
+  const category = getCategoryById(categoryId);
+  if (!category) return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-800">Sem Categoria</span>;
+  
+  const categoryStyles: Record<string, string> = {
+    food: "bg-orange-100 text-orange-800",
+    groceries: "bg-green-100 text-green-800",
+    transport: "bg-blue-100 text-blue-800",
+    housing: "bg-purple-100 text-purple-800",
+    utilities: "bg-yellow-100 text-yellow-800",
+    internet: "bg-cyan-100 text-cyan-800",
+    phone: "bg-indigo-100 text-indigo-800",
+    health: "bg-red-100 text-red-800",
+    education: "bg-blue-100 text-blue-800",
+    entertainment: "bg-pink-100 text-pink-800",
+    shopping: "bg-purple-100 text-purple-800",
+    travel: "bg-teal-100 text-teal-800",
+    gifts: "bg-rose-100 text-rose-800",
+    coffee: "bg-amber-100 text-amber-800",
+    credit_card: "bg-gray-100 text-gray-800",
+    credit_card_bill: "bg-slate-100 text-slate-800",
+    taxes: "bg-red-100 text-red-800",
+    other_expense: "bg-gray-100 text-gray-800",
+    salary: "bg-emerald-100 text-emerald-800",
+    freelance: "bg-green-100 text-green-800",
+    investment: "bg-blue-100 text-blue-800",
+    bonus: "bg-yellow-100 text-yellow-800",
+    refund: "bg-cyan-100 text-cyan-800",
+    other_income: "bg-green-100 text-green-800",
+    balance: "bg-indigo-100 text-indigo-800",
+    transfer: "bg-gray-100 text-gray-800",
+  };
+  
+  return (
+    <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${categoryStyles[categoryId] || "bg-gray-100 text-gray-800"}`}>
+      {category.name}
+    </span>
+  );
+};
 
 const CreditCardBillsPage: React.FC = () => {
   const searchParams = useSearchParams();
@@ -594,9 +635,7 @@ const CreditCardBillsPage: React.FC = () => {
                           <p className='text-sm text-on-surface-variant'>{formatDate(transaction.date)}</p>
                         </td>
                         <td className='py-3 px-4'>
-                          <span className='inline-block text-xs px-2 py-1 bg-primary/10 text-primary rounded'>
-                            {transaction.category}
-                          </span>
+                          <TransactionCategoryBadge categoryId={transaction.category} />
                         </td>
                         <td className='py-3 px-4 text-center'>
                           {transaction.is_recurring ? (

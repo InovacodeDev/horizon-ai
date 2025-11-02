@@ -449,7 +449,7 @@ export default function OverviewPage() {
                 $id: apiTx.$id,
                 $updatedAt: new Date().toISOString(),
                 description: apiTx.description || apiTx.merchant || 'Transaction',
-                amount: apiTx.type === 'income' ? Math.abs(apiTx.amount) : -Math.abs(apiTx.amount),
+                amount: (apiTx.type === 'income' || apiTx.type === 'salary') ? Math.abs(apiTx.amount) : -Math.abs(apiTx.amount),
                 date: apiTx.date,
                 bankName: accountName,
                 category: category?.name || apiTx.category || 'Uncategorized',
@@ -480,7 +480,7 @@ export default function OverviewPage() {
                 acc[monthKey] = { income: 0, expenses: 0 };
             }
             
-            if (tx.type === 'income') {
+            if (tx.type === 'income' || tx.type === 'salary') {
                 acc[monthKey].income += Math.abs(tx.amount);
             } else {
                 acc[monthKey].expenses += Math.abs(tx.amount);

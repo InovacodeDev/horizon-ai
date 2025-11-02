@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
       userId,
       amount: body.amount,
       type: 'expense',
-      category: body.category || 'Pagamento de Fatura',
+      category: body.category || 'credit_card_bill',
       description: body.description || `Pagamento Fatura ${creditCardName}${billPeriod}`,
       accountId: body.account_id,
       // DO NOT include credit_card_id - this is a regular account transaction

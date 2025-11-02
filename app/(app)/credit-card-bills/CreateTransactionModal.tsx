@@ -1,7 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { XIcon } from '@/components/assets/Icons';
+import Modal from '@/components/ui/Modal';
+import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
+import CurrencyInput from '@/components/ui/CurrencyInput';
+import CategorySelect from '@/components/ui/CategorySelect';
 
 interface CreateTransactionModalProps {
   creditCard: any;
@@ -220,19 +224,9 @@ const CreateTransactionModal: React.FC<CreateTransactionModalProps> = ({ creditC
   };
 
   return (
-    <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50'>
-      <div className='bg-surface-container rounded-xl shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto'>
-        <div className='p-6'>
-          <div className='flex items-center justify-between mb-6'>
-            <h2 className='text-2xl font-bold text-on-surface'>Nova Transação</h2>
-            <button
-              onClick={onClose}
-              className='p-2 hover:bg-surface-variant rounded-lg transition-colors'
-            >
-              <XIcon className='w-5 h-5 text-on-surface-variant' />
-            </button>
-          </div>
-
+    <Modal isOpen={true} onClose={onClose} title="Nova Transação de Cartão" maxWidth="xl">
+      <form onSubmit={handleSubmit} className="flex flex-col max-h-[80vh]">
+        <div className="p-6 overflow-y-auto flex-1">
           <div className='mb-4 p-3 bg-primary/10 rounded-lg'>
             <p className='text-sm text-on-surface'>
               <span className='font-medium'>Cartão:</span> {creditCard.name}
@@ -248,200 +242,159 @@ const CreateTransactionModal: React.FC<CreateTransactionModalProps> = ({ creditC
             </div>
           )}
 
-          <form onSubmit={handleSubmit}>
-            <div className='space-y-4'>
-              <div>
-                <label className='block text-sm font-medium text-on-surface mb-2'>
-                  Valor Total *
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">
-                    R$
-                  </span>
-                  <input
-                    type='text'
-                    value={formData.amount === 0 ? '0,00' : formData.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    onChange={(e) => {
-                      const input = e.target.value;
-                      const numericOnly = input.replace(/\D/g, '');
-                      if (numericOnly === '') {
-                        setFormData({ ...formData, amount: 0 });
-                        return;
-                      }
-                      const cents = parseInt(numericOnly, 10);
-                      const valueInReais = cents / 100;
-                      setFormData({ ...formData, amount: valueInReais });
-                    }}
-                    required
-                    placeholder='0,00'
-                    className='w-full pl-12 pr-4 py-2 bg-surface border border-outline rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-on-surface'
-                  />
-                </div>
-              </div>
+          {/* Two Column Grid */}
+          <div className='grid grid-cols-2 gap-4'>
+            <CurrencyInput
+              label="Valor Total"
+              id="amount"
+              value={formData.amount}
+              onChange={(value) => setFormData({ ...formData, amount: value })}
+              required
+            />
 
-              <div>
-                <label className='flex items-center gap-2 mb-4 cursor-pointer'>
-                  <input
-                    type='checkbox'
-                    name='isRecurring'
-                    checked={formData.isRecurring}
-                    onChange={handleChange}
-                    className='w-4 h-4 text-primary bg-surface border-outline rounded focus:ring-2 focus:ring-primary'
-                  />
-                  <span className='text-sm font-medium text-on-surface'>
-                    Assinatura Recorrente
-                  </span>
-                </label>
-              </div>
+            <div>
+              <label className='block text-sm font-medium text-on-surface-variant mb-1'>
+                Data da Compra
+              </label>
+              <input
+                type='date'
+                name='date'
+                value={formData.date}
+                onChange={handleChange}
+                required
+                className='w-full h-12 px-3 bg-surface border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:outline-none'
+              />
+            </div>
+          </div>
 
-              {formData.isRecurring ? (
-                <div>
-                  <label className='block text-sm font-medium text-on-surface mb-2'>
-                    Dia da Cobrança *
-                  </label>
-                  <select
-                    name='recurringDay'
-                    value={formData.recurringDay}
-                    onChange={handleChange}
-                    required
-                    className='w-full px-4 py-2 bg-surface border border-outline rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-on-surface'
-                  >
-                    {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                      <option key={day} value={day}>
-                        Dia {day} de cada mês
-                      </option>
-                    ))}
-                  </select>
-                  <p className='text-xs text-on-surface-variant mt-2'>
-                    A transação será criada automaticamente todo dia {formData.recurringDay} do mês
-                  </p>
-                </div>
-              ) : (
-                <div>
-                  <label className='block text-sm font-medium text-on-surface mb-2'>
-                    Parcelamento *
-                  </label>
-                  <select
-                    name='installments'
-                    value={formData.installments}
-                    onChange={handleChange}
-                    required
-                    className='w-full px-4 py-2 bg-surface border border-outline rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-on-surface'
-                  >
-                    <option value='1'>À vista</option>
-                    {Array.from({ length: 11 }, (_, i) => i + 2).map((num) => (
-                      <option
-                        key={num}
-                        value={num}
-                      >
-                        {num}x de {totalAmount > 0 ? (totalAmount / num).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00'}
-                      </option>
-                    ))}
-                  </select>
-                  {installmentCount > 1 && (
-                    <p className='text-xs text-on-surface-variant mt-2'>
-                      {firstBillInfo.isNextMonth ? (
-                        <>
-                          Compra após o fechamento (dia {cardSettings.closingDay}). 
-                          Primeira parcela na fatura de <span className='font-medium'>{firstBillInfo.month}/{firstBillInfo.year}</span>
-                        </>
-                      ) : (
-                        <>
-                          Compra antes do fechamento (dia {cardSettings.closingDay}). 
-                          Primeira parcela na fatura de <span className='font-medium'>{firstBillInfo.month}/{firstBillInfo.year}</span>
-                        </>
-                      )}
-                    </p>
-                  )}
-                </div>
-              )}
+          {/* Recurring Checkbox - Full Width */}
+          <div className='mt-4'>
+            <label className='flex items-center gap-2 cursor-pointer'>
+              <input
+                type='checkbox'
+                name='isRecurring'
+                checked={formData.isRecurring}
+                onChange={handleChange}
+                className='w-5 h-5 rounded border-outline text-primary focus:ring-2 focus:ring-primary'
+              />
+              <span className='text-sm font-medium text-on-surface'>
+                Assinatura Recorrente
+              </span>
+            </label>
+            <p className='text-xs text-on-surface-variant mt-1 ml-7'>
+              Marque se esta é uma assinatura que se repete mensalmente
+            </p>
+          </div>
 
-              <div>
-                <label className='block text-sm font-medium text-on-surface mb-2'>
-                  Categoria *
+          {/* Conditional Fields */}
+          <div className='grid grid-cols-2 gap-4 mt-4'>
+
+            {formData.isRecurring ? (
+              <div className='col-span-2'>
+                <label className='block text-sm font-medium text-on-surface-variant mb-1'>
+                  Dia da Cobrança *
                 </label>
                 <select
-                  name='category'
-                  value={formData.category}
+                  name='recurringDay'
+                  value={formData.recurringDay}
                   onChange={handleChange}
                   required
-                  className='w-full px-4 py-2 bg-surface border border-outline rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-on-surface'
+                  className='w-full h-12 px-3 bg-surface border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:outline-none'
                 >
-                  <option value=''>Selecione uma categoria</option>
-                  {categories.map((cat) => (
-                    <option
-                      key={cat}
-                      value={cat}
-                    >
-                      {cat}
+                  {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                    <option key={day} value={day}>
+                      Dia {day} de cada mês
                     </option>
                   ))}
                 </select>
+                <p className='text-xs text-on-surface-variant mt-2'>
+                  A transação será criada automaticamente todo dia {formData.recurringDay} do mês
+                </p>
               </div>
-
-              <div>
-                <label className='block text-sm font-medium text-on-surface mb-2'>
-                  Estabelecimento
+            ) : (
+              <div className='col-span-2'>
+                <label className='block text-sm font-medium text-on-surface-variant mb-1'>
+                  Parcelamento *
                 </label>
-                <input
-                  type='text'
-                  name='merchant'
-                  value={formData.merchant}
-                  onChange={handleChange}
-                  placeholder='Nome do estabelecimento'
-                  className='w-full px-4 py-2 bg-surface border border-outline rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-on-surface'
-                />
-              </div>
-
-              <div>
-                <label className='block text-sm font-medium text-on-surface mb-2'>
-                  Descrição
-                </label>
-                <textarea
-                  name='description'
-                  value={formData.description}
-                  onChange={handleChange}
-                  rows={3}
-                  placeholder='Descrição da transação'
-                  className='w-full px-4 py-2 bg-surface border border-outline rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-on-surface resize-none'
-                />
-              </div>
-
-              <div>
-                <label className='block text-sm font-medium text-on-surface mb-2'>
-                  Data *
-                </label>
-                <input
-                  type='date'
-                  name='date'
-                  value={formData.date}
+                <select
+                  name='installments'
+                  value={formData.installments}
                   onChange={handleChange}
                   required
-                  className='w-full px-4 py-2 bg-surface border border-outline rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-on-surface'
-                />
+                  className='w-full h-12 px-3 bg-surface border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:outline-none'
+                >
+                  <option value='1'>À vista</option>
+                  {Array.from({ length: 11 }, (_, i) => i + 2).map((num) => (
+                    <option
+                      key={num}
+                      value={num}
+                    >
+                      {num}x de {totalAmount > 0 ? (totalAmount / num).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00'}
+                    </option>
+                  ))}
+                </select>
+                {installmentCount > 1 && (
+                  <p className='text-xs text-on-surface-variant mt-2'>
+                    {firstBillInfo.isNextMonth ? (
+                      <>
+                        Compra após o fechamento (dia {cardSettings.closingDay}). 
+                        Primeira parcela na fatura de <span className='font-medium'>{firstBillInfo.month}/{firstBillInfo.year}</span>
+                      </>
+                    ) : (
+                      <>
+                        Compra antes do fechamento (dia {cardSettings.closingDay}). 
+                        Primeira parcela na fatura de <span className='font-medium'>{firstBillInfo.month}/{firstBillInfo.year}</span>
+                      </>
+                    )}
+                  </p>
+                )}
               </div>
-            </div>
+            )}
 
-            <div className='flex gap-3 mt-6'>
-              <button
-                type='button'
-                onClick={onClose}
-                className='flex-1 px-4 py-2 bg-surface-variant text-on-surface rounded-lg hover:bg-surface-variant/80 transition-colors'
-              >
-                Cancelar
-              </button>
-              <button
-                type='submit'
-                disabled={loading}
-                className='flex-1 px-4 py-2 bg-primary text-on-primary rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-              >
-                {loading ? 'Criando...' : 'Criar Transação'}
-              </button>
-            </div>
-          </form>
+            <CategorySelect
+              label="Categoria"
+              id="category"
+              value={formData.category}
+              onChange={(categoryId) => setFormData({ ...formData, category: categoryId })}
+              type='expense'
+              required
+            />
+
+            <Input
+              label="Estabelecimento"
+              id="merchant"
+              value={formData.merchant}
+              onChange={(e) => setFormData({ ...formData, merchant: e.target.value })}
+              placeholder='Nome do estabelecimento'
+            />
+          </div>
+
+          {/* Description - Full Width */}
+          <div className='mt-4'>
+            <label className='block text-sm font-medium text-on-surface-variant mb-1'>
+              Descrição
+            </label>
+            <textarea
+              name='description'
+              value={formData.description}
+              onChange={handleChange}
+              rows={3}
+              placeholder='Descrição da transação (opcional)'
+              className='w-full p-3 bg-surface border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:outline-none'
+            />
+          </div>
         </div>
-      </div>
-    </div>
+
+        <div className="p-4 bg-surface-variant/20 flex justify-end gap-3 border-t border-outline sticky bottom-0">
+          <Button type="button" variant="outlined" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={loading}>
+            {loading ? 'Criando...' : 'Criar Transação'}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 };
 

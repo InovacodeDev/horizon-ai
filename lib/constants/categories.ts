@@ -136,6 +136,20 @@ export const TRANSACTION_CATEGORIES: TransactionCategory[] = [
     color: 'text-gray-600',
   },
   {
+    id: 'credit_card_bill',
+    name: 'Fatura de Cartão',
+    icon: CreditCardIcon,
+    type: 'expense',
+    color: 'text-slate-600',
+  },
+  {
+    id: 'taxes',
+    name: 'Impostos',
+    icon: LandmarkIcon,
+    type: 'expense',
+    color: 'text-red-600',
+  },
+  {
     id: 'other_expense',
     name: 'Outras Despesas',
     icon: SwapIcon,
