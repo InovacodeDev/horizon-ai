@@ -197,7 +197,13 @@ export function AddTransactionModal({ isOpen, onClose, onSubmit, accounts }: Add
               label="Categoria *"
               value={formData.category}
               onChange={(value) => setFormData({ ...formData, category: value })}
-              type={formData.type}
+              type={
+                formData.type === 'salary'
+                  ? 'income'
+                  : formData.type === 'transfer'
+                    ? 'all'
+                    : (formData.type as 'income' | 'expense')
+              }
               required
             />
           </div>
