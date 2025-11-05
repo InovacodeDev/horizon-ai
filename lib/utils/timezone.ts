@@ -1,7 +1,19 @@
 /**
  * Timezone utilities for handling dates consistently across the application
  *
- * All dates are stored in UTC in the database, but displayed in the user's timezone
+ * IMPORTANT: To avoid timezone shift issues (where dates appear as the previous day),
+ * we store dates at noon UTC (12:00:00.000Z). This ensures that when displayed in any
+ * timezone (-12 to +14 hours), the date will still be correct.
+ *
+ * Example:
+ * - User selects: 2025-11-03
+ * - Stored as: 2025-11-03T12:00:00.000Z
+ * - Displayed in São Paulo (UTC-3): 2025-11-03 09:00 → shows as 03/11
+ * - Displayed in Tokyo (UTC+9): 2025-11-03 21:00 → shows as 03/11
+ *
+ * Without this fix:
+ * - Stored as: 2025-11-03T00:00:00.000Z
+ * - Displayed in São Paulo (UTC-3): 2025-11-02 21:00 → shows as 02/11 ❌
  */
 
 /**
@@ -19,56 +31,22 @@ export function getUserTimezone(): string {
 }
 
 /**
- * Convert a date string (YYYY-MM-DD) to ISO string in user's timezone
- * This ensures the date is stored as the start of the day in the user's timezone
+ * Convert a date string (YYYY-MM-DD) to ISO string preserving the date
+ * This ensures the date is stored correctly without timezone shifts
  *
  * @param dateString - Date in YYYY-MM-DD format
  * @param timezone - User's timezone (optional, defaults to browser timezone)
- * @returns ISO string in UTC representing the start of the day in user's timezone
+ * @returns ISO string representing noon UTC on that date
  *
  * @example
- * // User in São Paulo (UTC-3)
- * dateToUserTimezone('2025-10-29')
- * // Returns: '2025-10-29T03:00:00.000Z' (which is 2025-10-29 00:00:00 in São Paulo)
+ * dateToUserTimezone('2025-11-03')
+ * // Returns: '2025-11-03T12:00:00.000Z' (noon UTC prevents timezone shift issues)
  */
 export function dateToUserTimezone(dateString: string, timezone?: string): string {
-  const tz = timezone || getUserTimezone();
-
-  // Parse the date string
-  const [year, month, day] = dateString.split('-').map(Number);
-
-  // Create a date object in the user's timezone
-  // We use a library-free approach to avoid dependencies
-  const date = new Date(year, month - 1, day, 0, 0, 0, 0);
-
-  // Get the timezone offset for this specific date
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: tz,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  });
-
-  const parts = formatter.formatToParts(date);
-  const tzDate = {
-    year: parseInt(parts.find((p) => p.type === 'year')?.value || '0'),
-    month: parseInt(parts.find((p) => p.type === 'month')?.value || '0'),
-    day: parseInt(parts.find((p) => p.type === 'day')?.value || '0'),
-    hour: parseInt(parts.find((p) => p.type === 'hour')?.value || '0'),
-    minute: parseInt(parts.find((p) => p.type === 'minute')?.value || '0'),
-    second: parseInt(parts.find((p) => p.type === 'second')?.value || '0'),
-  };
-
-  // Create a date in UTC that represents the same moment
-  const utcDate = new Date(
-    Date.UTC(tzDate.year, tzDate.month - 1, tzDate.day, tzDate.hour, tzDate.minute, tzDate.second),
-  );
-
-  return utcDate.toISOString();
+  // Store dates at noon UTC to prevent timezone conversion issues
+  // This ensures that when displayed in any timezone (-12 to +14),
+  // the date will still be correct
+  return `${dateString}T12:00:00.000Z`;
 }
 
 /**

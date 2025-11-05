@@ -163,8 +163,10 @@ const CreditCardBillsPage: React.FC = () => {
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    // Extract just the date part (YYYY-MM-DD) to avoid timezone issues
+    const datePart = dateString.split('T')[0];
+    const [year, month, day] = datePart.split('-');
+    return `${day}/${month}`;
   };
 
   const formatMonthYear = (month: string, year: number) => {
@@ -632,7 +634,7 @@ const CreditCardBillsPage: React.FC = () => {
                           )}
                         </td>
                         <td className='py-3 px-4'>
-                          <p className='text-sm text-on-surface-variant'>{formatDate(transaction.date)}</p>
+                          <p className='text-sm text-on-surface-variant'>{formatDate(transaction.credit_card_transaction_created_at || transaction.date)}</p>
                         </td>
                         <td className='py-3 px-4'>
                           <TransactionCategoryBadge categoryId={transaction.category} />
@@ -682,7 +684,7 @@ const CreditCardBillsPage: React.FC = () => {
                               <thead>
                                 <tr className='border-b border-outline'>
                                   <th className='text-left py-3 px-4 text-sm font-semibold text-on-surface'>Descrição</th>
-                                  <th className='text-left py-3 px-4 text-sm font-semibold text-on-surface'>Data</th>
+                                  <th className='text-left py-3 px-4 text-sm font-semibold text-on-surface'>Data da Compra</th>
                                   <th className='text-left py-3 px-4 text-sm font-semibold text-on-surface'>Categoria</th>
                                   <th className='text-center py-3 px-4 text-sm font-semibold text-on-surface'>Tipo</th>
                                   <th className='text-right py-3 px-4 text-sm font-semibold text-on-surface'>Valor</th>
@@ -718,7 +720,7 @@ const CreditCardBillsPage: React.FC = () => {
                               <thead>
                                 <tr className='border-b border-outline'>
                                   <th className='text-left py-3 px-4 text-sm font-semibold text-on-surface'>Descrição</th>
-                                  <th className='text-left py-3 px-4 text-sm font-semibold text-on-surface'>Data</th>
+                                  <th className='text-left py-3 px-4 text-sm font-semibold text-on-surface'>Data da Compra</th>
                                   <th className='text-left py-3 px-4 text-sm font-semibold text-on-surface'>Categoria</th>
                                   <th className='text-center py-3 px-4 text-sm font-semibold text-on-surface'>Parcela</th>
                                   <th className='text-right py-3 px-4 text-sm font-semibold text-on-surface'>Valor</th>
@@ -754,7 +756,7 @@ const CreditCardBillsPage: React.FC = () => {
                               <thead>
                                 <tr className='border-b border-outline'>
                                   <th className='text-left py-3 px-4 text-sm font-semibold text-on-surface'>Descrição</th>
-                                  <th className='text-left py-3 px-4 text-sm font-semibold text-on-surface'>Data</th>
+                                  <th className='text-left py-3 px-4 text-sm font-semibold text-on-surface'>Data da Compra</th>
                                   <th className='text-left py-3 px-4 text-sm font-semibold text-on-surface'>Categoria</th>
                                   <th className='text-center py-3 px-4 text-sm font-semibold text-on-surface'>Tipo</th>
                                   <th className='text-right py-3 px-4 text-sm font-semibold text-on-surface'>Valor</th>
