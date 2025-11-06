@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from "react";
-import { GoogleGenAI, Type } from "@google/genai";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -133,23 +132,26 @@ export default function ShoppingListPage() {
         setIsGeneratingList(true);
         setNewListItems([]);
 
-        const apiPrompt = `Based on the following request, create a shopping list. The response must be a valid JSON array of strings. Request: "${prompt}"`;
-
         try {
-            const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GOOGLE_AI_API_KEY as string });
-            const response = await ai.models.generateContent({
-                model: "gemini-2.5-flash",
-                contents: apiPrompt,
-                config: {
-                    responseMimeType: "application/json",
-                    responseSchema: { type: Type.ARRAY, items: { type: Type.STRING } },
+            const response = await fetch('/api/shopping-list/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
                 },
+                body: JSON.stringify({ prompt }),
             });
-            const items = JSON.parse(response.text ?? '[]');
-            setNewListItems(items.map((name: string) => ({ id: `item-${Math.random()}`, name, checked: false })));
-            setNewListTitle(prompt);
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to generate shopping list');
+            }
+
+            const data = await response.json();
+            setNewListItems(data.items.map((name: string) => ({ $id: `item-${Math.random()}`, name, checked: false })));
+            setNewListTitle(data.title);
         } catch (error) {
             console.error("Error generating shopping list:", error);
+            alert(error instanceof Error ? error.message : 'Failed to generate shopping list. Please try again.');
         } finally {
             setIsGeneratingList(false);
         }
@@ -189,60 +191,25 @@ export default function ShoppingListPage() {
         setIsImporting(true);
         setParsedPurchase(null);
 
-        const prompt = `
-            Assume the role of an expert data extractor for Brazilian electronic invoices (NF-e/NFC-e).
-            Given the following URL, imagine you can access and parse its HTML content to extract the purchase details.
-            URL: ${nfeUrl}
-            
-            Extract the following information:
-            1.  'storeName': The name of the commercial establishment.
-            2.  'purchaseDate': The date of the purchase in ISO 8601 format (YYYY-MM-DD).
-            3.  'totalAmount': The total value of the purchase as a number.
-            4.  'items': An array of all purchased items. For each item, extract:
-                - 'name': The full product name.
-                - 'brand': The product's brand, if available.
-                - 'quantity': The quantity purchased as a number.
-                - 'unitPrice': The price per unit as a number.
-                - 'totalPrice': The total price for that item line as a number.
-
-            Your response MUST be a single, valid JSON object following the specified structure. Do not include any other text or explanations.
-        `;
         try {
-            const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GOOGLE_AI_API_KEY as string });
-            const response = await ai.models.generateContent({
-                model: "gemini-2.5-flash",
-                contents: prompt,
-                config: {
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: Type.OBJECT,
-                        properties: {
-                            storeName: { type: Type.STRING },
-                            purchaseDate: { type: Type.STRING },
-                            totalAmount: { type: Type.NUMBER },
-                            items: {
-                                type: Type.ARRAY,
-                                items: {
-                                    type: Type.OBJECT,
-                                    properties: {
-                                        name: { type: Type.STRING },
-                                        brand: { type: Type.STRING },
-                                        quantity: { type: Type.NUMBER },
-                                        unitPrice: { type: Type.NUMBER },
-                                        totalPrice: { type: Type.NUMBER },
-                                    },
-                                    required: ["name", "quantity", "unitPrice", "totalPrice"],
-                                },
-                            },
-                        },
-                        required: ["storeName", "purchaseDate", "totalAmount", "items"],
-                    },
+            const response = await fetch('/api/shopping-list/parse-nfe', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
                 },
+                body: JSON.stringify({ nfeUrl }),
             });
-            const parsedData = JSON.parse(response.text ?? '[]');
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to parse NFe');
+            }
+
+            const parsedData = await response.json();
             setParsedPurchase(parsedData);
         } catch (error) {
             console.error("Error importing NF-e:", error);
+            alert(error instanceof Error ? error.message : 'Failed to import NFe. Please check the URL and try again.');
         } finally {
             setIsImporting(false);
         }
@@ -263,44 +230,31 @@ export default function ShoppingListPage() {
     // --- Insights Logic ---
     const handleGenerateInsights = async () => {
         if (purchaseHistory.length === 0) {
+            alert('No purchase history available. Please import some purchases first.');
             return;
         }
         setIsGeneratingInsights(true);
         setInsights(null);
 
-        const prompt = `
-            You are a helpful financial assistant focused on saving money on groceries and shopping.
-            Based on the user's purchase history provided in JSON format, analyze their spending habits and provide actionable, personalized insights on how they can save money.
-
-            Purchase History:
-            ${JSON.stringify(purchaseHistory, null, 2)}
-
-            Instructions:
-            1. Analyze the items, brands, prices, and stores.
-            2. Identify patterns like frequent purchases of the same item or brand loyalty.
-            3. Provide 2-3 specific, concrete saving tips in a friendly tone.
-            4. Use Markdown for formatting (headings with ##, lists with *, bold with **).
-            5. Examples of insights: Suggesting a cheaper alternative brand, recommending buying in bulk, or pointing out frequent purchases of non-essential items.
-            
-            Example response:
-            "## Your Personalized Savings Insights 💰
-
-            Here are a few ways you might be able to save based on your recent purchases:
-
-            *   **Switch your coffee brand:** You frequently buy **Café em Pó 3 Corações** for **R$ 18.50**. Consider trying the store brand, which often costs around R$ 12-14, saving you over 20% on this item!
-            *   **Buy milk in larger quantities:** We noticed you buy milk in 1-liter cartons. If your family consumes it quickly, buying a larger pack or "caixa fechada" can often reduce the per-liter price.
-            "
-        `;
-
         try {
-            const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GOOGLE_AI_API_KEY as string });
-            const response = await ai.models.generateContent({
-                model: "gemini-2.5-flash",
-                contents: prompt,
+            const response = await fetch('/api/shopping-list/insights', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ purchaseHistory }),
             });
-            setInsights(response.text ?? '');
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to generate insights');
+            }
+
+            const data = await response.json();
+            setInsights(data.insights);
         } catch (error) {
             console.error("Error generating insights:", error);
+            alert(error instanceof Error ? error.message : 'Failed to generate insights. Please try again.');
         } finally {
             setIsGeneratingInsights(false);
         }

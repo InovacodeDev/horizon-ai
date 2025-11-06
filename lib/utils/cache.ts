@@ -96,6 +96,15 @@ export const getCacheKey = {
   creditCardTransactions: (params: string) => `creditCardTransactions:${params}`,
   categories: () => 'categories',
   financialInsights: (userId: string) => `financialInsights:${userId}`,
+  // Invoice-related cache keys
+  invoices: (userId: string, filters?: string) => `invoices:${userId}${filters ? `:${filters}` : ''}`,
+  invoice: (invoiceId: string) => `invoice:${invoiceId}`,
+  parsedInvoice: (invoiceKey: string) => `parsedInvoice:${invoiceKey}`,
+  invoiceInsights: (userId: string) => `invoiceInsights:${userId}`,
+  priceHistory: (userId: string, productId: string, days: number) => `priceHistory:${userId}:${productId}:${days}`,
+  priceComparison: (userId: string, productId: string, days: number) =>
+    `priceComparison:${userId}:${productId}:${days}`,
+  products: (userId: string) => `products:${userId}`,
 };
 
 /**
@@ -115,6 +124,28 @@ export const invalidateCache = {
   },
   creditCardTransactions: () => {
     cacheManager.invalidatePattern(`creditCardTransactions:.*`);
+  },
+  // Invoice-related cache invalidation
+  invoices: (userId: string) => {
+    cacheManager.invalidatePattern(`invoices:${userId}.*`);
+    cacheManager.invalidate(getCacheKey.invoiceInsights(userId));
+    cacheManager.invalidatePattern(`priceHistory:${userId}:.*`);
+    cacheManager.invalidatePattern(`priceComparison:${userId}:.*`);
+    cacheManager.invalidate(getCacheKey.products(userId));
+  },
+  invoice: (invoiceId: string, userId: string) => {
+    cacheManager.invalidate(getCacheKey.invoice(invoiceId));
+    cacheManager.invalidatePattern(`invoices:${userId}.*`);
+    cacheManager.invalidate(getCacheKey.invoiceInsights(userId));
+  },
+  priceTracking: (userId: string, productId?: string) => {
+    if (productId) {
+      cacheManager.invalidatePattern(`priceHistory:${userId}:${productId}:.*`);
+      cacheManager.invalidatePattern(`priceComparison:${userId}:${productId}:.*`);
+    } else {
+      cacheManager.invalidatePattern(`priceHistory:${userId}:.*`);
+      cacheManager.invalidatePattern(`priceComparison:${userId}:.*`);
+    }
   },
   all: (userId: string) => {
     cacheManager.invalidatePattern(`.*:${userId}`);

@@ -13,7 +13,7 @@ const CategoryItem: React.FC<{ category: Category }> = ({ category }) => {
     return (
         <div className="flex items-center gap-4 py-3">
             <div className="p-2 bg-primary-container rounded-full">
-                <Icon className="w-6 h-6 text-on-primary-container" />
+                {Icon && <Icon className="w-6 h-6 text-on-primary-container" />}
             </div>
             <div className="flex-grow">
                 <div className="flex justify-between items-center mb-1">

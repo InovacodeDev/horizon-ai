@@ -20,6 +20,7 @@ const IconPicker: React.FC<IconPickerProps> = ({ selectedIcon, onSelectIcon }) =
             <label className="block text-sm font-medium text-on-surface-variant mb-2">Icon</label>
             <div className="grid grid-cols-8 gap-2">
                 {AVAILABLE_CATEGORY_ICONS.map(({ component: Icon, name }) => {
+                    if (!Icon) return null;
                     const isSelected = selectedIcon === Icon;
                     return (
                         <button
@@ -150,7 +151,7 @@ const ManageCategoriesModal: React.FC<ManageCategoriesModalProps> = ({
                                         </div>
                                     ) : (
                                         <div className="flex items-center gap-3">
-                                            <Icon className="w-6 h-6 text-on-surface-variant" />
+                                            {Icon && <Icon className="w-6 h-6 text-on-surface-variant" />}
                                             <span className="flex-grow font-medium text-on-surface">
                                                 {category.name}
                                             </span>

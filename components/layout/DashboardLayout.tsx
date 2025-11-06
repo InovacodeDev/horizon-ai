@@ -30,16 +30,42 @@ interface NavItemProps {
   isActive: boolean;
   disabled?: boolean;
   tooltipText?: string;
+  hasSubmenu?: boolean;
+  isExpanded?: boolean;
+  onToggle?: () => void;
+  isSubmenuItem?: boolean;
 }
 
-const NavItem: React.FC<NavItemProps> = ({ icon, label, href, isActive, disabled = false, tooltipText }) => {
+const NavItem: React.FC<NavItemProps> = ({ 
+  icon, 
+  label, 
+  href, 
+  isActive, 
+  disabled = false, 
+  tooltipText,
+  hasSubmenu = false,
+  isExpanded = false,
+  onToggle,
+  isSubmenuItem = false
+}) => {
   const content = (
     <div
       className={`w-full flex items-center p-2.5 rounded-lg text-sm font-medium transition-colors
+        ${isSubmenuItem ? 'pl-11' : ''}
         ${disabled ? 'opacity-50 cursor-not-allowed text-on-surface-variant' : isActive ? 'bg-primary-container text-primary' : 'text-on-surface-variant hover:bg-on-surface/5'}`}
     >
       <div className="mr-3">{icon}</div>
-      {label}
+      <span className="flex-grow">{label}</span>
+      {hasSubmenu && (
+        <svg
+          className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      )}
     </div>
   );
 
@@ -49,6 +75,14 @@ const NavItem: React.FC<NavItemProps> = ({ icon, label, href, isActive, disabled
 
   if (disabled) {
     return content;
+  }
+
+  if (hasSubmenu && onToggle) {
+    return (
+      <button onClick={onToggle} className="block w-full text-left">
+        {content}
+      </button>
+    );
   }
 
   return (
@@ -73,9 +107,19 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, user }) => 
   const pathname = usePathname();
   const router = useRouter();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({
+    invoices: pathname.startsWith('/invoices'),
+  });
 
   const handleLogoutClick = () => {
     setIsLogoutModalOpen(true);
+  };
+
+  const toggleMenu = (menuKey: string) => {
+    setExpandedMenus(prev => ({
+      ...prev,
+      [menuKey]: !prev[menuKey],
+    }));
   };
 
   const handleConfirmLogout = async () => {
@@ -107,9 +151,16 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, user }) => 
   const intelligenceNav = [
     { href: '/categories', label: 'Categorias', icon: <PieChartIcon className="w-5 h-5" /> },
     { href: '/shopping-list', label: 'Listas de Compras', icon: <ShoppingCartIcon className="w-5 h-5" /> },
-    { href: '/invoices', label: 'Notas Fiscais', icon: <ReceiptIcon className="w-5 h-5" /> },
     // { href: '/warranties', label: 'Garantias', icon: <ShieldCheckIcon className="w-5 h-5" /> }, // TODO: Implementar
   ];
+
+  const invoicesNav = {
+    main: { href: '/invoices', label: 'Notas Fiscais', icon: <ReceiptIcon className="w-5 h-5" /> },
+    submenu: [
+      { href: '/invoices/insights', label: 'Insights', icon: <TrendingUpIcon className="w-4 h-4" /> },
+      { href: '/invoices/products', label: 'Produtos', icon: <ShoppingCartIcon className="w-4 h-4" /> },
+    ],
+  };
 
   const planningNav = [
     { href: '/investments', label: 'Investimentos', icon: <TrendingUpIcon className="w-5 h-5" /> },
@@ -151,10 +202,29 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, user }) => 
                 key={item.href}
                 {...item}
                 isActive={pathname === item.href}
-                disabled={true}
-                tooltipText="Em construção"
               />
             ))}
+            
+            {/* Invoices with submenu */}
+            <NavItem
+              {...invoicesNav.main}
+              isActive={pathname === invoicesNav.main.href}
+              hasSubmenu={true}
+              isExpanded={expandedMenus.invoices}
+              onToggle={() => toggleMenu('invoices')}
+            />
+            {expandedMenus.invoices && (
+              <div className="space-y-1.5">
+                {invoicesNav.submenu.map((item) => (
+                  <NavItem
+                    key={item.href}
+                    {...item}
+                    isActive={pathname === item.href}
+                    isSubmenuItem={true}
+                  />
+                ))}
+              </div>
+            )}
           </nav>
 
           <NavSection title="Gestão Patrimonial" />

@@ -722,3 +722,25 @@ export interface CategoryIcon {
   name: string;
   component: FC<{ className?: string }>;
 }
+
+// ============================================
+// Shopping List API Types
+// ============================================
+
+// Re-export shopping list API types for convenience
+export type {
+  GenerateListRequest,
+  ParseNFeRequest,
+  GenerateInsightsRequest,
+  GenerateListResponse,
+  ParseNFeResponse,
+  GenerateInsightsResponse,
+  ErrorResponse,
+} from './shopping-list-api.types';
+
+export {
+  isErrorResponse,
+  isGenerateListResponse,
+  isParseNFeResponse,
+  isGenerateInsightsResponse,
+} from './shopping-list-api.types';

@@ -17,6 +17,10 @@ export const COLLECTIONS = {
   CREDIT_CARD_TRANSACTIONS: 'credit_card_transactions',
   CREDIT_CARD_BILLS: 'credit_card_bills',
   TRANSFER_LOGS: 'transfer_logs',
+  INVOICES: 'invoices',
+  INVOICE_ITEMS: 'invoice_items',
+  PRODUCTS: 'products',
+  PRICE_HISTORY: 'price_history',
 } as const;
 
 // Database ID - Configure no Appwrite Console
@@ -636,5 +640,226 @@ export interface TransferLog {
   amount: number;
   description?: string;
   status: 'completed' | 'failed';
+  created_at: string;
+}
+
+// ============================================
+// Collection: invoices
+// ============================================
+export const invoicesSchema = {
+  collectionId: COLLECTIONS.INVOICES,
+  name: 'Invoices',
+  permissions: ['read("any")', 'write("any")'],
+  rowSecurity: true,
+  attributes: [
+    { key: 'user_id', type: 'string', size: 255, required: true, array: false },
+    { key: 'invoice_key', type: 'string', size: 50, required: true, array: false },
+    { key: 'invoice_number', type: 'string', size: 50, required: true, array: false },
+    { key: 'issue_date', type: 'datetime', required: true },
+    { key: 'merchant_cnpj', type: 'string', size: 20, required: true, array: false },
+    { key: 'merchant_name', type: 'string', size: 255, required: true, array: false },
+    { key: 'total_amount', type: 'float', required: true },
+    {
+      key: 'category',
+      type: 'enum',
+      elements: ['pharmacy', 'groceries', 'supermarket', 'restaurant', 'fuel', 'retail', 'services', 'other'],
+      required: true,
+      array: false,
+    },
+    { key: 'data', type: 'string', size: 4000, required: false, array: false }, // JSON field
+    { key: 'created_at', type: 'datetime', required: true },
+    { key: 'updated_at', type: 'datetime', required: true },
+  ],
+  indexes: [
+    { key: 'idx_user_id', type: 'key', attributes: ['user_id'], orders: ['ASC'] },
+    { key: 'idx_invoice_key', type: 'unique', attributes: ['invoice_key'] },
+    { key: 'idx_issue_date', type: 'key', attributes: ['issue_date'], orders: ['DESC'] },
+    { key: 'idx_category', type: 'key', attributes: ['category'] },
+    { key: 'idx_merchant_cnpj', type: 'key', attributes: ['merchant_cnpj'] },
+    // Compound indexes for common query patterns
+    { key: 'idx_user_issue_date', type: 'key', attributes: ['user_id', 'issue_date'], orders: ['ASC', 'DESC'] },
+    { key: 'idx_user_category', type: 'key', attributes: ['user_id', 'category'], orders: ['ASC', 'ASC'] },
+    { key: 'idx_user_merchant', type: 'key', attributes: ['user_id', 'merchant_cnpj'], orders: ['ASC', 'ASC'] },
+  ],
+};
+
+export interface Invoice {
+  $id: string;
+  $createdAt: string;
+  $updatedAt: string;
+  user_id: string;
+  invoice_key: string;
+  invoice_number: string;
+  issue_date: string;
+  merchant_cnpj: string;
+  merchant_name: string;
+  total_amount: number;
+  category: 'pharmacy' | 'groceries' | 'supermarket' | 'restaurant' | 'fuel' | 'retail' | 'services' | 'other';
+  data?: string; // JSON string
+  created_at: string;
+  updated_at: string;
+}
+
+// Data structure stored in the data JSON field
+export interface InvoiceData {
+  series?: string;
+  merchant_address?: string;
+  discount_amount?: number;
+  tax_amount?: number;
+  custom_category?: string;
+  source_url?: string;
+  qr_code_data?: string;
+  xml_data?: string;
+  transaction_id?: string;
+  account_id?: string;
+}
+
+// ============================================
+// Collection: invoice_items
+// ============================================
+export const invoiceItemsSchema = {
+  collectionId: COLLECTIONS.INVOICE_ITEMS,
+  name: 'Invoice Items',
+  permissions: ['read("any")', 'write("any")'],
+  rowSecurity: true,
+  attributes: [
+    { key: 'invoice_id', type: 'string', size: 255, required: true, array: false },
+    { key: 'user_id', type: 'string', size: 255, required: true, array: false },
+    { key: 'product_id', type: 'string', size: 255, required: true, array: false },
+    { key: 'product_code', type: 'string', size: 50, required: false, array: false },
+    { key: 'ncm_code', type: 'string', size: 20, required: false, array: false },
+    { key: 'description', type: 'string', size: 500, required: true, array: false },
+    { key: 'quantity', type: 'float', required: true },
+    { key: 'unit_price', type: 'float', required: true },
+    { key: 'total_price', type: 'float', required: true },
+    { key: 'discount_amount', type: 'float', required: false, default: 0 },
+    { key: 'line_number', type: 'integer', required: true, min: 1 },
+    { key: 'created_at', type: 'datetime', required: true },
+  ],
+  indexes: [
+    { key: 'idx_invoice_id', type: 'key', attributes: ['invoice_id'], orders: ['ASC'] },
+    { key: 'idx_user_id', type: 'key', attributes: ['user_id'], orders: ['ASC'] },
+    { key: 'idx_product_id', type: 'key', attributes: ['product_id'], orders: ['ASC'] },
+    // Compound indexes for common query patterns
+    { key: 'idx_invoice_line', type: 'key', attributes: ['invoice_id', 'line_number'], orders: ['ASC', 'ASC'] },
+    { key: 'idx_user_product', type: 'key', attributes: ['user_id', 'product_id'], orders: ['ASC', 'ASC'] },
+  ],
+};
+
+export interface InvoiceItem {
+  $id: string;
+  $createdAt: string;
+  $updatedAt: string;
+  invoice_id: string;
+  user_id: string;
+  product_id: string;
+  product_code?: string;
+  ncm_code?: string;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  discount_amount?: number;
+  line_number: number;
+  created_at: string;
+}
+
+// ============================================
+// Collection: products
+// ============================================
+export const productsSchema = {
+  collectionId: COLLECTIONS.PRODUCTS,
+  name: 'Products',
+  permissions: ['read("any")', 'write("any")'],
+  rowSecurity: true,
+  attributes: [
+    { key: 'user_id', type: 'string', size: 255, required: true, array: false },
+    { key: 'name', type: 'string', size: 255, required: true, array: false },
+    { key: 'product_code', type: 'string', size: 50, required: false, array: false },
+    { key: 'ncm_code', type: 'string', size: 20, required: false, array: false },
+    { key: 'category', type: 'string', size: 100, required: true, array: false },
+    { key: 'subcategory', type: 'string', size: 100, required: false, array: false },
+    { key: 'total_purchases', type: 'integer', required: true, min: 0 },
+    { key: 'average_price', type: 'float', required: true },
+    { key: 'last_purchase_date', type: 'datetime', required: false },
+    { key: 'created_at', type: 'datetime', required: true },
+    { key: 'updated_at', type: 'datetime', required: true },
+  ],
+  indexes: [
+    { key: 'idx_user_id', type: 'key', attributes: ['user_id'], orders: ['ASC'] },
+    { key: 'idx_product_code', type: 'key', attributes: ['product_code'] },
+    { key: 'idx_category', type: 'key', attributes: ['category'] },
+    { key: 'idx_last_purchase_date', type: 'key', attributes: ['last_purchase_date'], orders: ['DESC'] },
+    // Compound indexes for common query patterns
+    { key: 'idx_user_category', type: 'key', attributes: ['user_id', 'category'], orders: ['ASC', 'ASC'] },
+    { key: 'idx_user_purchases', type: 'key', attributes: ['user_id', 'total_purchases'], orders: ['ASC', 'DESC'] },
+    { key: 'idx_user_name', type: 'key', attributes: ['user_id', 'name'], orders: ['ASC', 'ASC'] },
+  ],
+};
+
+export interface Product {
+  $id: string;
+  $createdAt: string;
+  $updatedAt: string;
+  user_id: string;
+  name: string;
+  product_code?: string;
+  ncm_code?: string;
+  category: string;
+  subcategory?: string;
+  total_purchases: number;
+  average_price: number;
+  last_purchase_date?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================
+// Collection: price_history
+// ============================================
+export const priceHistorySchema = {
+  collectionId: COLLECTIONS.PRICE_HISTORY,
+  name: 'Price History',
+  permissions: ['read("any")', 'write("any")'],
+  rowSecurity: true,
+  attributes: [
+    { key: 'user_id', type: 'string', size: 255, required: true, array: false },
+    { key: 'product_id', type: 'string', size: 255, required: true, array: false },
+    { key: 'invoice_id', type: 'string', size: 255, required: true, array: false },
+    { key: 'merchant_cnpj', type: 'string', size: 20, required: true, array: false },
+    { key: 'merchant_name', type: 'string', size: 255, required: true, array: false },
+    { key: 'purchase_date', type: 'datetime', required: true },
+    { key: 'unit_price', type: 'float', required: true },
+    { key: 'quantity', type: 'float', required: true },
+    { key: 'created_at', type: 'datetime', required: true },
+  ],
+  indexes: [
+    { key: 'idx_user_id', type: 'key', attributes: ['user_id'], orders: ['ASC'] },
+    { key: 'idx_product_id', type: 'key', attributes: ['product_id'], orders: ['ASC'] },
+    { key: 'idx_purchase_date', type: 'key', attributes: ['purchase_date'], orders: ['DESC'] },
+    { key: 'idx_product_date', type: 'key', attributes: ['product_id', 'purchase_date'], orders: ['ASC', 'DESC'] },
+    // Compound indexes for common query patterns
+    {
+      key: 'idx_user_product_date',
+      type: 'key',
+      attributes: ['user_id', 'product_id', 'purchase_date'],
+      orders: ['ASC', 'ASC', 'DESC'],
+    },
+    { key: 'idx_user_merchant', type: 'key', attributes: ['user_id', 'merchant_cnpj'], orders: ['ASC', 'ASC'] },
+  ],
+};
+
+export interface PriceHistory {
+  $id: string;
+  $createdAt: string;
+  $updatedAt: string;
+  user_id: string;
+  product_id: string;
+  invoice_id: string;
+  merchant_cnpj: string;
+  merchant_name: string;
+  purchase_date: string;
+  unit_price: number;
+  quantity: number;
   created_at: string;
 }

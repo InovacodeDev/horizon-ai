@@ -241,7 +241,11 @@ export default function PlanningGoalsPage() {
         `;
 
         try {
-            const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GOOGLE_AI_API_KEY as string });
+            // TODO: Move this to a server-side API route to protect the API key
+            // For now, this feature is disabled until proper server-side implementation
+            throw new Error('AI goal generation is temporarily disabled. Please use the manual goal creation.');
+            
+            /* const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
             const response = await ai.models.generateContent({
                 model: "gemini-2.5-flash",
                 contents: prompt,
@@ -261,12 +265,13 @@ export default function PlanningGoalsPage() {
                         },
                     },
                 },
-            });
-            const suggested = JSON.parse(response.text ?? '[]');
-            setSuggestedGoals(suggested);
-            setIsSuggestionModalOpen(true);
+            }); */
+            // const suggested = JSON.parse(response.text ?? '[]');
+            // setSuggestedGoals(suggested);
+            // setIsSuggestionModalOpen(true);
         } catch (error) {
             console.error("Error generating AI goals:", error);
+            alert('A geração de metas com IA está temporariamente desabilitada. Por favor, crie metas manualmente.');
         } finally {
             setIsGenerating(false);
         }

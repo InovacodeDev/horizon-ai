@@ -20,12 +20,19 @@ const useTabs = () => {
 interface TabsProps {
   defaultValue: string;
   children: React.ReactNode;
+  onValueChange?: (value: string) => void;
 }
 
-export const Tabs: React.FC<TabsProps> = ({ defaultValue, children }) => {
+export const Tabs: React.FC<TabsProps> = ({ defaultValue, children, onValueChange }) => {
   const [activeTab, setActiveTab] = useState(defaultValue);
+  
+  const handleSetActiveTab = (value: string) => {
+    setActiveTab(value);
+    onValueChange?.(value);
+  };
+  
   return (
-    <TabsContext.Provider value={{ activeTab, setActiveTab }}>
+    <TabsContext.Provider value={{ activeTab, setActiveTab: handleSetActiveTab }}>
       <div>{children}</div>
     </TabsContext.Provider>
   );

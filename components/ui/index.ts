@@ -11,3 +11,5 @@ export { default as Spinner } from './Spinner';
 export { default as Skeleton } from './Skeleton';
 export { DropdownMenu, DropdownMenuItem } from './DropdownMenu';
 export { default as Tooltip } from './Tooltip';
+export { ErrorBoundary, withErrorBoundary } from './ErrorBoundary';
+export { RetryError, EmptyState } from './RetryError';
