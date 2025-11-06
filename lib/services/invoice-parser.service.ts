@@ -3,9 +3,25 @@
  *
  * Handles parsing of Brazilian fiscal invoices (NFe/NFCe) from URLs and QR codes.
  * Extracts merchant information, line items, and product details from XML data.
+ *
+ * Updated to use NFE Web Crawler with AI Extraction services for improved parsing.
  */
 import { cacheManager, getCacheKey } from '@/lib/utils/cache';
 
+import {
+  AIParseError,
+  HTMLFetchError,
+  InvoiceKeyNotFoundError,
+  InvoiceParserError as NFEInvoiceParserError,
+  NetworkError,
+  TimeoutError,
+  ValidationError,
+  aiParserService,
+  isInvoiceParserError,
+  loggerService,
+  validatorService,
+  webCrawlerService,
+} from './nfe-crawler';
 import { productNormalizationService } from './product-normalization.service';
 
 // ============================================
@@ -59,6 +75,11 @@ export interface ParsedInvoice {
   totals: InvoiceTotals;
   xmlData: string;
   category?: InvoiceCategory;
+  metadata?: {
+    parsedAt: Date;
+    fromCache: boolean;
+    parsingMethod: 'ai' | 'xml' | 'html';
+  };
 }
 
 // ============================================
@@ -155,46 +176,104 @@ export class InvoiceParserError extends Error {
 export class InvoiceParserService {
   /**
    * Parse invoice from URL
-   * Cached for 1 hour to avoid redundant parsing
+   * Uses NFE Web Crawler with AI Extraction for improved parsing
+   * Cached for 24 hours to avoid redundant parsing
+   *
+   * Requirements: 1.1, 2.1, 3.1, 4.1, 5.1
    */
-  async parseFromUrl(url: string): Promise<ParsedInvoice> {
+  async parseFromUrl(url: string, forceRefresh: boolean = false): Promise<ParsedInvoice> {
+    const startTime = loggerService.startPerformanceTracking('parse-invoice-from-url');
+
     // Validate URL format
     if (!this.validateInvoiceFormat(url)) {
+      loggerService.error('invoice-parser', 'parse-from-url', 'Invalid invoice URL format', { url });
       throw new InvoiceParserError('Invalid invoice URL format', 'INVOICE_INVALID_FORMAT', { url });
     }
 
+    let invoiceKey: string | null = null;
+    let step: 'key_extraction' | 'html_fetch' | 'ai_parse' | 'validation' = 'key_extraction';
+
     try {
-      // Extract invoice key from URL
-      const invoiceKey = await this.extractInvoiceKeyFromUrl(url);
+      loggerService.info('invoice-parser', 'parse-from-url', 'Starting invoice parsing', { url, forceRefresh });
 
-      // Check cache first (1 hour TTL)
-      const cacheKey = getCacheKey.parsedInvoice(invoiceKey);
-      const cached = cacheManager.get<ParsedInvoice>(cacheKey);
+      // Step 1: Extract invoice key from URL
+      step = 'key_extraction';
+      invoiceKey = await webCrawlerService.extractInvoiceKey(url);
 
-      if (cached) {
-        // Reconstruct Date object from cached data
-        return {
-          ...cached,
-          issueDate: new Date(cached.issueDate),
-        };
+      // Step 2: Check cache first (unless force refresh)
+      if (!forceRefresh) {
+        const cacheKey = getCacheKey.parsedInvoice(invoiceKey);
+        const cached = cacheManager.get<ParsedInvoice>(cacheKey);
+
+        if (cached) {
+          loggerService.info('invoice-parser', 'parse-from-url', 'Returning cached invoice', { invoiceKey });
+          loggerService.endPerformanceTracking(startTime, true);
+
+          // Reconstruct Date object from cached data and add metadata
+          return {
+            ...cached,
+            issueDate: new Date(cached.issueDate),
+            metadata: {
+              parsedAt: cached.metadata?.parsedAt || new Date(),
+              fromCache: true,
+              parsingMethod: cached.metadata?.parsingMethod || 'ai',
+            },
+          };
+        }
       }
 
-      // Fetch XML from government portal
-      const xmlData = await this.fetchInvoiceXml(url, invoiceKey);
+      // Step 3: Fetch HTML from government portal
+      step = 'html_fetch';
+      const html = await webCrawlerService.fetchInvoiceHtml(url);
 
-      // Parse XML and extract data
-      const parsed = this.parseXml(xmlData, invoiceKey);
+      // Step 4: Parse HTML with AI
+      step = 'ai_parse';
+      const aiResponse = await aiParserService.parseInvoiceHtml(html, invoiceKey);
 
-      // Cache for 1 hour (3600000 ms)
-      cacheManager.set(cacheKey, parsed, 3600000);
+      // Step 5: Validate parsed data
+      step = 'validation';
+      const validationResult = validatorService.validate(aiResponse);
+
+      if (!validationResult.isValid) {
+        throw new ValidationError(validationResult.errors, {
+          invoiceKey,
+          url,
+        });
+      }
+
+      // Step 6: Map AI response to ParsedInvoice format
+      const parsed = this.mapAIResponseToParsedInvoice(aiResponse, invoiceKey, html);
+
+      // Step 7: Cache successful result (24 hours = 86400000 ms)
+      const cacheKey = getCacheKey.parsedInvoice(invoiceKey);
+      cacheManager.set(cacheKey, parsed, 86400000);
+
+      loggerService.info('invoice-parser', 'parse-from-url', 'Invoice parsed successfully', {
+        invoiceKey,
+        itemCount: parsed.items.length,
+        category: parsed.category,
+      });
+      loggerService.endPerformanceTracking(startTime, true);
 
       return parsed;
     } catch (error) {
+      loggerService.endPerformanceTracking(startTime, false, error instanceof Error ? error.message : String(error));
+
+      // Handle NFE crawler errors
+      if (isInvoiceParserError(error)) {
+        throw this.wrapNFEError(error, url, invoiceKey, step);
+      }
+
+      // Handle legacy errors
       if (error instanceof InvoiceParserError) {
         throw error;
       }
+
+      // Wrap unknown errors
       throw new InvoiceParserError('Failed to parse invoice from URL', 'INVOICE_PARSE_ERROR', {
         url,
+        invoiceKey,
+        step,
         error: error instanceof Error ? error.message : String(error),
       });
     }
@@ -202,9 +281,12 @@ export class InvoiceParserService {
 
   /**
    * Parse invoice from QR code data
-   * Cached for 1 hour to avoid redundant parsing
+   * Uses NFE Web Crawler with AI Extraction for improved parsing
+   * Cached for 24 hours to avoid redundant parsing
+   *
+   * Requirements: 1.1, 2.1, 3.1, 4.1, 5.1
    */
-  async parseFromQRCode(qrData: string): Promise<ParsedInvoice> {
+  async parseFromQRCode(qrData: string, forceRefresh: boolean = false): Promise<ParsedInvoice> {
     try {
       // QR code typically contains the invoice access key or URL
       const invoiceKey = await this.extractInvoiceKeyFromQR(qrData);
@@ -217,29 +299,30 @@ export class InvoiceParserService {
         );
       }
 
-      // Check cache first (1 hour TTL)
-      const cacheKey = getCacheKey.parsedInvoice(invoiceKey);
-      const cached = cacheManager.get<ParsedInvoice>(cacheKey);
+      // Check cache first (unless force refresh)
+      if (!forceRefresh) {
+        const cacheKey = getCacheKey.parsedInvoice(invoiceKey);
+        const cached = cacheManager.get<ParsedInvoice>(cacheKey);
 
-      if (cached) {
-        // Reconstruct Date object from cached data
-        return {
-          ...cached,
-          issueDate: new Date(cached.issueDate),
-        };
+        if (cached) {
+          // Reconstruct Date object from cached data and add metadata
+          return {
+            ...cached,
+            issueDate: new Date(cached.issueDate),
+            metadata: {
+              parsedAt: cached.metadata?.parsedAt || new Date(),
+              fromCache: true,
+              parsingMethod: cached.metadata?.parsingMethod || 'ai',
+            },
+          };
+        }
       }
 
       // Construct URL from invoice key
-      const url = this.constructUrlFromKey(invoiceKey);
+      const url = webCrawlerService.constructUrlFromKey(invoiceKey);
 
-      // Fetch and parse XML
-      const xmlData = await this.fetchInvoiceXml(url, invoiceKey);
-      const parsed = this.parseXml(xmlData, invoiceKey);
-
-      // Cache for 1 hour (3600000 ms)
-      cacheManager.set(cacheKey, parsed, 3600000);
-
-      return parsed;
+      // Use parseFromUrl to handle the rest
+      return await this.parseFromUrl(url, forceRefresh);
     } catch (error) {
       if (error instanceof InvoiceParserError) {
         throw error;
@@ -749,6 +832,152 @@ export class InvoiceParserService {
     const node = parentNode ? parentNode.querySelector(tagName) : xmlDoc.querySelector(tagName);
 
     return node?.textContent || null;
+  }
+  /**
+   * Map AI response to ParsedInvoice format
+   * Requirement 3.3, 3.4, 3.5, 3.6
+   */
+  private mapAIResponseToParsedInvoice(aiResponse: any, invoiceKey: string, html: string): ParsedInvoice {
+    // Convert ISO date string to Date object
+    const issueDate = new Date(aiResponse.invoice.issueDate);
+
+    // Map to ParsedInvoice format
+    const parsed: ParsedInvoice = {
+      invoiceKey,
+      invoiceNumber: aiResponse.invoice.number,
+      series: aiResponse.invoice.series,
+      issueDate,
+      merchant: {
+        cnpj: aiResponse.merchant.cnpj,
+        name: aiResponse.merchant.name,
+        tradeName: aiResponse.merchant.tradeName || undefined,
+        address: aiResponse.merchant.address,
+        city: aiResponse.merchant.city,
+        state: aiResponse.merchant.state,
+      },
+      items: aiResponse.items.map((item: any) => ({
+        description: item.description,
+        productCode: item.productCode || undefined,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        totalPrice: item.totalPrice,
+        discountAmount: item.discountAmount,
+      })),
+      totals: {
+        subtotal: aiResponse.totals.subtotal,
+        discount: aiResponse.totals.discount,
+        tax: aiResponse.totals.tax,
+        total: aiResponse.totals.total,
+      },
+      xmlData: html, // Store original HTML for reference
+      metadata: {
+        parsedAt: new Date(),
+        fromCache: false,
+        parsingMethod: 'ai',
+      },
+    };
+
+    // Detect category
+    parsed.category = this.identifyMerchantCategory(parsed.merchant, parsed.items);
+
+    return parsed;
+  }
+
+  /**
+   * Wrap NFE crawler errors into legacy InvoiceParserError format
+   * Includes comprehensive error details and logging
+   * Requirement 6.1, 6.2, 6.3, 6.4, 6.5
+   */
+  private wrapNFEError(
+    error: NFEInvoiceParserError,
+    url: string,
+    invoiceKey: string | null,
+    step: 'key_extraction' | 'html_fetch' | 'ai_parse' | 'validation',
+  ): InvoiceParserError {
+    // Map NFE error codes to legacy codes
+    let legacyCode: string;
+
+    if (error instanceof InvoiceKeyNotFoundError) {
+      legacyCode = 'INVOICE_KEY_NOT_FOUND';
+    } else if (error instanceof HTMLFetchError) {
+      legacyCode = 'INVOICE_FETCH_ERROR';
+    } else if (error instanceof AIParseError) {
+      legacyCode = 'INVOICE_PARSE_ERROR';
+    } else if (error instanceof ValidationError) {
+      legacyCode = 'VALIDATION_ERROR';
+    } else if (error instanceof NetworkError) {
+      legacyCode = 'INVOICE_NETWORK_ERROR';
+    } else if (error instanceof TimeoutError) {
+      legacyCode = 'INVOICE_TIMEOUT';
+    } else {
+      legacyCode = 'INVOICE_PARSE_ERROR';
+    }
+
+    // Build comprehensive error details
+    const errorDetails = {
+      url,
+      invoiceKey,
+      step,
+      errorType: error.name,
+      errorCode: error.code,
+      timestamp: new Date().toISOString(),
+      ...error.details,
+    };
+
+    // Log error with full context (without exposing sensitive data)
+    this.logError(error, errorDetails);
+
+    // Return wrapped error (sanitized for client)
+    return new InvoiceParserError(error.message, legacyCode, {
+      url,
+      invoiceKey,
+      step,
+      // Only include safe details in client response
+      validationErrors: error.details?.validationErrors,
+      statusCode: error.details?.statusCode,
+      reason: error.details?.reason,
+    });
+  }
+
+  /**
+   * Log error with full context for debugging
+   * Does not expose sensitive information (API keys, internal paths)
+   * Requirement 6.4, 6.5
+   */
+  private logError(error: NFEInvoiceParserError, details: Record<string, any>): void {
+    // In production, this would use a proper logging service
+    // For now, use console.error with structured logging
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      level: 'error',
+      service: 'invoice-parser',
+      errorType: error.name,
+      errorCode: error.code,
+      message: error.message,
+      details: {
+        ...details,
+        // Sanitize sensitive data
+        url: details.url ? this.sanitizeUrl(details.url) : undefined,
+      },
+      stack: error.stack,
+    };
+
+    console.error('[InvoiceParser]', JSON.stringify(logEntry, null, 2));
+  }
+
+  /**
+   * Sanitize URL to remove sensitive query parameters
+   * Requirement 6.5
+   */
+  private sanitizeUrl(url: string): string {
+    try {
+      const urlObj = new URL(url);
+      // Keep only the origin and pathname, remove query params that might contain sensitive data
+      return `${urlObj.origin}${urlObj.pathname}`;
+    } catch {
+      // If URL parsing fails, return a generic placeholder
+      return '[URL]';
+    }
   }
 }
 

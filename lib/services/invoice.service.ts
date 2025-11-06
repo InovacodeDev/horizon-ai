@@ -101,13 +101,18 @@ export class InvoiceService {
       const invoiceId = ID.unique();
 
       // Prepare invoice data JSON field
+      // Note: xml_data is excluded because the full HTML from NFe portals can be 100KB+
+      // and the 'data' field has a 4000 character limit in Appwrite.
+      // The parsed structured data (items, totals, merchant info) is stored separately
+      // and is sufficient for all application needs.
+      // Future: Consider storing raw HTML in Appwrite Storage if needed for auditing.
       const invoiceData: InvoiceData = {
         series: parsedInvoice.series,
         merchant_address: `${parsedInvoice.merchant.address}, ${parsedInvoice.merchant.city} - ${parsedInvoice.merchant.state}`,
         discount_amount: parsedInvoice.totals.discount,
         tax_amount: parsedInvoice.totals.tax,
         custom_category: customCategory,
-        xml_data: parsedInvoice.xmlData,
+        xml_data: '', // Excluded - see comment above
         transaction_id: transactionId,
         account_id: accountId,
       };
@@ -169,10 +174,11 @@ export class InvoiceService {
         throw new InvoiceServiceError('Invoice not found', 'INVOICE_NOT_FOUND', { invoiceId });
       }
 
-      // Get invoice items
+      // Get invoice items (sem limite para pegar todos os itens)
       const itemsResult = await this.dbAdapter.listDocuments(DATABASE_ID, COLLECTIONS.INVOICE_ITEMS, [
         Query.equal('invoice_id', invoiceId),
         Query.orderAsc('line_number'),
+        Query.limit(1000), // Limite alto para garantir que todos os itens sejam retornados
       ]);
 
       const items = itemsResult.documents.map((doc: any) => this.formatInvoiceItem(doc));

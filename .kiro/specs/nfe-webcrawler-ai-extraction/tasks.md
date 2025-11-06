@@ -1,0 +1,131 @@
+# Implementation Plan
+
+- [x] 1. Set up project structure and core interfaces
+  - Create directory structure for services (web-crawler, ai-parser, validator)
+  - Define TypeScript interfaces for all services and data models
+  - Set up error classes and error codes
+  - _Requirements: 1.1, 2.1, 3.1, 4.1, 6.1_
+
+- [x] 2. Implement Web Crawler Service
+  - [x] 2.1 Create web-crawler.service.ts with base structure
+    - Implement fetchWithRedirects method with timeout and retry logic
+    - Add proper error handling for network failures
+    - _Requirements: 2.1, 2.4, 2.5_
+  - [x] 2.2 Implement invoice key extraction
+    - Add extractInvoiceKey method that fetches HTML and searches for 44-digit key
+    - Support multiple regex patterns (with spaces, without spaces, in span.chave)
+    - Handle key normalization (remove spaces, validate length)
+    - _Requirements: 1.1, 1.2, 1.3, 1.4_
+  - [x] 2.3 Implement full HTML fetching
+    - Add fetchInvoiceHtml method
+    - Handle different portal formats (Santa Catarina, Rio Grande do Sul, etc.)
+    - Add request headers and user agent
+    - _Requirements: 2.2, 2.3_
+
+- [x] 3. Implement AI Parser Service
+  - [x] 3.1 Create ai-parser.service.ts with base structure
+    - Set up AI client (Anthropic/OpenAI)
+    - Add configuration for model, temperature, and caching
+    - _Requirements: 3.1, 7.1_
+  - [x] 3.2 Build optimized AI prompt
+    - Create buildPrompt method with static section first
+    - Include JSON schema definition in static section
+    - Add example input/output for few-shot learning
+    - Place variable HTML content at the end
+    - Ensure static section is at least 1024 tokens
+    - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6_
+  - [x] 3.3 Implement AI parsing logic
+    - Add parseInvoiceHtml method that calls AI with optimized prompt
+    - Parse AI response JSON
+    - Handle AI errors and malformed responses
+    - _Requirements: 3.2, 3.7, 3.8_
+  - [x] 3.4 Extract and map invoice data
+    - Map AI response to ParsedInvoice interface
+    - Extract merchant information (CNPJ, name, address)
+    - Extract invoice metadata (number, series, date)
+    - Extract all line items with quantities and prices
+    - Extract totals (subtotal, discount, tax, total)
+    - _Requirements: 3.3, 3.4, 3.5, 3.6_
+
+- [x] 4. Implement Validator Service
+  - [x] 4.1 Create validator.service.ts with validation rules
+    - Define validation rules for all fields
+    - Implement validate method that checks all rules
+    - Return detailed validation errors
+    - _Requirements: 4.1, 4.7_
+  - [x] 4.2 Implement field validators
+    - Add validateCNPJ method (14 digits check)
+    - Add validateDate method (ISO 8601 format check)
+    - Add numeric value validators (min, max checks)
+    - _Requirements: 4.2, 4.3, 4.4_
+  - [x] 4.3 Implement data normalizers
+    - Add normalizeCurrency method (remove formatting, convert to number)
+    - Add date format converter (DD/MM/YYYY to ISO 8601)
+    - Add CNPJ normalizer (remove dots, slashes, hyphens)
+    - _Requirements: 4.5_
+  - [x] 4.4 Implement totals verification
+    - Add verifyTotals method that sums item prices
+    - Compare calculated total with declared total
+    - Allow small rounding differences (0.01)
+    - _Requirements: 4.6_
+
+- [x] 5. Implement Cache Manager
+  - [x] 5.1 Create cache-manager.ts with LRU cache
+    - Implement get, set, clear, has methods
+    - Add TTL support (24 hours default)
+    - Add max size limit (1000 invoices)
+    - _Requirements: 5.1, 5.2_
+  - [x] 5.2 Add cache metadata
+    - Include cache hit/miss information in responses
+    - Add timestamp for when data was cached
+    - Support force-refresh parameter to bypass cache
+    - _Requirements: 5.3, 5.4, 5.5_
+
+- [x] 6. Update Invoice Parser Service orchestrator
+  - [x] 6.1 Refactor parseFromUrl method
+    - Check cache first before processing
+    - Use WebCrawlerService to extract key and fetch HTML
+    - Use AIParserService to parse HTML
+    - Use ValidatorService to validate results
+    - Cache successful results
+    - _Requirements: 1.1, 2.1, 3.1, 4.1, 5.1_
+  - [x] 6.2 Add comprehensive error handling
+    - Catch and wrap errors from all services
+    - Return structured error responses with codes
+    - Include step information in errors (key extraction, HTML fetch, AI parse, validation)
+    - Log errors with full context
+    - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
+  - [x] 6.3 Add metadata to responses
+    - Include parsing method (ai, xml, html)
+    - Include cache status (hit/miss)
+    - Include timestamp
+    - _Requirements: 5.4_
+
+- [x] 7. Add environment configuration
+  - Create .env.example with all required variables
+  - Add AI_PROVIDER, AI_API_KEY, AI_MODEL configuration
+  - Add CACHE_TTL and CRAWLER_TIMEOUT configuration
+  - Document all environment variables
+  - _Requirements: 7.1_
+
+- [x] 8. Update API endpoint
+  - Update POST /api/invoices to use new services
+  - Add support for force-refresh query parameter
+  - Return cache metadata in response
+  - Update error responses to match new format
+  - _Requirements: 5.5, 6.1_
+
+- [x] 9. Add logging and monitoring
+  - Add structured logging for all operations
+  - Log AI token usage and costs
+  - Log cache hit/miss rates
+  - Log validation failures with details
+  - Add performance metrics (response time, success rate)
+  - _Requirements: 6.4_
+
+- [x] 10. Create integration tests
+  - Test complete flow with sample HTML from different portals
+  - Test error scenarios (network failures, invalid HTML, AI errors)
+  - Test cache hit/miss scenarios
+  - Test validation with valid and invalid data
+  - _Requirements: All_

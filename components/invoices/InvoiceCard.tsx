@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import type { Invoice } from '@/lib/appwrite/schema';
 import InvoiceDetailsModal from '@/components/modals/InvoiceDetailsModal';
 
@@ -36,6 +37,8 @@ const CATEGORY_COLORS: Record<string, 'primary' | 'secondary' | 'error' | 'warni
 
 export default function InvoiceCard({ invoice, onDelete, onCreateTransaction }: InvoiceCardProps) {
   const [showDetails, setShowDetails] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Format date
   const formatDate = (dateString: string) => {
@@ -63,6 +66,22 @@ export default function InvoiceCard({ invoice, onDelete, onCreateTransaction }: 
   // Get category color
   const getCategoryColor = (category: string) => {
     return CATEGORY_COLORS[category] || 'default';
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    try {
+      setDeleting(true);
+      await onDelete(invoice.$id);
+      setShowDeleteConfirm(false);
+    } catch (err) {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
   };
 
   // Get merchant icon (placeholder - could be enhanced with actual logos)
@@ -172,13 +191,9 @@ export default function InvoiceCard({ invoice, onDelete, onCreateTransaction }: 
               </svg>
             </button>
             <button
-              onClick={async (e) => {
-                e.stopPropagation();
-                if (confirm('Tem certeza que deseja excluir esta nota fiscal?')) {
-                  await onDelete(invoice.$id);
-                }
-              }}
-              className="p-2 text-on-surface-variant hover:text-error hover:bg-error/5 rounded-full transition-colors"
+              onClick={handleDeleteClick}
+              disabled={deleting}
+              className="p-2 text-on-surface-variant hover:text-error hover:bg-error/5 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               title="Excluir"
             >
               <svg
@@ -238,13 +253,9 @@ export default function InvoiceCard({ invoice, onDelete, onCreateTransaction }: 
               Ver detalhes
             </button>
             <button
-              onClick={async (e) => {
-                e.stopPropagation();
-                if (confirm('Tem certeza que deseja excluir esta nota fiscal?')) {
-                  await onDelete(invoice.$id);
-                }
-              }}
-              className="py-2 px-3 text-sm text-error hover:bg-error/5 rounded-lg transition-colors"
+              onClick={handleDeleteClick}
+              disabled={deleting}
+              className="py-2 px-3 text-sm text-error hover:bg-error/5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -264,6 +275,19 @@ export default function InvoiceCard({ invoice, onDelete, onCreateTransaction }: 
           onCreateTransaction={onCreateTransaction}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleConfirmDelete}
+        title="Excluir Nota Fiscal"
+        message="Tem certeza que deseja excluir esta nota fiscal? Esta ação não pode ser desfeita."
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        variant="danger"
+        loading={deleting}
+      />
     </>
   );
 }

@@ -48,46 +48,63 @@ const NavItem: React.FC<NavItemProps> = ({
   onToggle,
   isSubmenuItem = false
 }) => {
-  const content = (
-    <div
-      className={`w-full flex items-center p-2.5 rounded-lg text-sm font-medium transition-colors
-        ${isSubmenuItem ? 'pl-11' : ''}
-        ${disabled ? 'opacity-50 cursor-not-allowed text-on-surface-variant' : isActive ? 'bg-primary-container text-primary' : 'text-on-surface-variant hover:bg-on-surface/5'}`}
-    >
-      <div className="mr-3">{icon}</div>
-      <span className="flex-grow">{label}</span>
-      {hasSubmenu && (
-        <svg
-          className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      )}
-    </div>
-  );
+  const baseClasses = `flex items-center p-2.5 rounded-lg text-sm font-medium transition-colors
+    ${isSubmenuItem ? 'pl-11' : ''}
+    ${disabled ? 'opacity-50 cursor-not-allowed text-on-surface-variant' : isActive ? 'bg-primary-container text-primary' : 'text-on-surface-variant hover:bg-on-surface/5'}`;
 
   if (disabled && tooltipText) {
-    return <Tooltip content={tooltipText}>{content}</Tooltip>;
+    return (
+      <Tooltip content={tooltipText}>
+        <div className={baseClasses}>
+          <div className="mr-3">{icon}</div>
+          <span className="flex-grow">{label}</span>
+        </div>
+      </Tooltip>
+    );
   }
 
   if (disabled) {
-    return content;
+    return (
+      <div className={baseClasses}>
+        <div className="mr-3">{icon}</div>
+        <span className="flex-grow">{label}</span>
+      </div>
+    );
   }
 
   if (hasSubmenu && onToggle) {
     return (
-      <button onClick={onToggle} className="block w-full text-left">
-        {content}
-      </button>
+      <div className="flex items-center gap-1">
+        <Link href={href} className="flex-1">
+          <div className={baseClasses}>
+            <div className="mr-3">{icon}</div>
+            <span className="flex-grow">{label}</span>
+          </div>
+        </Link>
+        <button
+          onClick={onToggle}
+          className="p-3 rounded-lg text-on-surface-variant hover:bg-on-surface/5 transition-colors"
+          aria-label={isExpanded ? 'Recolher submenu' : 'Expandir submenu'}
+        >
+          <svg
+            className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+      </div>
     );
   }
 
   return (
     <Link href={href} className="block">
-      {content}
+      <div className={baseClasses}>
+        <div className="mr-3">{icon}</div>
+        <span className="flex-grow">{label}</span>
+      </div>
     </Link>
   );
 };

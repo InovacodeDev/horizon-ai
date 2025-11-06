@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
+import { useToast } from '@/components/ui/Toast';
 import { AddInvoiceModal, CreateInvoiceInput } from '@/components/modals/AddInvoiceModal';
 import { ExportInvoicesModal, ExportOptions } from '@/components/modals/ExportInvoicesModal';
 import { AddTransactionModal } from '@/components/modals/AddTransactionModal';
@@ -30,6 +31,7 @@ interface InvoiceFilters {
 export default function InvoicesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { showToast, ToastComponent } = useToast();
 
   const [invoices, setInvoices] = useState<InvoiceType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -226,9 +228,10 @@ export default function InvoicesPage() {
 
       // Refresh invoices list
       await fetchInvoices();
+      showToast('Nota fiscal excluída com sucesso', 'success');
     } catch (err: any) {
       console.error('Error deleting invoice:', err);
-      alert(err.message || 'Failed to delete invoice');
+      showToast(err.message || 'Falha ao excluir nota fiscal', 'error');
     }
   };
 
@@ -617,6 +620,9 @@ export default function InvoicesPage() {
       />
 
       {/* Transaction Creation Modal - Removed due to interface mismatch */}
+
+      {/* Toast Notifications */}
+      {ToastComponent}
     </div>
   );
 }

@@ -28,10 +28,13 @@
     "test:accounts": "tsx tests/accounts-crud.test.ts",
     "test:transactions": "tsx tests/transactions-crud.test.ts",
     "test:credit-cards": "tsx tests/credit-cards-crud.test.ts",
-    "test:realtime": "tsx scripts/test-realtime.ts"
+    "test:realtime": "tsx scripts/test-realtime.ts",
+    "test:nfe-crawler": "tsx tests/nfe-crawler-integration.test.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.68.0",
     "@google/genai": "^1.29.0",
+    "@google/generative-ai": "^0.24.1",
     "@yudiel/react-qr-scanner": "^2.4.1",
     "appwrite": "^21.4.0",
     "dotenv": "^17.2.3",

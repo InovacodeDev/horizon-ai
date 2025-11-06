@@ -6,6 +6,11 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * POST /api/invoices
  * Register a new invoice from URL or QR code data
+ *
+ * Query Parameters:
+ * - forceRefresh: boolean - Bypass cache and force re-parsing (default: false)
+ *
+ * Requirements: 5.5, 6.1
  */
 export async function POST(request: NextRequest) {
   try {
@@ -15,6 +20,10 @@ export async function POST(request: NextRequest) {
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
     }
+
+    // Parse query parameters
+    const { searchParams } = new URL(request.url);
+    const forceRefresh = searchParams.get('forceRefresh') === 'true';
 
     // Parse request body
     const body = await request.json();
@@ -30,13 +39,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Parse invoice data
+    // Parse invoice data with force refresh option
     let parsedInvoice;
     try {
       if (body.invoiceUrl) {
-        parsedInvoice = await invoiceParserService.parseFromUrl(body.invoiceUrl);
+        parsedInvoice = await invoiceParserService.parseFromUrl(body.invoiceUrl, forceRefresh);
       } else {
-        parsedInvoice = await invoiceParserService.parseFromQRCode(body.qrCodeData);
+        parsedInvoice = await invoiceParserService.parseFromQRCode(body.qrCodeData, forceRefresh);
       }
     } catch (error) {
       if (error instanceof InvoiceParserError) {
@@ -62,10 +71,16 @@ export async function POST(request: NextRequest) {
       accountId: body.accountId,
     });
 
+    // Include cache metadata in response
     return NextResponse.json(
       {
         success: true,
         data: invoice,
+        metadata: {
+          fromCache: parsedInvoice.metadata?.fromCache || false,
+          cachedAt: parsedInvoice.metadata?.fromCache ? parsedInvoice.metadata.parsedAt : undefined,
+          parsingMethod: parsedInvoice.metadata?.parsingMethod || 'ai',
+        },
       },
       { status: 201 },
     );

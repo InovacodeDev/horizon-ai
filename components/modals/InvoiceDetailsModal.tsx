@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import type { Invoice, InvoiceItem, InvoiceData } from '@/lib/appwrite/schema';
 
 interface InvoiceDetailsModalProps {
@@ -17,11 +18,41 @@ interface InvoiceWithItems extends Invoice {
   items: InvoiceItem[];
 }
 
+interface GroupedItem extends InvoiceItem {
+  originalQuantity: number;
+  groupedQuantity: number;
+}
+
+// Função para agrupar itens iguais e somar quantidades
+const groupInvoiceItems = (items: InvoiceItem[]): GroupedItem[] => {
+  const grouped = new Map<string, GroupedItem>();
+
+  items.forEach((item) => {
+    // Criar chave única baseada em descrição e código do produto (case-insensitive)
+    const key = `${item.description.toLowerCase().trim()}_${(item.product_code || '').toLowerCase().trim()}`;
+
+    if (grouped.has(key)) {
+      const existing = grouped.get(key)!;
+      existing.groupedQuantity += item.quantity;
+      existing.total_price += item.total_price;
+    } else {
+      grouped.set(key, {
+        ...item,
+        originalQuantity: item.quantity,
+        groupedQuantity: item.quantity,
+      });
+    }
+  });
+
+  return Array.from(grouped.values());
+};
+
 export default function InvoiceDetailsModal({ invoiceId, isOpen, onClose, onDelete, onCreateTransaction }: InvoiceDetailsModalProps) {
   const [invoice, setInvoice] = useState<InvoiceWithItems | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     if (isOpen && invoiceId) {
@@ -52,19 +83,20 @@ export default function InvoiceDetailsModal({ invoiceId, isOpen, onClose, onDele
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm('Tem certeza que deseja excluir esta nota fiscal? Esta ação não pode ser desfeita.')) {
-      return;
-    }
+  const handleDeleteClick = () => {
+    setShowDeleteConfirm(true);
+  };
 
+  const handleConfirmDelete = async () => {
     try {
       setDeleting(true);
       await onDelete(invoiceId);
+      setShowDeleteConfirm(false);
       onClose();
     } catch (err: any) {
-      alert(err.message || 'Failed to delete invoice');
-    } finally {
       setDeleting(false);
+      setShowDeleteConfirm(false);
+      setError(err.message || 'Falha ao excluir nota fiscal');
     }
   };
 
@@ -79,11 +111,19 @@ export default function InvoiceDetailsModal({ invoiceId, isOpen, onClose, onDele
     const date = new Date(dateString);
     return new Intl.DateTimeFormat('pt-BR', {
       day: '2-digit',
-      month: 'long',
+      month: '2-digit',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+      second: '2-digit',
     }).format(date);
+  };
+
+  const formatCNPJ = (cnpj: string) => {
+    // Remove tudo que não é dígito
+    const digits = cnpj.replace(/\D/g, '');
+    // Aplica a máscara XX.XXX.XXX/XXXX-XX
+    return digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
   };
 
   const parseInvoiceData = (dataString?: string): InvoiceData => {
@@ -164,7 +204,7 @@ export default function InvoiceDetailsModal({ invoiceId, isOpen, onClose, onDele
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm font-medium text-gray-700">CNPJ:</span>
-                    <span className="text-sm text-gray-900 font-mono">{invoice.merchant_cnpj}</span>
+                    <span className="text-sm text-gray-900 font-mono">{formatCNPJ(invoice.merchant_cnpj)}</span>
                   </div>
                   {invoiceData.merchant_address && (
                     <div className="flex justify-between">
@@ -180,12 +220,6 @@ export default function InvoiceDetailsModal({ invoiceId, isOpen, onClose, onDele
                     <span className="text-sm font-medium text-gray-700">Número da Nota:</span>
                     <span className="text-sm text-gray-900">{invoice.invoice_number}</span>
                   </div>
-                  {invoiceData.series && (
-                    <div className="flex justify-between">
-                      <span className="text-sm font-medium text-gray-700">Série:</span>
-                      <span className="text-sm text-gray-900">{invoiceData.series}</span>
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -211,8 +245,8 @@ export default function InvoiceDetailsModal({ invoiceId, isOpen, onClose, onDele
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                      {invoice.items.map((item) => (
-                        <tr key={item.$id} className="hover:bg-gray-50">
+                      {groupInvoiceItems(invoice.items).map((item, index) => (
+                        <tr key={`${item.$id}-${index}`} className="hover:bg-gray-50">
                           <td className="p-3">
                             <div>
                               <p className="text-sm font-medium text-gray-900">{item.description}</p>
@@ -221,7 +255,7 @@ export default function InvoiceDetailsModal({ invoiceId, isOpen, onClose, onDele
                               )}
                             </div>
                           </td>
-                          <td className="p-3 text-right text-sm text-gray-900">{item.quantity}</td>
+                          <td className="p-3 text-right text-sm text-gray-900">{item.groupedQuantity}</td>
                           <td className="p-3 text-right text-sm text-gray-900">{formatCurrency(item.unit_price)}</td>
                           <td className="p-3 text-right text-sm font-medium text-gray-900">
                             {formatCurrency(item.total_price)}
@@ -237,27 +271,34 @@ export default function InvoiceDetailsModal({ invoiceId, isOpen, onClose, onDele
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Resumo dos Valores</h3>
                 <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-700">Subtotal:</span>
-                    <span className="text-sm text-gray-900">
-                      {formatCurrency(
-                        invoice.total_amount + (invoiceData.discount_amount || 0) - (invoiceData.tax_amount || 0),
-                      )}
-                    </span>
-                  </div>
+                  {/* Subtotal - só mostra se houver desconto ou imposto */}
+                  {((invoiceData.discount_amount && invoiceData.discount_amount > 0) || 
+                    (invoiceData.tax_amount && invoiceData.tax_amount > 0)) && (
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-700">Subtotal:</span>
+                      <span className="text-sm text-gray-900">
+                        {formatCurrency(
+                          invoice.total_amount + (invoiceData.discount_amount || 0) - (invoiceData.tax_amount || 0),
+                        )}
+                      </span>
+                    </div>
+                  )}
+                  {/* Descontos - só mostra se for maior que 0 */}
                   {invoiceData.discount_amount && invoiceData.discount_amount > 0 && (
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-700">Descontos:</span>
                       <span className="text-sm text-green-600">-{formatCurrency(invoiceData.discount_amount)}</span>
                     </div>
                   )}
+                  {/* Impostos - só mostra se for maior que 0 */}
                   {invoiceData.tax_amount && invoiceData.tax_amount > 0 && (
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-700">Impostos:</span>
                       <span className="text-sm text-gray-900">{formatCurrency(invoiceData.tax_amount)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between pt-2 border-t border-gray-300">
+                  {/* Total - sempre mostra */}
+                  <div className={`flex justify-between ${((invoiceData.discount_amount && invoiceData.discount_amount > 0) || (invoiceData.tax_amount && invoiceData.tax_amount > 0)) ? 'pt-2 border-t border-gray-300' : ''}`}>
                     <span className="text-base font-semibold text-gray-900">Total:</span>
                     <span className="text-base font-semibold text-gray-900">
                       {formatCurrency(invoice.total_amount)}
@@ -306,11 +347,11 @@ export default function InvoiceDetailsModal({ invoiceId, isOpen, onClose, onDele
             <div className="flex gap-2">
               <Button
                 variant="outlined"
-                onClick={handleDelete}
+                onClick={handleDeleteClick}
                 disabled={deleting}
                 className="text-error border-error hover:bg-error/5"
               >
-                {deleting ? 'Excluindo...' : 'Excluir Nota Fiscal'}
+                Excluir Nota Fiscal
               </Button>
               {onCreateTransaction && !invoiceData.transaction_id && (
                 <Button
@@ -360,10 +401,23 @@ export default function InvoiceDetailsModal({ invoiceId, isOpen, onClose, onDele
                 </Button>
               )}
             </div>
-            <Button onClick={onClose}>Fechar</Button>
+            <Button onClick={onClose} disabled={deleting}>Fechar</Button>
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleConfirmDelete}
+        title="Excluir Nota Fiscal"
+        message={`Tem certeza que deseja excluir esta nota fiscal? ${invoice?.items.length ? `Todos os ${invoice.items.length} itens serão removidos.` : ''} Esta ação não pode ser desfeita.`}
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        variant="danger"
+        loading={deleting}
+      />
     </div>
   );
 }

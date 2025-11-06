@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * GET /api/invoices/[id]
  * Get invoice by ID with all line items
  */
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Get authenticated user ID
     const userId = await getCurrentUserId();
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
     }
 
-    const invoiceId = params.id;
+    const { id: invoiceId } = await params;
 
     // Fetch invoice with items
     const invoiceService = getInvoiceService();
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
  * DELETE /api/invoices/[id]
  * Delete invoice and cascade to invoice items
  */
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Get authenticated user ID
     const userId = await getCurrentUserId();
@@ -73,7 +73,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
     }
 
-    const invoiceId = params.id;
+    const { id: invoiceId } = await params;
 
     // Delete invoice
     const invoiceService = getInvoiceService();
