@@ -28,12 +28,15 @@ export async function GET(request: NextRequest) {
           averageResponseTime: `${stats.performance.averageResponseTime.toFixed(0)}ms`,
           minResponseTime: `${stats.performance.minResponseTime}ms`,
           maxResponseTime: `${stats.performance.maxResponseTime}ms`,
-          operationBreakdown: Object.entries(stats.performance.operationBreakdown).map(([operation, data]) => ({
-            operation,
-            count: data.count,
-            avgTime: `${data.avgTime.toFixed(0)}ms`,
-            successRate: `${(data.successRate * 100).toFixed(2)}%`,
-          })),
+          operationBreakdown: Object.entries(stats.performance.operationBreakdown).map(([operation, data]) => {
+            const breakdown = data as { count: number; avgTime: number; successRate: number };
+            return {
+              operation,
+              count: breakdown.count,
+              avgTime: `${breakdown.avgTime.toFixed(0)}ms`,
+              successRate: `${(breakdown.successRate * 100).toFixed(2)}%`,
+            };
+          }),
         },
         aiTokens: {
           totalRequests: stats.aiTokens.totalRequests,
