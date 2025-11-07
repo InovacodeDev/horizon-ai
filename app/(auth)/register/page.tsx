@@ -91,44 +91,46 @@ export default function RegisterPage() {
 
   return (
     <div className="w-full">
-      <div className="mb-4">
+      <div className="mb-6">
         <Link href="/">
-          <Button variant="outlined" className="border-none !px-2">
+          <Button variant="ghost" size="sm" className="!px-2">
             <ArrowLeftIcon className="w-5 h-5 mr-2" />
             Voltar para Início
           </Button>
         </Link>
       </div>
-      <Card className="p-8">
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-medium text-on-surface">Crie sua conta</h1>
-          <p className="text-on-surface-variant">Comece sua jornada para clareza financeira.</p>
+      <Card variant="elevated" padding="lg">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-semibold text-text-primary mb-2">Crie sua conta</h1>
+          <p className="text-sm text-text-secondary">Comece sua jornada para clareza financeira.</p>
         </div>
-        <form className="space-y-4" onSubmit={handleSubmit}>
+        <form className="space-y-5" onSubmit={handleSubmit}>
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            <div className="p-4 bg-red-bg border border-red-border rounded-md text-red-text text-sm animate-slide-up">
               {error}
             </div>
           )}
-          <Input
-            id="firstName"
-            label="Nome"
-            type="text"
-            placeholder="Mariana"
-            required
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-            disabled={isLoading}
-          />
-          <Input
-            id="lastName"
-            label="Sobrenome"
-            type="text"
-            placeholder="Silva"
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-            disabled={isLoading}
-          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              id="firstName"
+              label="Nome"
+              type="text"
+              placeholder="Mariana"
+              required
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              disabled={isLoading}
+            />
+            <Input
+              id="lastName"
+              label="Sobrenome"
+              type="text"
+              placeholder="Silva"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              disabled={isLoading}
+            />
+          </div>
           <Input
             id="email"
             label="Endereço de Email"
@@ -139,33 +141,41 @@ export default function RegisterPage() {
             onChange={(e) => setEmail(e.target.value)}
             disabled={isLoading}
           />
-          <div>
-            <Input
-              id="password"
-              label="Senha"
-              type="password"
-              placeholder="Mín. 8 caracteres"
-              required
-              minLength={8}
-              value={password}
-              onChange={handlePasswordChange}
-              disabled={isLoading}
-            />
-            {passwordError && <p className="text-sm text-red-500 mt-1">{passwordError}</p>}
-            <p className="text-xs text-on-surface-variant mt-1">
-              Deve conter maiúscula, minúscula e número
-            </p>
-          </div>
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Input
+            id="password"
+            label="Senha"
+            type="password"
+            placeholder="Mín. 8 caracteres"
+            required
+            minLength={8}
+            value={password}
+            onChange={handlePasswordChange}
+            disabled={isLoading}
+            error={passwordError}
+            helperText={!passwordError ? 'Deve conter maiúscula, minúscula e número' : undefined}
+          />
+          <Button 
+            type="submit" 
+            variant="primary" 
+            size="lg" 
+            className="w-full mt-6" 
+            loading={isLoading}
+            disabled={isLoading}
+          >
             {isLoading ? 'Criando Conta...' : 'Criar Conta'}
           </Button>
         </form>
-        <p className="text-center text-sm text-on-surface-variant mt-6">
-          Já tem uma conta?{' '}
-          <Link href="/login" className="font-medium text-primary hover:underline">
-            Entre
-          </Link>
-        </p>
+        <div className="mt-8 pt-6 border-t border-border-primary">
+          <p className="text-center text-sm text-text-secondary">
+            Já tem uma conta?{' '}
+            <Link 
+              href="/login" 
+              className="font-medium text-blue-primary hover:text-blue-hover transition-colors"
+            >
+              Entre
+            </Link>
+          </p>
+        </div>
       </Card>
     </div>
   );

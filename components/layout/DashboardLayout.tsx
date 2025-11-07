@@ -21,6 +21,7 @@ import {
 } from '@/components/assets/Icons';
 import Modal from '@/components/ui/Modal';
 import Tooltip from '@/components/ui/Tooltip';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import type { User } from '@/lib/types';
 
 interface NavItemProps {
@@ -48,15 +49,15 @@ const NavItem: React.FC<NavItemProps> = ({
   onToggle,
   isSubmenuItem = false
 }) => {
-  const baseClasses = `flex items-center p-2.5 rounded-lg text-sm font-medium transition-colors
+  const baseClasses = `flex items-center p-2.5 rounded-md text-sm font-medium transition-colors-smooth
     ${isSubmenuItem ? 'pl-11' : ''}
-    ${disabled ? 'opacity-50 cursor-not-allowed text-on-surface-variant' : isActive ? 'bg-primary-container text-primary' : 'text-on-surface-variant hover:bg-on-surface/5'}`;
+    ${disabled ? 'opacity-50 cursor-not-allowed text-text-secondary' : isActive ? 'bg-blue-primary text-white' : 'text-text-secondary hover:bg-bg-secondary'}`;
 
   if (disabled && tooltipText) {
     return (
       <Tooltip content={tooltipText}>
         <div className={baseClasses}>
-          <div className="mr-3">{icon}</div>
+          <div className="mr-3 w-5 h-5 flex items-center justify-center">{icon}</div>
           <span className="flex-grow">{label}</span>
         </div>
       </Tooltip>
@@ -66,7 +67,7 @@ const NavItem: React.FC<NavItemProps> = ({
   if (disabled) {
     return (
       <div className={baseClasses}>
-        <div className="mr-3">{icon}</div>
+        <div className="mr-3 w-5 h-5 flex items-center justify-center">{icon}</div>
         <span className="flex-grow">{label}</span>
       </div>
     );
@@ -77,17 +78,17 @@ const NavItem: React.FC<NavItemProps> = ({
       <div className="flex items-center gap-1">
         <Link href={href} className="flex-1">
           <div className={baseClasses}>
-            <div className="mr-3">{icon}</div>
+            <div className="mr-3 w-5 h-5 flex items-center justify-center">{icon}</div>
             <span className="flex-grow">{label}</span>
           </div>
         </Link>
         <button
           onClick={onToggle}
-          className="p-3 rounded-lg text-on-surface-variant hover:bg-on-surface/5 transition-colors"
+          className="p-3 rounded-md text-text-secondary hover:bg-bg-secondary transition-colors-smooth"
           aria-label={isExpanded ? 'Recolher submenu' : 'Expandir submenu'}
         >
           <svg
-            className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+            className={`w-4 h-4 transition-transform-smooth ${isExpanded ? 'rotate-180' : ''}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -102,7 +103,7 @@ const NavItem: React.FC<NavItemProps> = ({
   return (
     <Link href={href} className="block">
       <div className={baseClasses}>
-        <div className="mr-3">{icon}</div>
+        <div className="mr-3 w-5 h-5 flex items-center justify-center">{icon}</div>
         <span className="flex-grow">{label}</span>
       </div>
     </Link>
@@ -110,7 +111,7 @@ const NavItem: React.FC<NavItemProps> = ({
 };
 
 const NavSection: React.FC<{ title: string }> = ({ title }) => (
-  <h3 className="px-2.5 pt-4 pb-2 text-xs font-medium text-on-surface-variant/70 uppercase tracking-wider">
+  <h3 className="px-2.5 pt-4 pb-2 text-xs font-medium text-text-tertiary uppercase tracking-wider">
     {title}
   </h3>
 );
@@ -196,11 +197,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, user }) => 
   ];
 
   return (
-    <div className="flex h-screen bg-surface">
-      <aside className="w-72 bg-surface flex-shrink-0 p-4 flex flex-col border-r border-outline">
-        <div className="text-2xl font-light text-primary mb-8 px-2.5">Horizon AI</div>
+    <div className="flex h-screen bg-bg-primary">
+      <aside className="w-72 bg-surface-new-primary flex-shrink-0 p-4 flex flex-col border-r border-border-primary transition-all duration-200">
+        <div className="text-2xl font-light text-blue-primary mb-8 px-2.5">Horizon AI</div>
 
-        <div className="flex-grow overflow-y-auto pr-2 -mr-2">
+        <div className="flex-grow overflow-y-auto pr-2 -mr-2 scrollbar-thin">
           <nav className="space-y-1.5">
             {mainNav.map((item) => (
               <NavItem
@@ -270,17 +271,18 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, user }) => 
           </nav>
         </div>
 
-        <div className="pt-4 mt-4 border-t border-outline">
+        <div className="pt-4 mt-4 border-t border-border-primary">
           <div className="p-2.5 flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-full bg-primary-container text-primary flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-full bg-blue-light text-blue-primary flex items-center justify-center font-bold">
               {user.name.charAt(0).toUpperCase()}
             </div>
-            <div>
-              <p className="font-medium text-sm text-on-surface">{user.name}</p>
-              <p className="text-xs text-on-surface-variant">
+            <div className="flex-1">
+              <p className="font-medium text-sm text-text-primary">{user.name}</p>
+              <p className="text-xs text-text-secondary">
                 {user.email}
               </p>
             </div>
+            <ThemeToggle />
           </div>
           <nav className="space-y-1.5">
             {secondaryNav.map((item) => (
@@ -292,9 +294,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, user }) => 
             ))}
             <button
               onClick={handleLogoutClick}
-              className="w-full flex items-center p-2.5 rounded-lg text-sm font-medium transition-colors text-on-surface-variant hover:bg-on-surface/5"
+              className="w-full flex items-center p-2.5 rounded-md text-sm font-medium transition-colors-smooth text-text-secondary hover:bg-bg-secondary"
             >
-              <div className="mr-3">
+              <div className="mr-3 w-5 h-5 flex items-center justify-center">
                 <LogOutIcon className="w-5 h-5" />
               </div>
               Sair
@@ -303,8 +305,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, user }) => 
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto">
-        <div className="p-6 md:p-10">{children}</div>
+      <main className="flex-1 overflow-y-auto bg-bg-primary">
+        <div className="px-4 py-4 md:px-8 md:py-8 max-w-[1280px] mx-auto w-full">
+          {children}
+        </div>
       </main>
 
       {/* Logout Confirmation Modal */}

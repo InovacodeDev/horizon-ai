@@ -1,90 +1,393 @@
+/**
+ * Global Styles - Horizon AI Design System
+ * 
+ * This file contains:
+ * 1. Font imports (Inter for UI, JetBrains Mono for code)
+ * 2. Tailwind directives (base, components, utilities)
+ * 3. CSS custom properties for light/dark themes
+ * 4. Utility classes for common patterns
+ * 5. Animations and transitions
+ * 6. Accessibility enhancements
+ */
+
+/* ============================================
+   Font Imports
+   ============================================ */
+/* Inter: Modern UI font with excellent readability */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ============================================
+   Tailwind Directives
+   ============================================ */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================
+   Theme Variables - Light Mode (Default)
+   ============================================ */
 :root {
+  /* --------------------------------------------
+     Legacy Tokens (Backward Compatibility)
+     -------------------------------------------- */
+  /* These tokens support existing components
+     New components should use design system tokens below */
   --background: #ffffff;
   --foreground: #171717;
-
   --primary: #1976d2;
   --on-primary: #ffffff;
   --primary-container: #d3e4fd;
   --on-primary-container: #001c38;
-
   --secondary: #00897b;
   --on-secondary: #ffffff;
   --secondary-container: #b2dfdb;
   --on-secondary-container: #002019;
-
   --surface: #ffffff;
   --on-surface: #1a1c1e;
   --surface-variant: #e1e2ec;
   --on-surface-variant: #44474f;
   --surface-container: #f3f4f9;
-
   --outline: #74777f;
   --outline-variant: #c4c6d0;
-
   --warning: #f57c00;
   --on-warning: #ffffff;
   --warning-container: #ffe0b2;
   --on-warning-container: #4e2600;
-
   --error: #d32f2f;
   --on-error: #ffffff;
   --error-container: #ffcdd2;
   --on-error-container: #410002;
+
+  /* --------------------------------------------
+     Design System Tokens - Light Theme
+     -------------------------------------------- */
+
+  /* Backgrounds - Page and section backgrounds */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --bg-tertiary: #f1f3f5;
+
+  /* Surfaces - Cards, containers, elevated elements */
+  --surface-primary: #ffffff;
+  --surface-secondary: #f8f9fa;
+  --surface-tertiary: #f1f3f5;
+
+  /* Text - All text content with WCAG AA compliance */
+  --text-primary: #1a1d1f;
+  --text-secondary: #6c757d;
+  --text-tertiary: #adb5bd;
+  --text-disabled: #dee2e6;
+
+  /* Borders - Dividers, outlines, focus states */
+  --border-primary: #e9ecef;
+  --border-secondary: #dee2e6;
+  --border-focus: #4f7cff;
+
+  /* Brand Colors - Primary blue palette (WCAG AA: 4.5:1 contrast) */
+  --blue-primary: #2d5adc; /* Updated from #4f7cff for 4.5:1 contrast ratio */
+  --blue-hover: #2449b8; /* Adjusted accordingly */
+  --blue-light: #ebf2ff;
+  --blue-dark: #1e3a94; /* Adjusted accordingly */
+
+  /* Semantic Colors - Success */
+  --green-bg: #e8f5e9;
+  --green-text: #2e7d32;
+  --green-border: #81c784;
+
+  /* Semantic Colors - Error */
+  --red-bg: #ffebee;
+  --red-text: #c62828;
+  --red-border: #e57373;
+
+  /* Semantic Colors - Warning */
+  --orange-bg: #fff3e0;
+  --orange-text: #e65100;
+  --orange-border: #ffb74d;
+
+  /* Semantic Colors - Info */
+  --blue-info-bg: #e3f2fd;
+  --blue-info-text: #1565c0;
+  --blue-info-border: #64b5f6;
 }
 
-/* @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ============================================
+   Theme Variables - Dark Mode
+   ============================================ */
+/* Applied when ThemeProvider sets dark class on root element */
+:root.dark,
+[data-theme='dark'] {
+  /* --------------------------------------------
+     Legacy Tokens (Backward Compatibility)
+     -------------------------------------------- */
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --primary: #a8c7fa;
+  --on-primary: #003258;
+  --primary-container: #004a77;
+  --on-primary-container: #d3e4fd;
+  --secondary: #4db6ac;
+  --on-secondary: #00382f;
+  --secondary-container: #005047;
+  --on-secondary-container: #b2dfdb;
+  --surface: #1a1c1e;
+  --on-surface: #e2e2e5;
+  --surface-variant: #44474f;
+  --on-surface-variant: #c4c6d0;
+  --surface-container: #2b2d30;
+  --outline: #8e9099;
+  --outline-variant: #44474f;
+  --warning: #ffb74d;
+  --on-warning: #4e2600;
+  --warning-container: #6d3900;
+  --on-warning-container: #ffe0b2;
+  --error: #ef5350;
+  --on-error: #690005;
+  --error-container: #93000a;
+  --on-error-container: #ffcdd2;
 
-    --primary: #a8c7fa;
-    --on-primary: #003258;
-    --primary-container: #004a77;
-    --on-primary-container: #d3e4fd;
+  /* --------------------------------------------
+     Design System Tokens - Dark Theme
+     -------------------------------------------- */
 
-    --secondary: #4db6ac;
-    --on-secondary: #00382f;
-    --secondary-container: #005047;
-    --on-secondary-container: #b2dfdb;
+  /* Backgrounds - Darker tones for comfortable viewing */
+  --bg-primary: #0f1419;
+  --bg-secondary: #1a1f26;
+  --bg-tertiary: #242a33;
 
-    --surface: #1a1c1e;
-    --on-surface: #e2e2e5;
-    --surface-variant: #44474f;
-    --on-surface-variant: #c4c6d0;
-    --surface-container: #2b2d30;
+  /* Surfaces - Elevated from background for depth */
+  --surface-primary: #1a1f26;
+  --surface-secondary: #242a33;
+  --surface-tertiary: #2e3440;
 
-    --outline: #8e9099;
-    --outline-variant: #44474f;
+  /* Text - Lighter colors for readability on dark backgrounds */
+  --text-primary: #e5e7eb;
+  --text-secondary: #9ca3af;
+  --text-tertiary: #6b7280;
+  --text-disabled: #4b5563;
 
-    --warning: #ffb74d;
-    --on-warning: #4e2600;
-    --warning-container: #6d3900;
-    --on-warning-container: #ffe0b2;
+  /* Borders - Subtle separation in dark mode */
+  --border-primary: #2e3440;
+  --border-secondary: #374151;
+  --border-focus: #5b8cff;
 
-    --error: #ef5350;
-    --on-error: #690005;
-    --error-container: #93000a;
-    --on-error-container: #ffcdd2;
-  }
-} */
+  /* Brand Colors - Lighter blue for better visibility on dark */
+  --blue-primary: #5b8cff;
+  --blue-hover: #7ba3ff;
+  --blue-light: #1e3a5f;
+  --blue-dark: #4f7cff;
+
+  /* Semantic Colors - Success */
+  --green-bg: #1b3a2f;
+  --green-text: #6ee7b7;
+  --green-border: #34d399;
+
+  /* Semantic Colors - Error */
+  --red-bg: #3a1f1f;
+  --red-text: #fca5a5;
+  --red-border: #f87171;
+
+  /* Semantic Colors - Warning */
+  --orange-bg: #3a2f1f;
+  --orange-text: #fcd34d;
+  --orange-border: #fbbf24;
+
+  /* Semantic Colors - Info */
+  --blue-info-bg: #1f2937;
+  --blue-info-text: #93c5fd;
+  --blue-info-border: #60a5fa;
+}
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--text-primary, var(--foreground));
+  background: var(--bg-primary, var(--background));
+  font-family:
+    'Inter',
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
+/* ============================================
+   Utility Classes
+   ============================================ */
 @layer utilities {
+  /* Text balance for better typography */
   .text-balance {
     text-wrap: balance;
   }
+
+  /* --------------------------------------------
+     Transition Utilities
+     -------------------------------------------- */
+  /* Smooth transitions with optimized timing */
+  .transition-smooth {
+    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .transition-smooth-200 {
+    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .transition-colors-smooth {
+    transition:
+      color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+      background-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+      border-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .transition-transform-smooth {
+    transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .transition-shadow-smooth {
+    transition: box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* --------------------------------------------
+     Focus Utilities
+     -------------------------------------------- */
+  /* Accessible focus indicators for keyboard navigation */
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-border-focus focus:ring-offset-2;
+  }
+
+  .focus-ring-inset {
+    @apply focus:outline-none focus:ring-2 focus:ring-inset focus:ring-border-focus;
+  }
+
+  /* --------------------------------------------
+     Interactive State Utilities
+     -------------------------------------------- */
+  /* Hover and active effects for interactive elements */
+  .interactive-lift {
+    @apply transition-smooth hover:shadow-soft-lg hover:-translate-y-0.5;
+  }
+
+  .interactive-scale {
+    @apply transition-smooth active:scale-98;
+  }
+
+  /* --------------------------------------------
+     Layout Pattern Utilities
+     -------------------------------------------- */
+  /* Consistent spacing for page sections */
+  .page-section-spacing {
+    @apply space-y-6;
+  }
+
+  /* --------------------------------------------
+     Card Pattern Utilities
+     -------------------------------------------- */
+  /* Pre-built card styles for common use cases */
+  .card-base {
+    @apply bg-surface-new-primary border border-border-primary rounded-lg p-6;
+  }
+
+  .card-elevated {
+    @apply bg-surface-new-primary rounded-lg p-6 shadow-soft-md;
+  }
+
+  .card-interactive {
+    @apply card-elevated interactive-lift cursor-pointer;
+  }
+
+  /* --------------------------------------------
+     Input Pattern Utilities
+     -------------------------------------------- */
+  /* Base input styling with focus states */
+  .input-base {
+    @apply h-11 px-4 bg-surface-new-primary border border-border-primary rounded-md text-sm
+           placeholder:text-text-tertiary transition-colors-smooth
+           focus:border-border-focus focus:ring-2 focus:ring-border-focus focus:ring-opacity-10;
+  }
+
+  /* --------------------------------------------
+     Button Pattern Utilities
+     -------------------------------------------- */
+  /* Pre-built button styles for common variants */
+  .btn-base {
+    @apply inline-flex items-center justify-center rounded-md font-medium
+           transition-smooth focus-ring disabled:opacity-60 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply btn-base bg-blue-primary text-white hover:bg-blue-hover
+           active:scale-98 shadow-soft-xs hover:shadow-soft-sm;
+  }
+
+  .btn-secondary {
+    @apply btn-base bg-bg-secondary text-text-primary hover:bg-bg-tertiary;
+  }
+
+  .btn-outline {
+    @apply btn-base border border-border-primary bg-transparent text-text-primary
+           hover:bg-bg-secondary;
+  }
+
+  .btn-ghost {
+    @apply btn-base bg-transparent text-text-primary hover:bg-bg-secondary;
+  }
+
+  /* --------------------------------------------
+     Badge Pattern Utilities
+     -------------------------------------------- */
+  /* Pre-built badge styles for status indicators */
+  .badge-base {
+    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium;
+  }
+
+  .badge-success {
+    @apply badge-base bg-green-bg text-green-text border border-green-border;
+  }
+
+  .badge-error {
+    @apply badge-base bg-red-bg text-red-text border border-red-border;
+  }
+
+  .badge-warning {
+    @apply badge-base bg-orange-bg text-orange-text border border-orange-border;
+  }
+
+  .badge-info {
+    @apply badge-base bg-blue-info-bg text-blue-info-text border border-blue-info-border;
+  }
+
+  /* --------------------------------------------
+     Scrollbar Utilities
+     -------------------------------------------- */
+  /* Custom thin scrollbar for better aesthetics */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-secondary) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: var(--border-secondary);
+    border-radius: 4px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: var(--border-primary);
+  }
 }
 
-/* Animations */
+/* ============================================
+   Animations
+   ============================================ */
+/* Smooth, natural animations for UI elements */
+
 @keyframes slide-in-right {
   from {
     transform: translateX(100%);
@@ -98,4 +401,114 @@ body {
 
 .animate-slide-in-right {
   animation: slide-in-right 0.3s ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 200ms ease-out;
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 200ms ease-out;
+}
+
+/* ============================================
+   Accessibility - Reduced Motion
+   ============================================ */
+/* Respect user's motion preferences for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================
+   Accessibility Fixes
+   ============================================ */
+
+/* Enhanced Input Focus States */
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--border-focus) !important;
+  box-shadow: 0 0 0 3px rgba(79, 124, 255, 0.1) !important;
+  outline: none !important;
+}
+
+/* Dark mode focus states */
+:root.dark input:focus,
+:root.dark textarea:focus,
+:root.dark select:focus {
+  box-shadow: 0 0 0 3px rgba(91, 140, 255, 0.2) !important;
+}
+
+/* Enhanced Link Focus States */
+a:focus {
+  outline: 2px solid var(--border-focus) !important;
+  outline-offset: 2px !important;
+  border-radius: 2px;
+}
+
+a:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+  text-decoration: underline;
+}
+
+/* Enhanced Button Focus States */
+button:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+/* Checkbox and Radio Focus States */
+input[type='checkbox']:focus,
+input[type='radio']:focus {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  :root {
+    --border-primary: #000000;
+    --border-secondary: #000000;
+    --text-primary: #000000;
+  }
+
+  :root.dark {
+    --border-primary: #ffffff;
+    --border-secondary: #ffffff;
+    --text-primary: #ffffff;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    border-width: 2px !important;
+  }
 }

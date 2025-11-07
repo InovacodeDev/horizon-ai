@@ -18,6 +18,13 @@ const Tooltip: React.FC<TooltipProps> = ({ content, children, position = 'right'
     right: 'left-full top-1/2 -translate-y-1/2 ml-2',
   };
 
+  const arrowClasses = {
+    right: '-left-1 top-1/2 -translate-y-1/2',
+    left: '-right-1 top-1/2 -translate-y-1/2',
+    top: 'left-1/2 -translate-x-1/2 -bottom-1',
+    bottom: 'left-1/2 -translate-x-1/2 -top-1',
+  };
+
   return (
     <div
       className="relative inline-block"
@@ -27,19 +34,11 @@ const Tooltip: React.FC<TooltipProps> = ({ content, children, position = 'right'
       {children}
       {isVisible && (
         <div
-          className={`absolute z-50 px-3 py-2 text-sm text-white bg-gray-900 rounded-lg shadow-lg whitespace-nowrap ${positionClasses[position]}`}
+          className={`absolute z-50 px-3 py-2 text-xs text-white bg-text-primary rounded-md shadow-soft-md whitespace-nowrap animate-fade-in ${positionClasses[position]}`}
         >
           {content}
           <div
-            className={`absolute w-2 h-2 bg-gray-900 transform rotate-45 ${
-              position === 'right'
-                ? '-left-1 top-1/2 -translate-y-1/2'
-                : position === 'left'
-                ? '-right-1 top-1/2 -translate-y-1/2'
-                : position === 'top'
-                ? 'left-1/2 -translate-x-1/2 -bottom-1'
-                : 'left-1/2 -translate-x-1/2 -top-1'
-            }`}
+            className={`absolute w-2 h-2 bg-text-primary transform rotate-45 ${arrowClasses[position]}`}
           />
         </div>
       )}

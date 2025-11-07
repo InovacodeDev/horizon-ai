@@ -183,26 +183,26 @@ const AccountCard: React.FC<AccountCardProps> = ({
     };
 
     return (
-        <Card className="p-4">
+        <Card className="p-6">
             <div className="flex items-center gap-4 cursor-pointer" onClick={() => setExpanded(!expanded)}>
-                <div className="h-10 w-10 flex-shrink-0 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <WalletIcon className="h-6 w-6 text-blue-600" />
+                <div className="h-12 w-12 flex-shrink-0 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                    <WalletIcon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div className="flex-grow">
                     <div className="flex items-center gap-2">
-                        <p className="font-medium text-on-surface">{account.name}</p>
+                        <p className="font-semibold text-on-surface">{account.name}</p>
                         <div className={`w-2 h-2 rounded-full ${statusColor[account.status || 'Manual']}`}></div>
                         {account.is_manual && (
-                            <span className="text-xs px-2 py-0.5 bg-blue-50 text-blue-700 rounded">Manual</span>
+                            <span className="text-xs px-2 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md font-medium">Manual</span>
                         )}
                     </div>
-                    <p className="text-sm text-on-surface-variant">{accountTypeLabel[account.account_type]}</p>
+                    <p className="text-sm text-on-surface-variant mt-1">{accountTypeLabel[account.account_type]}</p>
                 </div>
                 <div className="text-right">
-                    <p className="font-medium text-lg text-on-surface">
+                    <p className="font-semibold text-xl text-on-surface">
                         {(account.balance ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                     </p>
-                    <p className="text-xs text-on-surface-variant">
+                    <p className="text-sm text-on-surface-variant mt-1">
                         {creditCards.length} cartão(ões)
                     </p>
                 </div>
@@ -244,9 +244,9 @@ const AccountCard: React.FC<AccountCardProps> = ({
             </div>
             
             {expanded && (
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                    <div className="flex justify-between items-center mb-3">
-                        <h4 className="font-medium text-sm text-gray-700">Cartões de Crédito</h4>
+                <div className="mt-6 pt-6 border-t border-outline">
+                    <div className="flex justify-between items-center mb-4">
+                        <h4 className="font-semibold text-base text-on-surface">Cartões de Crédito</h4>
                         <Button 
                             variant="text" 
                             onClick={onAddCreditCard}
@@ -257,7 +257,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
                     </div>
                     
                     {creditCards.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {creditCards.map((card, index) => (
                                 <CreditCardItem 
                                     key={card.$id || `card-${index}`} 
@@ -429,7 +429,7 @@ export default function AccountsPage() {
     return (
         <>
             <ProcessDueTransactions />
-            <header className="flex justify-between items-end mb-8">
+            <header className="flex justify-between items-end mb-6">
                 <div>
                     <h1 className="text-4xl font-light text-on-surface">Suas Contas</h1>
                     <p className="text-base text-on-surface-variant mt-1">

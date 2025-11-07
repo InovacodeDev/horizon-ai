@@ -114,10 +114,10 @@ const TransactionsScreenSkeleton: React.FC = () => (
 
 const TransactionTypeBadge: React.FC<{ type: Transaction['type'] }> = ({ type }) => {
     const typeStyles: Record<Transaction['type'], string> = {
-        credit: "bg-blue-100 text-blue-800",
-        debit: "bg-orange-100 text-orange-800",
-        pix: "bg-green-100 text-green-800",
-        boleto: "bg-red-100 text-red-800",
+        credit: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+        debit: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
+        pix: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+        boleto: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
     };
     const typeLabels: Record<Transaction['type'], string> = {
         credit: "Crédito",
@@ -126,45 +126,45 @@ const TransactionTypeBadge: React.FC<{ type: Transaction['type'] }> = ({ type })
         boleto: "Boleto",
     };
     return (
-        <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${typeStyles[type]}`}>{typeLabels[type]}</span>
+        <span className={`px-2.5 py-1 text-xs font-medium rounded-md ${typeStyles[type]}`}>{typeLabels[type]}</span>
     );
 };
 
 const TransactionCategoryBadge: React.FC<{ categoryId: string }> = ({ categoryId }) => {
     const category = getCategoryById(categoryId);
-    if (!category) return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-800">Sem Categoria</span>;
+    if (!category) return <span className="px-2.5 py-1 text-xs font-medium rounded-md bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">Sem Categoria</span>;
     
     const categoryStyles: Record<string, string> = {
-        food: "bg-orange-100 text-orange-800",
-        groceries: "bg-green-100 text-green-800",
-        transport: "bg-blue-100 text-blue-800",
-        housing: "bg-purple-100 text-purple-800",
-        utilities: "bg-yellow-100 text-yellow-800",
-        internet: "bg-cyan-100 text-cyan-800",
-        phone: "bg-indigo-100 text-indigo-800",
-        health: "bg-red-100 text-red-800",
-        education: "bg-blue-100 text-blue-800",
-        entertainment: "bg-pink-100 text-pink-800",
-        shopping: "bg-purple-100 text-purple-800",
-        travel: "bg-teal-100 text-teal-800",
-        gifts: "bg-rose-100 text-rose-800",
-        coffee: "bg-amber-100 text-amber-800",
-        credit_card: "bg-gray-100 text-gray-800",
-        credit_card_bill: "bg-slate-100 text-slate-800",
-        taxes: "bg-red-100 text-red-800",
-        other_expense: "bg-gray-100 text-gray-800",
-        salary: "bg-emerald-100 text-emerald-800",
-        freelance: "bg-green-100 text-green-800",
-        investment: "bg-blue-100 text-blue-800",
-        bonus: "bg-yellow-100 text-yellow-800",
-        refund: "bg-cyan-100 text-cyan-800",
-        other_income: "bg-green-100 text-green-800",
-        balance: "bg-indigo-100 text-indigo-800",
-        transfer: "bg-gray-100 text-gray-800",
+        food: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
+        groceries: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+        transport: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+        housing: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+        utilities: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300",
+        internet: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300",
+        phone: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
+        health: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+        education: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+        entertainment: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300",
+        shopping: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+        travel: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300",
+        gifts: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
+        coffee: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+        credit_card: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+        credit_card_bill: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+        taxes: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+        other_expense: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+        salary: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
+        freelance: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+        investment: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+        bonus: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300",
+        refund: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300",
+        other_income: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+        balance: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
+        transfer: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
     };
     
     return (
-        <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${categoryStyles[categoryId] || "bg-gray-100 text-gray-800"}`}>
+        <span className={`px-2.5 py-1 text-xs font-medium rounded-md ${categoryStyles[categoryId] || "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"}`}>
             {category.name}
         </span>
     );
@@ -575,8 +575,8 @@ export default function TransactionsPage() {
                         </p>
                     </div>
                 </div>
-                <div className="mt-6 flex items-center gap-4">
-                    <div className="flex-grow max-w-sm">
+                <div className="mt-6 flex items-center gap-3">
+                    <div className="flex-grow max-w-md">
                         <Input
                             type="search"
                             placeholder="Buscar transações..."
@@ -599,7 +599,7 @@ export default function TransactionsPage() {
             </header>
 
             {showFilters && (
-                <Card className="p-4 mb-8 transition-all duration-300 ease-in-out">
+                <Card className="p-6 mb-6 transition-all duration-200 ease-in-out">
                     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 items-end">
                         <Input
                             id="minAmount"
@@ -689,7 +689,7 @@ export default function TransactionsPage() {
             )}
 
             {activeFilterCount > 0 && (
-                <div className="mb-4 flex items-center gap-2 flex-wrap">
+                <div className="mb-6 flex items-center gap-2 flex-wrap">
                     {searchTerm && (
                         <ActiveFilterTag label={`Search: "${searchTerm}"`} onRemove={() => setSearchTerm("")} />
                     )}
@@ -727,10 +727,10 @@ export default function TransactionsPage() {
                 {Object.keys(groupedTransactions).length > 0 ? (
                     Object.entries(groupedTransactions).map(([date, transactions], groupIndex) => (
                         <div key={`${date}-${groupIndex}`} className="mb-6">
-                            <h2 className="font-medium text-sm text-on-surface-variant pb-2 border-b border-outline mb-2">
+                            <h2 className="font-medium text-sm text-on-surface-variant pb-2 border-b border-outline mb-3">
                                 {date}
                             </h2>
-                            <ul className="divide-y divide-outline bg-surface-container rounded-xl p-1">
+                            <ul className="divide-y divide-outline bg-surface-container rounded-lg p-1">
                                 {(transactions as Transaction[]).map((tx, txIndex) => (
                                     <TransactionItem
                                         key={`${tx.$id}-${txIndex}`}

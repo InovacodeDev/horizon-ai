@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import CurrencyInput from '@/components/ui/CurrencyInput';
+import Button from '@/components/ui/Button';
 
 export interface CreateAccountInput {
   name: string;
@@ -54,30 +55,31 @@ export function AddAccountModal({ isOpen, onClose, onSubmit }: AddAccountModalPr
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">Adicionar Conta</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
+      <div className="bg-surface-new-primary w-full max-w-md rounded-lg shadow-soft-xl transform transition-smooth-200 animate-slide-up">
+        <div className="flex justify-between items-center p-6 border-b border-border-primary">
+          <h2 className="text-lg font-semibold text-text-primary">Adicionar Conta</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="p-2 rounded-md text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors-smooth focus:outline-none focus:ring-2 focus:ring-border-focus"
             type="button"
+            aria-label="Fechar modal"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
+            <div className="bg-red-bg border border-red-border text-red-text px-4 py-3 rounded-md">
               {error}
             </div>
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Nome da Conta *
             </label>
             <input
@@ -85,20 +87,20 @@ export function AddAccountModal({ isOpen, onClose, onSubmit }: AddAccountModalPr
               required
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full h-11 px-4 bg-surface-new-primary border border-border-primary rounded-md text-sm text-text-primary placeholder:text-text-tertiary transition-colors-smooth focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-border-focus focus:ring-opacity-10"
               placeholder="Ex: Conta Corrente Banco X"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Tipo de Conta *
             </label>
             <select
               required
               value={formData.account_type}
               onChange={(e) => setFormData({ ...formData, account_type: e.target.value as any })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full h-11 px-4 bg-surface-new-primary border border-border-primary rounded-md text-sm text-text-primary transition-colors-smooth focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-border-focus focus:ring-opacity-10"
             >
               <option value="checking">Conta Corrente</option>
               <option value="savings">Poupança</option>
@@ -115,27 +117,28 @@ export function AddAccountModal({ isOpen, onClose, onSubmit }: AddAccountModalPr
               onChange={(value) => setFormData({ ...formData, initial_balance: value })}
               placeholder="R$ 0,00"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-text-tertiary mt-1.5">
               Se houver saldo inicial, uma transação de entrada será criada automaticamente
             </p>
           </div>
 
-          <div className="flex justify-end space-x-3 pt-4">
-            <button
+          <div className="flex justify-end gap-3 pt-4 border-t border-border-primary">
+            <Button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              variant="secondary"
               disabled={loading}
             >
               Cancelar
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              className="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+              variant="primary"
+              loading={loading}
               disabled={loading}
             >
               {loading ? 'Criando...' : 'Criar Conta'}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

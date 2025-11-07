@@ -58,17 +58,18 @@ export function TransferBalanceModal({ isOpen, onClose, accounts, onSuccess }: T
   const availableBalance = fromAccount?.balance || 0;
 
   return (
-    <div className='fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50'>
-      <div className='bg-white rounded-lg shadow-xl w-full max-w-md p-6'>
-        <div className='flex justify-between items-center mb-4'>
-          <h2 className='text-xl font-semibold text-gray-900'>Transferir Saldo</h2>
+    <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in'>
+      <div className='bg-surface-new-primary w-full max-w-md rounded-lg shadow-soft-xl transform transition-smooth-200 animate-slide-up'>
+        <div className='flex justify-between items-center p-6 border-b border-border-primary'>
+          <h2 className='text-lg font-semibold text-text-primary'>Transferir Saldo</h2>
           <button
             onClick={onClose}
-            className='text-gray-400 hover:text-gray-600'
+            className='p-2 rounded-md text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors-smooth focus:outline-none focus:ring-2 focus:ring-border-focus'
             type='button'
+            aria-label='Fechar modal'
           >
             <svg
-              className='w-6 h-6'
+              className='w-5 h-5'
               fill='none'
               stroke='currentColor'
               viewBox='0 0 24 24'
@@ -85,21 +86,21 @@ export function TransferBalanceModal({ isOpen, onClose, accounts, onSuccess }: T
 
         <form
           onSubmit={handleSubmit}
-          className='space-y-4'
+          className='p-6 space-y-5'
         >
           {error && (
-            <div className='bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded'>
+            <div className='bg-red-bg border border-red-border text-red-text px-4 py-3 rounded-md'>
               {error}
             </div>
           )}
 
           <div>
-            <label className='block text-sm font-medium text-gray-700 mb-1'>Conta de Origem *</label>
+            <label className='block text-sm font-medium text-text-primary mb-2'>Conta de Origem *</label>
             <select
               required
               value={fromAccountId}
               onChange={(e) => setFromAccountId(e.target.value)}
-              className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+              className='w-full h-11 px-4 bg-surface-new-primary border border-border-primary rounded-md text-sm text-text-primary transition-colors-smooth focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-border-focus focus:ring-opacity-10'
             >
               <option value=''>Selecione uma conta</option>
               {accounts.map((account) => (
@@ -112,19 +113,19 @@ export function TransferBalanceModal({ isOpen, onClose, accounts, onSuccess }: T
               ))}
             </select>
             {fromAccountId && (
-              <p className='text-xs text-gray-500 mt-1'>
+              <p className='text-xs text-text-tertiary mt-1.5'>
                 Saldo disponível: {availableBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </p>
             )}
           </div>
 
           <div>
-            <label className='block text-sm font-medium text-gray-700 mb-1'>Conta de Destino *</label>
+            <label className='block text-sm font-medium text-text-primary mb-2'>Conta de Destino *</label>
             <select
               required
               value={toAccountId}
               onChange={(e) => setToAccountId(e.target.value)}
-              className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+              className='w-full h-11 px-4 bg-surface-new-primary border border-border-primary rounded-md text-sm text-text-primary transition-colors-smooth focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-border-focus focus:ring-opacity-10'
             >
               <option value=''>Selecione uma conta</option>
               {accounts
@@ -149,33 +150,33 @@ export function TransferBalanceModal({ isOpen, onClose, accounts, onSuccess }: T
               required
             />
             {amount > availableBalance && fromAccountId && (
-              <p className='text-xs text-red-600 mt-1'>Saldo insuficiente na conta de origem</p>
+              <p className='text-xs text-red-text mt-1.5'>Saldo insuficiente na conta de origem</p>
             )}
           </div>
 
           <div>
-            <label className='block text-sm font-medium text-gray-700 mb-1'>Descrição (opcional)</label>
+            <label className='block text-sm font-medium text-text-primary mb-2'>Descrição (opcional)</label>
             <input
               type='text'
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+              className='w-full h-11 px-4 bg-surface-new-primary border border-border-primary rounded-md text-sm text-text-primary placeholder:text-text-tertiary transition-colors-smooth focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-border-focus focus:ring-opacity-10'
               placeholder='Ex: Transferência para poupança'
             />
           </div>
 
-          <div className='flex justify-end space-x-3 pt-4'>
+          <div className='flex justify-end gap-3 pt-4 border-t border-border-primary'>
             <button
               type='button'
               onClick={onClose}
-              className='px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200'
+              className='h-10 px-4 rounded-md text-sm font-medium bg-bg-secondary text-text-primary hover:bg-bg-tertiary transition-colors-smooth focus:outline-none focus:ring-2 focus:ring-border-focus disabled:opacity-60 disabled:cursor-not-allowed'
               disabled={loading}
             >
               Cancelar
             </button>
             <button
               type='submit'
-              className='px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50'
+              className='h-10 px-4 rounded-md text-sm font-medium bg-blue-primary text-white hover:bg-blue-hover shadow-soft-xs hover:shadow-soft-sm transition-smooth focus:outline-none focus:ring-2 focus:ring-border-focus disabled:opacity-60 disabled:cursor-not-allowed'
               disabled={loading || !fromAccountId || !toAccountId || amount <= 0 || amount > availableBalance}
             >
               {loading ? 'Transferindo...' : 'Transferir'}

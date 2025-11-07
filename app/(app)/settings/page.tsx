@@ -20,13 +20,13 @@ export default function SettingsPage() {
     <div className="p-4 md:p-8">
       <header className="mb-6">
         <h1 className="text-3xl font-normal text-on-surface">Configurações</h1>
-        <p className="text-base text-on-surface-variant">Gerencie sua conta e preferências.</p>
+        <p className="text-base text-on-surface-variant mt-1">Gerencie sua conta e preferências.</p>
       </header>
 
       {toastMessage && (
         <div
-          className={`mb-4 p-4 rounded-m ${
-            toastMessage.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+          className={`mb-6 p-4 rounded-lg ${
+            toastMessage.type === 'success' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
           }`}
         >
           {toastMessage.message}
@@ -47,7 +47,7 @@ export default function SettingsPage() {
               className="space-y-4 max-w-md"
               onSubmit={(e) => handleSubmit(e, 'Informações da conta salvas!')}
             >
-              <h3 className="text-lg font-medium">Informações do Perfil</h3>
+              <h3 className="text-lg font-semibold text-on-surface">Informações do Perfil</h3>
               <Input id="firstName" label="Nome" defaultValue="Mariana" />
               <Input
                 id="email"
@@ -65,7 +65,7 @@ export default function SettingsPage() {
               className="space-y-4 max-w-md"
               onSubmit={(e) => handleSubmit(e, 'Senha atualizada com sucesso!')}
             >
-              <h3 className="text-lg font-medium">Alterar Senha</h3>
+              <h3 className="text-lg font-semibold text-on-surface">Alterar Senha</h3>
               <Input id="currentPassword" label="Senha Atual" type="password" />
               <Input id="newPassword" label="Nova Senha" type="password" />
               <Input id="confirmPassword" label="Confirmar Nova Senha" type="password" />
@@ -73,8 +73,8 @@ export default function SettingsPage() {
             </form>
             <hr className="my-6 border-outline" />
             <div>
-              <h3 className="text-lg font-medium">Ações da Conta</h3>
-              <p className="text-sm text-on-surface-variant mt-1 mb-4">
+              <h3 className="text-lg font-semibold text-on-surface">Ações da Conta</h3>
+              <p className="text-sm text-on-surface-variant mt-2 mb-4">
                 Excluir permanentemente sua conta e todos os dados associados.
               </p>
               <Button className="bg-error hover:bg-error/90">Excluir Conta</Button>
@@ -86,7 +86,7 @@ export default function SettingsPage() {
               className="space-y-4 max-w-md"
               onSubmit={(e) => handleSubmit(e, 'Preferências de notificação salvas!')}
             >
-              <h3 className="text-lg font-medium">Notificações por Email</h3>
+              <h3 className="text-lg font-semibold text-on-surface">Notificações por Email</h3>
               <div className="flex items-center justify-between p-3 bg-surface-variant/20 rounded-m">
                 <label htmlFor="weekly-summary" className="font-medium">
                   Resumo Semanal
@@ -112,8 +112,8 @@ export default function SettingsPage() {
           <TabsContent value="preferences">
             <form className="space-y-6 max-w-md" onSubmit={(e) => handleSubmit(e, 'Preferências salvas!')}>
               <div>
-                <h3 className="text-lg font-medium">Preferências de Exibição</h3>
-                <div className="space-y-4 mt-2">
+                <h3 className="text-lg font-semibold text-on-surface">Preferências de Exibição</h3>
+                <div className="space-y-4 mt-4">
                   <div>
                     <label
                       htmlFor="currency"
@@ -150,8 +150,8 @@ export default function SettingsPage() {
                 </div>
               </div>
               <div>
-                <h3 className="text-lg font-medium">Comportamento do App</h3>
-                <div className="space-y-4 mt-2">
+                <h3 className="text-lg font-semibold text-on-surface">Comportamento do App</h3>
+                <div className="space-y-4 mt-4">
                   <div>
                     <label
                       htmlFor="startScreen"

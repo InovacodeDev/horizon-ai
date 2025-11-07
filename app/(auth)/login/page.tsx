@@ -47,22 +47,22 @@ export default function LoginPage() {
 
   return (
     <div className="w-full">
-      <div className="mb-4">
+      <div className="mb-6">
         <Link href="/">
-          <Button variant="outlined" className="border-none !px-2">
+          <Button variant="ghost" size="sm" className="!px-2">
             <ArrowLeftIcon className="w-5 h-5 mr-2" />
             Voltar para Início
           </Button>
         </Link>
       </div>
-      <Card className="p-8">
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-medium text-on-surface">Bem-vindo de volta</h1>
-          <p className="text-on-surface-variant">Entre para continuar no Horizon AI.</p>
+      <Card variant="elevated" padding="lg">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-semibold text-text-primary mb-2">Bem-vindo de volta</h1>
+          <p className="text-sm text-text-secondary">Entre para continuar no Horizon AI.</p>
         </div>
-        <form className="space-y-4" onSubmit={handleSubmit}>
+        <form className="space-y-5" onSubmit={handleSubmit}>
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            <div className="p-4 bg-red-bg border border-red-border rounded-md text-red-text text-sm animate-slide-up">
               {error}
             </div>
           )}
@@ -85,16 +85,28 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             disabled={isLoading}
           />
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button 
+            type="submit" 
+            variant="primary" 
+            size="lg" 
+            className="w-full mt-6" 
+            loading={isLoading}
+            disabled={isLoading}
+          >
             {isLoading ? 'Entrando...' : 'Entrar'}
           </Button>
         </form>
-        <p className="text-center text-sm text-on-surface-variant mt-6">
-          Não tem uma conta?{' '}
-          <Link href="/register" className="font-medium text-primary hover:underline">
-            Cadastre-se
-          </Link>
-        </p>
+        <div className="mt-8 pt-6 border-t border-border-primary">
+          <p className="text-center text-sm text-text-secondary">
+            Não tem uma conta?{' '}
+            <Link 
+              href="/register" 
+              className="font-medium text-blue-primary hover:text-blue-hover transition-colors"
+            >
+              Cadastre-se
+            </Link>
+          </p>
+        </div>
       </Card>
     </div>
   );

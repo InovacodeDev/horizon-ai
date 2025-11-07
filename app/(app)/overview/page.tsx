@@ -91,14 +91,14 @@ const BarChart: React.FC<{ data: ChartData[] }> = ({ data }) => {
 
     return (
         <div className="w-full">
-            <div className="flex justify-end gap-4 mb-4">
+            <div className="flex justify-end gap-4 mb-6">
                 <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-sm bg-secondary"></div>
-                    <span className="text-xs text-on-surface-variant">Receitas</span>
+                    <div className="w-3 h-3 rounded bg-secondary"></div>
+                    <span className="text-sm text-on-surface-variant">Receitas</span>
                 </div>
                 <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-sm bg-error"></div>
-                    <span className="text-xs text-on-surface-variant">Despesas</span>
+                    <div className="w-3 h-3 rounded bg-error"></div>
+                    <span className="text-sm text-on-surface-variant">Despesas</span>
                 </div>
             </div>
             <div className="flex gap-4" style={{ height: "250px" }}>
@@ -127,11 +127,11 @@ const BarChart: React.FC<{ data: ChartData[] }> = ({ data }) => {
                         >
                             <div className="flex gap-1 items-end h-full w-full justify-center">
                                 <div
-                                    className="w-1/2 bg-secondary rounded-t-xs hover:opacity-80 transition-all duration-300 ease-in-out"
+                                    className="w-1/2 bg-secondary rounded-t hover:opacity-90 transition-all duration-200 ease-in-out"
                                     style={{ height: `${(item.income / maxValue) * 100}%` }}
                                 ></div>
                                 <div
-                                    className="w-1/2 bg-error rounded-t-xs hover:opacity-80 transition-all duration-300 ease-in-out"
+                                    className="w-1/2 bg-error rounded-t hover:opacity-90 transition-all duration-200 ease-in-out"
                                     style={{ height: `${(item.expenses / maxValue) * 100}%` }}
                                 ></div>
                             </div>
@@ -140,23 +140,23 @@ const BarChart: React.FC<{ data: ChartData[] }> = ({ data }) => {
                             </span>
 
                             {/* Tooltip */}
-                            <div className="absolute bottom-full mb-2 w-40 p-2 bg-on-surface text-surface rounded-m text-xs shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                                <p className="font-bold mb-1 text-center">{item.month} 2024</p>
-                                <div className="flex justify-between items-center">
+                            <div className="absolute bottom-full mb-2 w-40 p-3 bg-on-surface text-surface rounded-lg text-xs shadow-soft-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                <p className="font-semibold mb-2 text-center">{item.month} 2024</p>
+                                <div className="flex justify-between items-center mb-1">
                                     <span className="flex items-center gap-1.5">
                                         <div className="w-2 h-2 rounded-full bg-secondary"></div>
-                                        <span className="text-surface/80">Receitas:</span>
+                                        <span className="text-surface/90">Receitas:</span>
                                     </span>
-                                    <span>
+                                    <span className="font-medium">
                                         {item.income.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                                     </span>
                                 </div>
                                 <div className="flex justify-between items-center">
                                     <span className="flex items-center gap-1.5">
                                         <div className="w-2 h-2 rounded-full bg-error"></div>
-                                        <span className="text-surface/80">Despesas:</span>
+                                        <span className="text-surface/90">Despesas:</span>
                                     </span>
-                                    <span>
+                                    <span className="font-medium">
                                         {item.expenses.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                                     </span>
                                 </div>
@@ -598,8 +598,8 @@ export default function OverviewPage() {
                 </div>
             </header>
 
-            <main className="space-y-8">
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+            <main className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                     <StatCard
                         label="Receitas do mês"
                         value={monthlyMetrics.currentIncome}
@@ -641,7 +641,7 @@ export default function OverviewPage() {
                 {aiInsights.length > 0 && (
                     <div>
                         <h3 className="text-xl font-medium text-on-surface mb-4">Insights de IA</h3>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                             {aiInsights.map((insight) => (
                                 <FinancialInsightCard 
                                     key={insight.$id} 

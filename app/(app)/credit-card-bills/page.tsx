@@ -347,7 +347,7 @@ const CreditCardBillsPage: React.FC = () => {
     return (
       <div className='p-6 max-w-7xl mx-auto'>
         <div className='mb-6'>
-          <h1 className='text-3xl font-bold text-on-surface'>Faturas do Cartão de Crédito</h1>
+          <h1 className='text-3xl font-normal text-on-surface'>Faturas do Cartão de Crédito</h1>
           <p className='text-on-surface-variant mt-1'>Gerencie suas faturas e parcelamentos</p>
         </div>
 
@@ -370,7 +370,7 @@ const CreditCardBillsPage: React.FC = () => {
     <div className='p-6 max-w-7xl mx-auto'>
       <div className='mb-6 flex items-center justify-between'>
         <div>
-          <h1 className='text-3xl font-bold text-on-surface'>Faturas do Cartão de Crédito</h1>
+          <h1 className='text-3xl font-normal text-on-surface'>Faturas do Cartão de Crédito</h1>
           <p className='text-on-surface-variant mt-1'>Gerencie suas faturas e parcelamentos</p>
         </div>
         {selectedCard && (
@@ -420,11 +420,11 @@ const CreditCardBillsPage: React.FC = () => {
         <>
           {/* Summary Cards */}
           <div className='grid grid-cols-1 md:grid-cols-3 gap-4 mb-6'>
-            <Card className='p-4'>
+            <Card className='p-6'>
               <div className='flex items-center justify-between'>
                 <div>
-                  <p className='text-sm text-on-surface-variant'>Fatura Atual</p>
-                  <p className='text-2xl font-bold text-on-surface'>{formatCurrency(currentBillTotal)}</p>
+                  <p className='text-sm text-on-surface-variant font-medium'>Fatura Atual</p>
+                  <p className='text-2xl font-semibold text-on-surface mt-1'>{formatCurrency(currentBillTotal)}</p>
                   <p className='text-xs text-on-surface-variant mt-1'>
                     {openBills.length > 0 && openBills[0].transactions.length > 0
                       ? `${openBills[0].transactions.length} transação(ões)`
@@ -435,11 +435,11 @@ const CreditCardBillsPage: React.FC = () => {
               </div>
             </Card>
 
-            <Card className='p-4'>
+            <Card className='p-6'>
               <div className='flex items-center justify-between'>
                 <div>
-                  <p className='text-sm text-on-surface-variant'>Próximo Vencimento</p>
-                  <p className='text-2xl font-bold text-on-surface'>
+                  <p className='text-sm text-on-surface-variant font-medium'>Próximo Vencimento</p>
+                  <p className='text-2xl font-semibold text-on-surface mt-1'>
                     {openBills.length > 0 ? formatDate(openBills[0].dueDate.toISOString()) : `Dia ${settings.dueDay}`}
                   </p>
                   <p className='text-xs text-on-surface-variant mt-1'>
@@ -450,11 +450,11 @@ const CreditCardBillsPage: React.FC = () => {
               </div>
             </Card>
 
-            <Card className='p-4'>
+            <Card className='p-6'>
               <div className='flex items-center justify-between'>
                 <div>
-                  <p className='text-sm text-on-surface-variant'>Limite Disponível</p>
-                  <p className='text-2xl font-bold text-on-surface'>{formatCurrency(availableLimit)}</p>
+                  <p className='text-sm text-on-surface-variant font-medium'>Limite Disponível</p>
+                  <p className='text-2xl font-semibold text-on-surface mt-1'>{formatCurrency(availableLimit)}</p>
                   <p className='text-xs text-on-surface-variant mt-1'>Limite total: {formatCurrency(settings.limit)}</p>
                 </div>
                 <DollarSignIcon className='w-8 h-8 text-tertiary' />

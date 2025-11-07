@@ -11,24 +11,24 @@ import ManageCategoriesModal from "./ManageCategoriesModal";
 const CategoryItem: React.FC<{ category: Category }> = ({ category }) => {
     const { icon: Icon, name, percentage, transactionCount } = category;
     return (
-        <div className="flex items-center gap-4 py-3">
-            <div className="p-2 bg-primary-container rounded-full">
+        <div className="flex items-center gap-4 py-4 px-2 rounded-lg hover:bg-surface-variant/20 transition-colors">
+            <div className="p-3 bg-primary-container rounded-lg">
                 {Icon && <Icon className="w-6 h-6 text-on-primary-container" />}
             </div>
             <div className="flex-grow">
-                <div className="flex justify-between items-center mb-1">
-                    <p className="font-medium text-on-surface">{name}</p>
+                <div className="flex justify-between items-center mb-2">
+                    <p className="font-semibold text-on-surface">{name}</p>
                     {percentage !== undefined && (
-                        <p className="text-sm font-medium text-on-surface-variant">{percentage}%</p>
+                        <p className="text-sm font-semibold text-on-surface-variant">{percentage}%</p>
                     )}
                 </div>
                 {percentage !== undefined && percentage > 0 && (
-                    <div className="w-full bg-surface-variant rounded-full h-2">
-                        <div className="bg-primary rounded-full h-2" style={{ width: `${percentage}%` }}></div>
+                    <div className="w-full bg-surface-variant rounded-full h-2.5">
+                        <div className="bg-primary rounded-full h-2.5 transition-all duration-300" style={{ width: `${percentage}%` }}></div>
                     </div>
                 )}
                 {transactionCount !== undefined && (
-                    <p className="text-xs text-on-surface-variant mt-1">{transactionCount} transações</p>
+                    <p className="text-xs text-on-surface-variant mt-2">{transactionCount} transações</p>
                 )}
             </div>
         </div>
@@ -67,7 +67,7 @@ export default function CategoriesPage() {
             <header className="flex justify-between items-center mb-6">
                 <div>
                     <h1 className="text-3xl font-normal text-on-surface">Categorias de Transações</h1>
-                    <p className="text-base text-on-surface-variant">Entenda para onde seu dinheiro está indo.</p>
+                    <p className="text-base text-on-surface-variant mt-1">Entenda para onde seu dinheiro está indo.</p>
                 </div>
                 <Button
                     variant="outlined"
@@ -79,11 +79,11 @@ export default function CategoriesPage() {
             </header>
             <main>
                 <Card className="p-6">
-                    <h2 className="text-xl font-medium text-on-surface mb-2">Distribuição de Gastos</h2>
-                    <p className="text-sm text-on-surface-variant mb-4">
+                    <h2 className="text-xl font-semibold text-on-surface mb-2">Distribuição de Gastos</h2>
+                    <p className="text-sm text-on-surface-variant mb-6">
                         92% das transações foram categorizadas automaticamente este mês.
                     </p>
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         {categories.map((category) => (
                             <CategoryItem key={category.$id} category={category} />
                         ))}

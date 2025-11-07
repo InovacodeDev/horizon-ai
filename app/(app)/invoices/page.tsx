@@ -327,7 +327,7 @@ export default function InvoicesPage() {
             Gerencie suas notas fiscais e acompanhe seus gastos
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <Button variant="outlined" onClick={() => setIsExportModalOpen(true)} disabled={loading || invoices.length === 0}>
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -493,7 +493,7 @@ export default function InvoicesPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card className="p-4">
+        <Card className="p-6">
           {loading ? (
             <>
               <Skeleton className="h-4 w-24 mb-2" />
@@ -501,13 +501,13 @@ export default function InvoicesPage() {
             </>
           ) : (
             <>
-              <p className="text-sm text-on-surface-variant">Total Gasto</p>
-              <p className="text-2xl font-semibold text-on-surface mt-1">{formatCurrency(summary.totalSpent)}</p>
+              <p className="text-sm text-on-surface-variant font-medium">Total Gasto</p>
+              <p className="text-2xl font-semibold text-on-surface mt-2">{formatCurrency(summary.totalSpent)}</p>
             </>
           )}
         </Card>
 
-        <Card className="p-4">
+        <Card className="p-6">
           {loading ? (
             <>
               <Skeleton className="h-4 w-24 mb-2" />
@@ -515,13 +515,13 @@ export default function InvoicesPage() {
             </>
           ) : (
             <>
-              <p className="text-sm text-on-surface-variant">Total de Notas</p>
-              <p className="text-2xl font-semibold text-on-surface mt-1">{summary.invoiceCount}</p>
+              <p className="text-sm text-on-surface-variant font-medium">Total de Notas</p>
+              <p className="text-2xl font-semibold text-on-surface mt-2">{summary.invoiceCount}</p>
             </>
           )}
         </Card>
 
-        <Card className="p-4">
+        <Card className="p-6">
           {loading ? (
             <>
               <Skeleton className="h-4 w-24 mb-2" />
@@ -529,8 +529,8 @@ export default function InvoicesPage() {
             </>
           ) : (
             <>
-              <p className="text-sm text-on-surface-variant">Categoria Principal</p>
-              <p className="text-2xl font-semibold text-on-surface mt-1">{formatCategory(summary.topCategory)}</p>
+              <p className="text-sm text-on-surface-variant font-medium">Categoria Principal</p>
+              <p className="text-2xl font-semibold text-on-surface mt-2">{formatCategory(summary.topCategory)}</p>
             </>
           )}
         </Card>
@@ -548,9 +548,9 @@ export default function InvoicesPage() {
 
       {/* Loading State */}
       {loading && (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {[1, 2, 3].map((i) => (
-            <Card key={i} className="p-4">
+            <Card key={i} className="p-6">
               <div className="flex items-center gap-4">
                 <div className="flex-grow space-y-2">
                   <Skeleton className="h-5 w-48" />
@@ -592,7 +592,7 @@ export default function InvoicesPage() {
 
       {/* Invoice List */}
       {!loading && !error && invoices.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {invoices.map((invoice) => (
             <InvoiceCard 
               key={invoice.$id} 

@@ -95,38 +95,39 @@ export function AddTransactionModal({ isOpen, onClose, onSubmit, accounts }: Add
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">Adicionar Transação</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
+      <div className="bg-surface-new-primary w-full max-w-md rounded-lg shadow-soft-xl max-h-[90vh] overflow-y-auto transform transition-smooth-200 animate-slide-up">
+        <div className="flex justify-between items-center p-6 border-b border-border-primary sticky top-0 bg-surface-new-primary z-10">
+          <h2 className="text-lg font-semibold text-text-primary">Adicionar Transação</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="p-2 rounded-md text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors-smooth focus:outline-none focus:ring-2 focus:ring-border-focus"
             type="button"
+            aria-label="Fechar modal"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
+            <div className="bg-red-bg border border-red-border text-red-text px-4 py-3 rounded-md">
               {error}
             </div>
           )}
 
           {/* Tipo de Transação */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Tipo de Transação *
             </label>
             <select
               required
               value={formData.type}
               onChange={(e) => handleTypeChange(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full h-11 px-4 bg-surface-new-primary border border-border-primary rounded-md text-sm text-text-primary transition-colors-smooth focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-border-focus focus:ring-opacity-10"
             >
               <option value="expense">Despesa</option>
               <option value="income">Receita</option>
@@ -145,7 +146,7 @@ export function AddTransactionModal({ isOpen, onClose, onSubmit, accounts }: Add
               required
             />
             {formData.type === 'salary' && (
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-text-tertiary mt-1.5">
                 Valor bruto do salário antes dos descontos
               </p>
             )}
@@ -160,7 +161,7 @@ export function AddTransactionModal({ isOpen, onClose, onSubmit, accounts }: Add
                 onChange={(value) => setFormData({ ...formData, taxAmount: value })}
                 placeholder="R$ 0,00"
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-text-tertiary mt-1.5">
                 Valor do imposto descontado. Uma transação de despesa será criada automaticamente.
               </p>
             </div>
@@ -168,23 +169,23 @@ export function AddTransactionModal({ isOpen, onClose, onSubmit, accounts }: Add
 
           {/* Cálculo do Líquido (apenas para salário com imposto) */}
           {formData.type === 'salary' && formData.taxAmount && formData.taxAmount > 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-              <div className="text-sm space-y-1">
+            <div className="bg-blue-light border border-blue-info-border rounded-md p-4">
+              <div className="text-sm space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Salário Bruto:</span>
-                  <span className="font-medium text-green-600">
+                  <span className="text-text-secondary">Salário Bruto:</span>
+                  <span className="font-medium text-green-text">
                     + R$ {formData.amount.toFixed(2)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Imposto:</span>
-                  <span className="font-medium text-red-600">
+                  <span className="text-text-secondary">Imposto:</span>
+                  <span className="font-medium text-red-text">
                     - R$ {formData.taxAmount.toFixed(2)}
                   </span>
                 </div>
-                <div className="border-t border-blue-300 pt-1 mt-1 flex justify-between font-bold">
-                  <span>Salário Líquido:</span>
-                  <span className="text-blue-600">
+                <div className="border-t border-border-primary pt-2 mt-2 flex justify-between font-semibold">
+                  <span className="text-text-primary">Salário Líquido:</span>
+                  <span className="text-blue-primary">
                     R$ {calculateNetAmount().toFixed(2)}
                   </span>
                 </div>
@@ -221,14 +222,14 @@ export function AddTransactionModal({ isOpen, onClose, onSubmit, accounts }: Add
 
           {/* Conta */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Conta *
             </label>
             <select
               required
               value={formData.accountId}
               onChange={(e) => setFormData({ ...formData, accountId: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full h-11 px-4 bg-surface-new-primary border border-border-primary rounded-md text-sm text-text-primary transition-colors-smooth focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-border-focus focus:ring-opacity-10"
             >
               <option value="">Selecione uma conta</option>
               {accounts.map((account) => (
@@ -241,13 +242,13 @@ export function AddTransactionModal({ isOpen, onClose, onSubmit, accounts }: Add
 
           {/* Descrição */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Descrição
             </label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 bg-surface-new-primary border border-border-primary rounded-md text-sm text-text-primary placeholder:text-text-tertiary transition-colors-smooth focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-border-focus focus:ring-opacity-10 resize-none"
               placeholder="Detalhes da transação (opcional)"
               rows={3}
             />
@@ -255,14 +256,14 @@ export function AddTransactionModal({ isOpen, onClose, onSubmit, accounts }: Add
 
           {/* Info sobre recorrência (apenas para salário) */}
           {formData.type === 'salary' && (
-            <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-              <div className="flex items-start">
-                <svg className="w-5 h-5 text-blue-600 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+            <div className="bg-blue-light border border-blue-info-border rounded-md p-4">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-blue-primary flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                 </svg>
-                <div className="text-sm text-blue-700">
+                <div className="text-sm text-text-primary">
                   <p className="font-medium">Recorrência Automática</p>
-                  <p className="mt-1">
+                  <p className="mt-1 text-text-secondary">
                     Este salário será configurado como recorrente mensal sem data de término.
                   </p>
                 </div>
@@ -271,18 +272,18 @@ export function AddTransactionModal({ isOpen, onClose, onSubmit, accounts }: Add
           )}
 
           {/* Botões */}
-          <div className="flex justify-end space-x-3 pt-4">
+          <div className="flex justify-end gap-3 pt-4 border-t border-border-primary">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+              className="h-10 px-4 rounded-md text-sm font-medium bg-bg-secondary text-text-primary hover:bg-bg-tertiary transition-colors-smooth focus:outline-none focus:ring-2 focus:ring-border-focus disabled:opacity-60 disabled:cursor-not-allowed"
               disabled={loading}
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+              className="h-10 px-4 rounded-md text-sm font-medium bg-blue-primary text-white hover:bg-blue-hover shadow-soft-xs hover:shadow-soft-sm transition-smooth focus:outline-none focus:ring-2 focus:ring-border-focus disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               disabled={loading}
             >
               {loading && (

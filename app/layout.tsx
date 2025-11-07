@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { initializeAppwrite } from '@/lib/appwrite/client';
 import '@/lib/server-init'; // Inicializa serviços em background
+import { ThemeProvider } from '@/lib/contexts/ThemeContext';
 
 export const metadata: Metadata = {
   title: 'Horizon AI - Plataforma de Gestão Financeira',
@@ -15,7 +16,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: '#0a0a0a' },
+    { media: '(prefers-color-scheme: dark)', color: '#0f1419' },
   ],
 };
 
@@ -27,8 +28,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR">
-      <body className="antialiased" suppressHydrationWarning>{children}</body>
+    <html lang="pt-BR" suppressHydrationWarning>
+      <body className="antialiased" suppressHydrationWarning>
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
+      </body>
     </html>
   );
 }

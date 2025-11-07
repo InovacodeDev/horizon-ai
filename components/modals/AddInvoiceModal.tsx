@@ -201,17 +201,18 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
   if (!isOpen) return null;
 
   return (
-    <div className='fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4'>
-      <div className='bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto'>
-        <div className='flex justify-between items-center p-6 border-b border-gray-200'>
-          <h2 className='text-xl font-semibold text-gray-900'>Adicionar Nota Fiscal</h2>
+    <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in'>
+      <div className='bg-surface-new-primary rounded-lg shadow-soft-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto transform transition-smooth-200 animate-slide-up'>
+        <div className='flex justify-between items-center p-6 border-b border-border-primary sticky top-0 bg-surface-new-primary z-10'>
+          <h2 className='text-lg font-semibold text-text-primary'>Adicionar Nota Fiscal</h2>
           <button
             onClick={handleClose}
-            className='text-gray-400 hover:text-gray-600'
+            className='p-2 rounded-md text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors-smooth focus:outline-none focus:ring-2 focus:ring-border-focus'
             type='button'
+            aria-label='Fechar modal'
           >
             <svg
-              className='w-6 h-6'
+              className='w-5 h-5'
               fill='none'
               stroke='currentColor'
               viewBox='0 0 24 24'
@@ -231,12 +232,12 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
           {true && (
             <form
               onSubmit={handleSubmit}
-              className='space-y-4'
+              className='space-y-5'
             >
               {error && (
-                <div className='bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded flex items-start'>
+                <div className='bg-red-bg border border-red-border text-red-text px-4 py-3 rounded-md flex items-start gap-3'>
                   <svg
-                    className='w-5 h-5 mr-2 mt-0.5 flex-shrink-0'
+                    className='w-5 h-5 flex-shrink-0 mt-0.5'
                     fill='currentColor'
                     viewBox='0 0 20 20'
                   >
@@ -252,7 +253,7 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
                     <button
                       type='button'
                       onClick={() => setError(null)}
-                      className='text-sm underline mt-2 hover:text-red-700'
+                      className='text-sm underline mt-2 hover:opacity-80 transition-opacity'
                     >
                       Tentar novamente
                     </button>
@@ -279,7 +280,7 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
                 <TabsContent value='url'>
                   <div className='space-y-4'>
                     <div>
-                      <label className='block text-sm font-medium text-gray-700 mb-1'>
+                      <label className='block text-sm font-medium text-text-primary mb-2'>
                         URL da Nota Fiscal *
                       </label>
                       <input
@@ -290,14 +291,14 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
                           setInvoiceUrl(e.target.value);
                           setValidationError(null);
                         }}
-                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                          validationError ? 'border-red-300' : 'border-gray-300'
+                        className={`w-full h-11 px-4 bg-surface-new-primary border rounded-md text-sm text-text-primary placeholder:text-text-tertiary transition-colors-smooth focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-border-focus focus:ring-opacity-10 ${
+                          validationError ? 'border-red-border' : 'border-border-primary'
                         }`}
                         placeholder='https://sat.sef.sc.gov.br/...'
                         disabled={loading}
                       />
-                      {validationError && <p className='text-sm text-red-600 mt-1'>{validationError}</p>}
-                      <p className='text-xs text-gray-500 mt-1'>
+                      {validationError && <p className='text-sm text-red-text mt-1.5'>{validationError}</p>}
+                      <p className='text-xs text-text-tertiary mt-1.5'>
                         Cole a URL completa da nota fiscal do portal da SEFAZ
                       </p>
                     </div>
@@ -308,7 +309,7 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
                   <div className='space-y-4'>
                     {!showScanner ? (
                       <div>
-                        <label className='block text-sm font-medium text-gray-700 mb-1'>
+                        <label className='block text-sm font-medium text-text-primary mb-2'>
                           Chave de Acesso (44 dígitos) *
                         </label>
                         <input
@@ -319,20 +320,20 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
                             setQrCodeData(e.target.value);
                             setValidationError(null);
                           }}
-                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                            validationError ? 'border-red-300' : 'border-gray-300'
+                          className={`w-full h-11 px-4 bg-surface-new-primary border rounded-md text-sm text-text-primary placeholder:text-text-tertiary transition-colors-smooth focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-border-focus focus:ring-opacity-10 ${
+                            validationError ? 'border-red-border' : 'border-border-primary'
                           }`}
                           placeholder='Digite ou escaneie a chave de acesso'
                           disabled={loading}
                         />
-                        {validationError && <p className='text-sm text-red-600 mt-1'>{validationError}</p>}
+                        {validationError && <p className='text-sm text-red-text mt-1.5'>{validationError}</p>}
                         <button
                           type='button'
                           onClick={() => setShowScanner(true)}
-                          className='mt-3 w-full px-4 py-2 text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 flex items-center justify-center'
+                          className='mt-3 w-full h-10 px-4 text-sm font-medium text-blue-primary bg-blue-light rounded-md hover:bg-blue-info-bg transition-colors-smooth flex items-center justify-center gap-2'
                         >
                           <svg
-                            className='w-5 h-5 mr-2'
+                            className='w-5 h-5'
                             fill='none'
                             stroke='currentColor'
                             viewBox='0 0 24 24'
@@ -350,16 +351,16 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
                     ) : (
                       <div>
                         <div className='mb-3 flex justify-between items-center'>
-                          <label className='block text-sm font-medium text-gray-700'>Escaneie o QR Code</label>
+                          <label className='block text-sm font-medium text-text-primary'>Escaneie o QR Code</label>
                           <button
                             type='button'
                             onClick={() => setShowScanner(false)}
-                            className='text-sm text-gray-600 hover:text-gray-800'
+                            className='text-sm text-text-secondary hover:text-text-primary transition-colors'
                           >
                             Cancelar
                           </button>
                         </div>
-                        <div className='border border-gray-300 rounded-lg overflow-hidden'>
+                        <div className='border border-border-primary rounded-lg overflow-hidden'>
                           <Scanner
                             onScan={handleQrScan}
                             onError={handleQrError}
@@ -383,7 +384,7 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
                             }}
                           />
                         </div>
-                        <p className='text-xs text-gray-500 mt-2'>
+                        <p className='text-xs text-text-tertiary mt-2'>
                           Posicione o QR Code da nota fiscal dentro da área de leitura
                         </p>
                       </div>
@@ -394,13 +395,13 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
 
               {/* Optional Category Override */}
               <div>
-                <label className='block text-sm font-medium text-gray-700 mb-2'>
+                <label className='block text-sm font-medium text-text-primary mb-2'>
                   Categoria (Opcional)
                 </label>
                 <select
                   value={customCategory || ''}
                   onChange={(e) => setCustomCategory(e.target.value as InvoiceCategory || undefined)}
-                  className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+                  className='w-full h-11 px-4 bg-surface-new-primary border border-border-primary rounded-md text-sm text-text-primary transition-colors-smooth focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-border-focus focus:ring-opacity-10'
                   disabled={loading}
                 >
                   <option value=''>Detectar automaticamente</option>
@@ -413,28 +414,28 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
                     </option>
                   ))}
                 </select>
-                <p className='text-xs text-gray-500 mt-1'>
+                <p className='text-xs text-text-tertiary mt-1.5'>
                   Se não especificada, a categoria será detectada automaticamente
                 </p>
               </div>
 
-              <div className='flex justify-end space-x-3 pt-4 border-t border-gray-200'>
+              <div className='flex justify-end gap-3 pt-4 border-t border-border-primary'>
                 <button
                   type='button'
                   onClick={handleClose}
-                  className='px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200'
+                  className='h-10 px-4 rounded-md text-sm font-medium bg-bg-secondary text-text-primary hover:bg-bg-tertiary transition-colors-smooth focus:outline-none focus:ring-2 focus:ring-border-focus disabled:opacity-60 disabled:cursor-not-allowed'
                   disabled={loading}
                 >
                   Cancelar
                 </button>
                 <button
                   type='submit'
-                  className='px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center'
+                  className='h-10 px-4 rounded-md text-sm font-medium bg-blue-primary text-white hover:bg-blue-hover shadow-soft-xs hover:shadow-soft-sm transition-smooth focus:outline-none focus:ring-2 focus:ring-border-focus disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2'
                   disabled={loading || (activeTab === 'url' && !invoiceUrl) || (activeTab === 'qr' && !qrCodeData)}
                 >
                   {loading && (
                     <svg
-                      className='animate-spin -ml-1 mr-2 h-4 w-4 text-white'
+                      className='animate-spin h-4 w-4 text-white'
                       fill='none'
                       viewBox='0 0 24 24'
                     >

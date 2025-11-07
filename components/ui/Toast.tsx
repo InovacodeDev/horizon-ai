@@ -20,10 +20,10 @@ export function Toast({ message, type = 'info', duration = 3000, onClose }: Toas
   }, [duration, onClose]);
 
   const typeStyles = {
-    success: 'bg-green-600 text-white',
-    error: 'bg-error text-white',
-    warning: 'bg-warning text-white',
-    info: 'bg-primary text-white',
+    success: 'bg-green-bg text-green-text border-green-border',
+    error: 'bg-red-bg text-red-text border-red-border',
+    warning: 'bg-orange-bg text-orange-text border-orange-border',
+    info: 'bg-blue-info-bg text-blue-info-text border-blue-info-border',
   };
 
   const icons = {
@@ -51,12 +51,12 @@ export function Toast({ message, type = 'info', duration = 3000, onClose }: Toas
 
   return createPortal(
     <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
-      <div className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg ${typeStyles[type]} min-w-[300px] max-w-md`}>
+      <div className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-soft-lg border ${typeStyles[type]} min-w-[300px] max-w-md`}>
         <div className="flex-shrink-0">{icons[type]}</div>
         <p className="flex-1 text-sm font-medium">{message}</p>
         <button
           onClick={onClose}
-          className="flex-shrink-0 hover:opacity-80 transition-opacity"
+          className="flex-shrink-0 hover:opacity-70 transition-opacity"
           aria-label="Fechar"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

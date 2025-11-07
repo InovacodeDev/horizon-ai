@@ -267,7 +267,7 @@ export default function ShoppingListPage() {
         <div>
             <header className="mb-6">
                 <h1 className="text-3xl font-normal text-on-surface">Inteligência de Compras</h1>
-                <p className="text-base text-on-surface-variant">
+                <p className="text-base text-on-surface-variant mt-1">
                     Crie listas, importe compras e obtenha insights de economia com IA.
                 </p>
             </header>
@@ -282,8 +282,8 @@ export default function ShoppingListPage() {
 
                     {/* Create List Tab */}
                     <TabsContent value="create">
-                        <div className="p-4 md:p-6 max-w-2xl mx-auto">
-                            <h3 className="text-lg font-medium">O que você precisa comprar?</h3>
+                        <div className="p-6 max-w-2xl mx-auto">
+                            <h3 className="text-lg font-semibold text-on-surface">O que você precisa comprar?</h3>
                             <p className="text-sm text-on-surface-variant mb-4">
                                 Ex: "Compras da semana", "Ingredientes para lasanha"
                             </p>
@@ -311,7 +311,7 @@ export default function ShoppingListPage() {
                             )}
                             {newListItems.length > 0 && (
                                 <div className="mt-6">
-                                    <h4 className="text-xl font-medium mb-3">
+                                    <h4 className="text-xl font-semibold mb-4 text-on-surface">
                                         Sua Lista: <span className="text-primary">{newListTitle}</span>
                                     </h4>
                                     <ul className="space-y-2">
@@ -364,8 +364,8 @@ export default function ShoppingListPage() {
 
                     {/* Import NF-e Tab */}
                     <TabsContent value="import">
-                        <div className="p-4 md:p-6 max-w-2xl mx-auto">
-                            <h3 className="text-lg font-medium">Importar da URL da NF-e</h3>
+                        <div className="p-6 max-w-2xl mx-auto">
+                            <h3 className="text-lg font-semibold text-on-surface">Importar da URL da NF-e</h3>
                             <p className="text-sm text-on-surface-variant mb-4">
                                 Cole a URL pública de uma Nota Fiscal Eletrônica brasileira para registrar automaticamente sua compra.
                             </p>
@@ -401,7 +401,7 @@ export default function ShoppingListPage() {
 
                     {/* History Tab */}
                     <TabsContent value="history">
-                        <div className="p-4 md:p-6">
+                        <div className="p-6">
                             <div className="mb-6">
                                 <Button
                                     onClick={handleGenerateInsights}
@@ -423,10 +423,10 @@ export default function ShoppingListPage() {
                                 </Card>
                             )}
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
-                                    <h3 className="text-lg font-medium text-on-surface mb-3">Histórico de Compras</h3>
-                                    <div className="space-y-4">
+                                    <h3 className="text-lg font-semibold text-on-surface mb-4">Histórico de Compras</h3>
+                                    <div className="space-y-3">
                                         {purchaseHistory.length > 0 ? (
                                             purchaseHistory.map((rec) => (
                                                 <Card key={rec.$id} className="p-4 bg-surface">
@@ -460,8 +460,8 @@ export default function ShoppingListPage() {
                                     </div>
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-medium text-on-surface mb-3">Listas de Compras Anteriores</h3>
-                                    <div className="space-y-4">
+                                    <h3 className="text-lg font-semibold text-on-surface mb-4">Listas de Compras Anteriores</h3>
+                                    <div className="space-y-3">
                                         {historicLists.length > 0 ? (
                                             historicLists.map((list) => (
                                                 <Card key={list.$id} className="p-4 bg-surface">
