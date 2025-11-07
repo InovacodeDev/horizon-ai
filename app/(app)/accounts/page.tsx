@@ -248,7 +248,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
                     <div className="flex justify-between items-center mb-4">
                         <h4 className="font-semibold text-base text-on-surface">Cartões de Crédito</h4>
                         <Button 
-                            variant="text" 
+                            variant="ghost" 
                             onClick={onAddCreditCard}
                             leftIcon={<PlusIcon className="w-4 h-4" />}
                         >
