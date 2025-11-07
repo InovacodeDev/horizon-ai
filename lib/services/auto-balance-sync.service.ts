@@ -20,11 +20,9 @@ export class AutoBalanceSyncService {
    */
   start(): void {
     if (this.isRunning) {
-      console.log('[AutoBalanceSync] Serviço já está em execução');
       return;
     }
 
-    console.log('[AutoBalanceSync] Iniciando sincronização automática a cada 5 minutos');
     this.isRunning = true;
 
     // Executa imediatamente na primeira vez
@@ -45,11 +43,8 @@ export class AutoBalanceSyncService {
    */
   stop(): void {
     if (!this.isRunning) {
-      console.log('[AutoBalanceSync] Serviço não está em execução');
       return;
     }
-
-    console.log('[AutoBalanceSync] Parando sincronização automática');
 
     if (this.intervalId) {
       clearInterval(this.intervalId);
@@ -71,7 +66,6 @@ export class AutoBalanceSyncService {
    */
   private async syncAllAccounts(): Promise<void> {
     const startTime = Date.now();
-    console.log('[AutoBalanceSync] Iniciando sincronização de todas as contas...');
 
     try {
       const dbAdapter = getAppwriteDatabases();
@@ -83,7 +77,6 @@ export class AutoBalanceSyncService {
       ]);
 
       const accounts = accountsResult.documents || [];
-      console.log(`[AutoBalanceSync] Encontradas ${accounts.length} contas para sincronizar`);
 
       let successCount = 0;
       let errorCount = 0;
@@ -98,12 +91,6 @@ export class AutoBalanceSyncService {
           console.error(`[AutoBalanceSync] Erro ao sincronizar conta ${account.$id}:`, error.message);
         }
       }
-
-      const duration = Date.now() - startTime;
-      console.log(
-        `[AutoBalanceSync] Sincronização concluída em ${duration}ms - ` +
-          `Sucesso: ${successCount}, Erros: ${errorCount}`,
-      );
     } catch (error: any) {
       console.error('[AutoBalanceSync] Erro ao buscar contas:', error);
       throw error;
@@ -114,7 +101,6 @@ export class AutoBalanceSyncService {
    * Força uma sincronização imediata (útil para testes ou triggers manuais)
    */
   async syncNow(): Promise<void> {
-    console.log('[AutoBalanceSync] Executando sincronização manual...');
     await this.syncAllAccounts();
   }
 }

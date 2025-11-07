@@ -276,8 +276,6 @@ export class BalanceSyncService {
    */
   async recalculateAllBalances(userId: string, startDate?: string, endDate?: string): Promise<void> {
     try {
-      console.log(`[BalanceSync] Recalculating balances for user ${userId}`);
-
       // Se não foi fornecido período, usar últimos 2 anos até hoje
       if (!startDate && !endDate) {
         const now = new Date();
@@ -286,8 +284,6 @@ export class BalanceSyncService {
 
         startDate = twoYearsAgo.toISOString();
         endDate = now.toISOString();
-
-        console.log(`[BalanceSync] Using default period: last 2 years (${startDate} to ${endDate})`);
       }
 
       const accountsResult = await this.dbAdapter.listDocuments(DATABASE_ID, COLLECTIONS.ACCOUNTS, [
@@ -296,16 +292,13 @@ export class BalanceSyncService {
       ]);
 
       const accounts = accountsResult.documents || [];
-      console.log(`[BalanceSync] Found ${accounts.length} accounts to recalculate`);
 
       for (const account of accounts) {
-        console.log(`[BalanceSync] Processing account: ${account.name} (${account.$id})`);
         await this.syncAccountBalance(account.$id, startDate, endDate);
       }
 
-      console.log(`[BalanceSync] Successfully recalculated all balances`);
     } catch (error: any) {
-      console.error(`Error recalculating balances for user ${userId}:`, error);
+      console.error(`[BalanceSync] Error recalculating balances for user ${userId}:`, error);
       throw new Error(`Failed to recalculate balances: ${error.message}`);
     }
   }
