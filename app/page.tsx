@@ -117,7 +117,7 @@ export default function HomePage() {
         <div className="p-4 flex justify-between items-center max-w-7xl mx-auto">
           <h1 className="text-xl font-bold text-primary">Horizon AI</h1>
           <Link href="/login">
-            <Button variant="outlined">Sign In</Button>
+            <Button variant="outlined">Entrar</Button>
           </Link>
         </div>
       </header>

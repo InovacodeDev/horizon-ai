@@ -15,7 +15,7 @@ interface RetryErrorProps {
 export function RetryError({
   error,
   onRetry,
-  title = 'Something went wrong',
+  title = 'Algo deu errado',
   description,
   showDetails = false,
 }: RetryErrorProps) {
@@ -29,7 +29,7 @@ export function RetryError({
           {title}
         </h3>
         <p className="mb-4 text-gray-600 dark:text-gray-400">
-          {description || 'An error occurred while loading this content.'}
+          {description || 'Ocorreu um erro ao carregar este conteúdo.'}
         </p>
         
         {showDetails && errorMessage && (

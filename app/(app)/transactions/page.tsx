@@ -211,10 +211,10 @@ const formatDateForGrouping = (isoDate: string): string => {
     yesterday.setDate(yesterday.getDate() - 1);
 
     if (date.toDateString() === today.toDateString()) {
-        return "Today";
+        return "Hoje";
     }
     if (date.toDateString() === yesterday.toDateString()) {
-        return "Yesterday";
+        return "Ontem";
     }
     return date.toLocaleDateString("pt-BR", {
         year: "numeric",
@@ -563,13 +563,13 @@ export default function TransactionsPage() {
             <header className="mb-8">
                 <div className="flex justify-between items-start mb-2">
                     <div>
-                        <h1 className="text-4xl font-light text-on-surface">All Transactions</h1>
+                        <h1 className="text-4xl font-light text-on-surface">Todas as Transações</h1>
                         <p className="text-base text-on-surface-variant mt-1">
-                            Search and filter your complete transaction history.
+                            Pesquise e filtre todo seu histórico de transações.
                         </p>
                     </div>
                     <div className="text-right">
-                        <p className="text-sm font-medium text-on-surface-variant">Filtered Total</p>
+                        <p className="text-sm font-medium text-on-surface-variant">Total Filtrado</p>
                         <p className={`text-3xl font-medium ${totalSum >= 0 ? "text-secondary" : "text-error"}`}>
                             {totalSum.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                         </p>
@@ -579,7 +579,7 @@ export default function TransactionsPage() {
                     <div className="flex-grow max-w-sm">
                         <Input
                             type="search"
-                            placeholder="Search transactions..."
+                            placeholder="Buscar transações..."
                             leftIcon={<SearchIcon className="h-5 w-5 text-on-surface-variant" />}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -590,10 +590,10 @@ export default function TransactionsPage() {
                         onClick={() => setShowFilters(!showFilters)}
                         leftIcon={<FilterIcon className="w-5 h-5" />}
                     >
-                        Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
+                        Filtros {activeFilterCount > 0 && `(${activeFilterCount})`}
                     </Button>
                     <Button leftIcon={<PlusIcon className="w-5 h-5" />} onClick={handleOpenAddModal}>
-                        Add Transaction
+                        Adicionar Transação
                     </Button>
                 </div>
             </header>
@@ -604,7 +604,7 @@ export default function TransactionsPage() {
                         <Input
                             id="minAmount"
                             name="minAmount"
-                            label="Min Amount"
+                            label="Valor Mínimo"
                             type="number"
                             placeholder="0.00"
                             value={filters.minAmount}
@@ -613,7 +613,7 @@ export default function TransactionsPage() {
                         <Input
                             id="maxAmount"
                             name="maxAmount"
-                            label="Max Amount"
+                            label="Valor Máximo"
                             type="number"
                             placeholder="1000.00"
                             value={filters.maxAmount}
@@ -621,7 +621,7 @@ export default function TransactionsPage() {
                         />
                         <div>
                             <label htmlFor="account" className="block text-sm font-medium text-on-surface-variant mb-1">
-                                Account
+                                Conta
                             </label>
                             <select
                                 id="account"
@@ -630,7 +630,7 @@ export default function TransactionsPage() {
                                 onChange={handleFilterChange}
                                 className="w-full h-12 px-3 bg-surface border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:outline-none transition-colors duration-200"
                             >
-                                <option value="all">All Accounts</option>
+                                <option value="all">Todas as Contas</option>
                                 {allAccounts.sort().map((acc) => (
                                     <option key={acc} value={acc}>
                                         {acc}
@@ -643,7 +643,7 @@ export default function TransactionsPage() {
                                 htmlFor="category"
                                 className="block text-sm font-medium text-on-surface-variant mb-1"
                             >
-                                Category
+                                Categoria
                             </label>
                             <select
                                 id="category"
@@ -652,7 +652,7 @@ export default function TransactionsPage() {
                                 onChange={handleFilterChange}
                                 className="w-full h-12 px-3 bg-surface border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:outline-none transition-colors duration-200"
                             >
-                                <option value="all">All Categories</option>
+                                <option value="all">Todas as Categorias</option>
                                 {allCategories.sort().map((cat) => (
                                     <option key={cat} value={cat}>
                                         {cat}
@@ -665,7 +665,7 @@ export default function TransactionsPage() {
                                 htmlFor="dateRange"
                                 className="block text-sm font-medium text-on-surface-variant mb-1"
                             >
-                                Date
+                                Data
                             </label>
                             <select
                                 id="dateRange"
@@ -674,15 +674,15 @@ export default function TransactionsPage() {
                                 onChange={handleFilterChange}
                                 className="w-full h-12 px-3 bg-surface border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:outline-none transition-colors duration-200"
                             >
-                                <option value="all">All Time</option>
-                                <option value="7d">Last 7 days</option>
-                                <option value="30d">Last 30 days</option>
+                                <option value="all">Todo o Período</option>
+                                <option value="7d">Últimos 7 dias</option>
+                                <option value="30d">Últimos 30 dias</option>
                             </select>
                         </div>
                     </div>
                     <div className="mt-4 text-right">
                         <Button variant="text" onClick={resetFilters}>
-                            Clear All Filters
+                            Limpar Todos os Filtros
                         </Button>
                     </div>
                 </Card>
@@ -744,19 +744,19 @@ export default function TransactionsPage() {
                 ) : (
                     <div className="text-center py-16">
                         <SearchIcon className="w-12 h-12 mx-auto text-outline" />
-                        <h3 className="text-xl font-medium text-on-surface mt-4">No transactions found</h3>
+                        <h3 className="text-xl font-medium text-on-surface mt-4">Nenhuma transação encontrada</h3>
                         <p className="text-on-surface-variant text-sm mt-1">
-                            Try adjusting your search or filter criteria.
+                            Tente ajustar sua pesquisa ou critérios de filtro.
                         </p>
                         <Button variant="outlined" onClick={resetFilters} className="mt-4">
-                            Clear Filters
+                            Limpar Filtros
                         </Button>
                     </div>
                 )}
             </main>
 
             {/* Add Transaction Modal */}
-            <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Add New Transaction" maxWidth="xl">
+            <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Adicionar Nova Transação" maxWidth="xl">
                 <form onSubmit={handleAddNewTransaction} className="flex flex-col max-h-[80vh]">
                     <div className="p-6 overflow-y-auto flex-1">
                         {/* Tipo de Transação - Full Width */}
@@ -830,7 +830,7 @@ export default function TransactionsPage() {
                             {/* Description - Hidden for Salary */}
                             {newTransaction.flow !== "salary" && (
                                 <Input
-                                    label="Description"
+                                    label="Descrição"
                                     id="description"
                                     value={newTransaction.description}
                                     onChange={(e) => setNewTransaction({ ...newTransaction, description: e.target.value })}
@@ -889,7 +889,7 @@ export default function TransactionsPage() {
                             )}
                             
                             <DateInput
-                                label="Date"
+                                label="Data"
                                 id="date"
                                 value={newTransaction.date}
                                 onChange={(value) => setNewTransaction({ ...newTransaction, date: value })}
@@ -966,7 +966,7 @@ export default function TransactionsPage() {
                                     required
                                     className="w-full h-12 px-3 bg-surface border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:outline-none"
                                 >
-                                    <option value="debit">Debit</option>
+                                    <option value="debit">Débito</option>
                                     <option value="pix">Pix</option>
                                     <option value="boleto">Boleto</option>
                                 </select>
@@ -997,7 +997,7 @@ export default function TransactionsPage() {
                         <div className="mt-4">
                             <textarea
                                 id="notes"
-                                placeholder="Notes (optional)"
+                                placeholder="Observações (opcional)"
                                 rows={3}
                                 value={newTransaction.notes}
                                 onChange={(e) => setNewTransaction({ ...newTransaction, notes: e.target.value })}
@@ -1067,9 +1067,9 @@ export default function TransactionsPage() {
                     </div>
                     <div className="p-4 bg-surface-variant/20 flex justify-end gap-3 border-t border-outline sticky bottom-0">
                         <Button type="button" variant="outlined" onClick={() => setIsAddModalOpen(false)}>
-                            Cancel
+                            Cancelar
                         </Button>
-                        <Button type="submit">Save Transaction</Button>
+                        <Button type="submit">Salvar Transação</Button>
                     </div>
                 </form>
             </Modal>

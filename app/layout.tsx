@@ -4,10 +4,10 @@ import { initializeAppwrite } from '@/lib/appwrite/client';
 import '@/lib/server-init'; // Inicializa serviços em background
 
 export const metadata: Metadata = {
-  title: 'Horizon AI - Financial Management Platform',
-  description: 'Comprehensive financial management platform with AI-powered insights',
-  keywords: ['finance', 'banking', 'financial management', 'AI', 'personal finance'],
-  authors: [{ name: 'Horizon AI Team' }],
+  title: 'Horizon AI - Plataforma de Gestão Financeira',
+  description: 'Plataforma completa de gestão financeira com insights impulsionados por IA',
+  keywords: ['finanças', 'banco', 'gestão financeira', 'IA', 'finanças pessoais'],
+  authors: [{ name: 'Equipe Horizon AI' }],
 };
 
 export const viewport: Viewport = {

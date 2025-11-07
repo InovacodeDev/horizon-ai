@@ -28,7 +28,7 @@ export default function AuthLayout({
 
       {/* Footer */}
       <footer className="w-full p-6 text-center text-sm text-on-surface-variant">
-        <p>&copy; 2024 Horizon AI. All rights reserved.</p>
+        <p>&copy; 2024 Horizon AI. Todos os direitos reservados.</p>
       </footer>
     </div>
   );

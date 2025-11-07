@@ -10,7 +10,7 @@ const Footer: React.FC = () => {
     <footer className="bg-surface border-t border-outline px-6 py-4">
       <div className="flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="text-sm text-on-surface-variant">
-          © {currentYear} Horizon AI. All rights reserved.
+          © {currentYear} Horizon AI. Todos os direitos reservados.
         </div>
         
         <div className="flex items-center gap-6">
@@ -18,19 +18,19 @@ const Footer: React.FC = () => {
             href="/privacy" 
             className="text-sm text-on-surface-variant hover:text-primary transition-colors"
           >
-            Privacy Policy
+            Política de Privacidade
           </Link>
           <Link 
             href="/terms" 
             className="text-sm text-on-surface-variant hover:text-primary transition-colors"
           >
-            Terms of Service
+            Termos de Serviço
           </Link>
           <Link 
             href="/help" 
             className="text-sm text-on-surface-variant hover:text-primary transition-colors"
           >
-            Help Center
+            Central de Ajuda
           </Link>
         </div>
       </div>

@@ -211,7 +211,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, user }) => 
             ))}
           </nav>
 
-          <NavSection title="Intelligence" />
+          <NavSection title="Inteligência" />
           <nav className="space-y-1.5">
             {intelligenceNav.map((item) => (
               <NavItem

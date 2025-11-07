@@ -12,7 +12,7 @@ const TabsContext = createContext<TabsContextProps | null>(null);
 const useTabs = () => {
   const context = useContext(TabsContext);
   if (!context) {
-    throw new Error('useTabs must be used within a Tabs component');
+    throw new Error('useTabs deve ser usado dentro de um componente Tabs');
   }
   return context;
 };
