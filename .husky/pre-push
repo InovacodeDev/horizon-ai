@@ -11,15 +11,7 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-# Run linting
-echo "🧹 Linting..."
-pnpm lint
-if [ $? -ne 0 ]; then
-  echo "❌ Linting errors found. Push aborted."
-  exit 1
-fi
-
-# Run build to ensure it compiles
+# Run build to ensure it compiles (includes linting)
 echo "🏗️  Building..."
 pnpm build
 if [ $? -ne 0 ]; then

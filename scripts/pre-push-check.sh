@@ -25,18 +25,7 @@ else
 fi
 echo ""
 
-# 2. ESLint
-echo -e "${YELLOW}🧹 Running ESLint...${NC}"
-pnpm lint
-if [ $? -ne 0 ]; then
-  echo -e "${RED}❌ ESLint failed${NC}"
-  FAILED=1
-else
-  echo -e "${GREEN}✅ ESLint passed${NC}"
-fi
-echo ""
-
-# 3. Build
+# 2. Build (includes linting)
 echo -e "${YELLOW}🏗️  Building project...${NC}"
 pnpm build
 if [ $? -ne 0 ]; then
