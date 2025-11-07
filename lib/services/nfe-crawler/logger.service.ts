@@ -439,12 +439,7 @@ export class LoggerService {
   /**
    * Get comprehensive statistics report
    */
-  getStats(): {
-    performance: ReturnType<typeof this.getPerformanceStats>;
-    aiTokens: ReturnType<typeof this.getAITokenStats>;
-    cache: ReturnType<typeof this.getCacheStats>;
-    validation: ReturnType<typeof this.getValidationStats>;
-  } {
+  getStats() {
     return {
       performance: this.getPerformanceStats(),
       aiTokens: this.getAITokenStats(),

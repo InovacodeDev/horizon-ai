@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
           failedValidations: stats.validation.failedValidations,
           successRate: `${(stats.validation.successRate * 100).toFixed(2)}%`,
           commonErrors: Object.entries(stats.validation.commonErrors)
-            .sort(([, a], [, b]) => b - a)
+            .sort(([, a], [, b]) => (b as number) - (a as number))
             .slice(0, 10)
             .map(([error, count]) => ({ error, count })),
         },

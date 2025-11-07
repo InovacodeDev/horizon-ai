@@ -30,7 +30,7 @@ const CashFlowProjection: React.FC<CashFlowProjectionProps> = ({
 
   const projections = useMemo(() => {
     const income = projectedTransactions
-      .filter(tx => tx.type === 'income' || tx.type === 'salary')
+      .filter(tx => tx.type === 'income')
       .reduce((sum, tx) => sum + tx.amount, 0);
     
     const expenses = projectedTransactions
@@ -43,7 +43,7 @@ const CashFlowProjection: React.FC<CashFlowProjectionProps> = ({
   }, [projectedTransactions, currentBalance]);
 
   const groupedByType = useMemo(() => {
-    const income = projectedTransactions.filter(tx => tx.type === 'income' || tx.type === 'salary');
+    const income = projectedTransactions.filter(tx => tx.type === 'income');
     const expenses = projectedTransactions.filter(tx => tx.type === 'expense');
     return { income, expenses };
   }, [projectedTransactions]);

@@ -1,5 +1,5 @@
 /**
- * Next.js Middleware for Authentication
+ * Next.js Proxy for Authentication
  * Protects routes and handles redirections based on authentication status
  * Requirements: 6.1, 6.4, 6.5
  */
@@ -32,12 +32,12 @@ function matchesRoute(pathname: string, routes: string[]): boolean {
 }
 
 /**
- * Middleware function to handle authentication and route protection
+ * Proxy function to handle authentication and route protection
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Skip middleware for static files, API routes, and Next.js internals
+  // Skip proxy for static files, API routes, and Next.js internals
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
@@ -95,8 +95,8 @@ export async function middleware(request: NextRequest) {
 }
 
 /**
- * Middleware configuration
- * Specify which routes should be processed by this middleware
+ * Proxy configuration
+ * Specify which routes should be processed by this proxy
  */
 export const config = {
   matcher: [
