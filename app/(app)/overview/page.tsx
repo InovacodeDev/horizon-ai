@@ -297,12 +297,16 @@ const StatCard: React.FC<{
 
     let percentageChange: number | null = null;
     let isImprovement = false;
+    let isIncrease = false;
     
     if (previousValue !== undefined && previousValue !== 0) {
         const change = value - previousValue;
         percentageChange = (change / Math.abs(previousValue)) * 100;
+        isIncrease = change > 0;
         
-        if (label.toLowerCase().includes("expense")) {
+        // Para despesas e fatura, diminuir é bom
+        // Para receitas e saldo, aumentar é bom
+        if (label.toLowerCase().includes("expense") || label.toLowerCase().includes("despesas") || label.toLowerCase().includes("fatura")) {
             isImprovement = change < 0;
         } else {
             isImprovement = change > 0;
@@ -310,22 +314,28 @@ const StatCard: React.FC<{
     }
 
     return (
-        <Card className="p-4 flex items-center">
-            <div className={`mr-4 p-2 rounded-full bg-primary-container`}>{icon}</div>
-            <div className="flex-grow">
-                <p className="text-sm text-on-surface-variant">{label}</p>
+        <Card className="p-4 flex items-center gap-3">
+            <div className="flex-shrink-0 p-2 rounded-full bg-primary-container">{icon}</div>
+            <div className="flex-grow min-w-0">
+                <p className="text-sm text-on-surface-variant mb-1">{label}</p>
                 <div className="flex items-center gap-2">
-                    <p className={`text-xl font-medium ${colorClass}`}>{formattedValue}</p>
+                    <p className={`text-xl font-medium ${colorClass} truncate`}>{formattedValue}</p>
                     {percentageChange !== null && (
-                        <div className={`flex items-center text-xs font-medium ${
-                            isImprovement ? 'text-secondary' : 'text-error'
-                        }`}>
-                            {isImprovement ? (
-                                <TrendingUpIcon className="w-4 h-4" />
-                            ) : (
-                                <TrendingDownIcon className="w-4 h-4" />
-                            )}
-                            <span> {Math.abs(percentageChange).toFixed(1)}%</span>
+                        <div className="relative group flex-shrink-0">
+                            <div className={`flex items-center cursor-help ${
+                                isImprovement ? 'text-secondary' : 'text-error'
+                            }`}>
+                                {isIncrease ? (
+                                    <TrendingUpIcon className="w-5 h-5" />
+                                ) : (
+                                    <TrendingDownIcon className="w-5 h-5" />
+                                )}
+                            </div>
+                            {/* Tooltip */}
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-on-surface text-surface rounded-lg text-xs font-medium shadow-soft-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap">
+                                {percentageChange > 0 ? '+' : ''}{percentageChange.toFixed(1)}% vs mês anterior
+                                <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-on-surface -mt-px"></div>
+                            </div>
                         </div>
                     )}
                 </div>
