@@ -16,6 +16,8 @@ import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { TransferBalanceModal } from "@/components/modals/TransferBalanceModal";
 import type { Account, AccountStatus, CreditCard } from "@/lib/types";
 import { useRouter } from "next/navigation";
+import { ProcessDueTransactions, clearProcessedToday } from "@/components/ProcessDueTransactions";
+import { reprocessAllBalancesAction } from "@/actions/transaction.actions";
 
 const AccountCardSkeleton: React.FC = () => (
     <Card className="p-4 flex items-center gap-4">
@@ -291,6 +293,7 @@ export default function AccountsPage() {
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
     const [activeAccountForCard, setActiveAccountForCard] = useState<string>('');
     const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
+    const [isReprocessing, setIsReprocessing] = useState(false);
     
     // Confirmation modal states
     const [confirmModal, setConfirmModal] = useState<{
@@ -299,6 +302,7 @@ export default function AccountsPage() {
         message: string;
         onConfirm: () => void;
         variant?: 'danger' | 'warning' | 'info';
+        confirmText?: string;
     }>({
         isOpen: false,
         title: '',
@@ -380,6 +384,36 @@ export default function AccountsPage() {
         return allCreditCards.filter(card => card.account_id === accountId);
     };
 
+    // Reprocess all balances
+    const handleReprocessBalances = async () => {
+        setConfirmModal({
+            isOpen: true,
+            title: 'Reprocessar Saldos',
+            message: 'Isso irá recalcular todos os saldos das contas baseado nas transações e transferências dos últimos 2 anos. O processo busca os dados em lotes para evitar limites de consulta. Deseja continuar?',
+            variant: 'warning',
+            confirmText: 'Reprocessar',
+            onConfirm: async () => {
+                setIsReprocessing(true);
+                try {
+                    const result = await reprocessAllBalancesAction();
+                    if (result.success) {
+                        // Limpar flag de sincronização para permitir nova sincronização automática amanhã
+                        clearProcessedToday();
+                        // Refresh accounts
+                        window.location.reload();
+                    } else {
+                        alert(result.message);
+                    }
+                } catch (error) {
+                    console.error('Error reprocessing balances:', error);
+                    alert('Erro ao reprocessar saldos');
+                } finally {
+                    setIsReprocessing(false);
+                }
+            },
+        });
+    };
+
     // Calculate total balance from accounts
     const calculatedTotalBalance = accounts.reduce((sum, account) => sum + (account.balance || 0), 0);
     
@@ -394,6 +428,7 @@ export default function AccountsPage() {
 
     return (
         <>
+            <ProcessDueTransactions />
             <header className="flex justify-between items-end mb-8">
                 <div>
                     <h1 className="text-4xl font-light text-on-surface">Suas Contas</h1>
@@ -407,6 +442,18 @@ export default function AccountsPage() {
                         <h2 className="text-3xl font-normal text-primary">{formattedBalance}</h2>
                     </div>
                     <div className="flex gap-3">
+                        <Button 
+                            variant="outlined"
+                            leftIcon={
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                            }
+                            onClick={handleReprocessBalances}
+                            disabled={isReprocessing || accounts.length === 0}
+                        >
+                            {isReprocessing ? 'Reprocessando...' : 'Reprocessar Saldos'}
+                        </Button>
                         <Button 
                             variant="outlined"
                             leftIcon={
@@ -524,9 +571,26 @@ export default function AccountsPage() {
                 title={confirmModal.title}
                 message={confirmModal.message}
                 variant={confirmModal.variant}
-                confirmText="Excluir"
+                confirmText={confirmModal.confirmText || "Excluir"}
                 cancelText="Cancelar"
             />
+
+            {/* Loading modal for reprocessing */}
+            {isReprocessing && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-surface rounded-lg p-6 shadow-xl max-w-sm w-full mx-4">
+                        <div className="flex flex-col items-center space-y-4">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                            <p className="text-on-surface text-center font-medium">
+                                Reprocessando saldos das contas...
+                            </p>
+                            <p className="text-on-surface-variant text-center text-sm">
+                                Contabilizando todas as transações e transferências
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 }

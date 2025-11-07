@@ -35,6 +35,7 @@ import { useAccounts } from "@/hooks/useAccounts";
 import { useCreditCards } from "@/hooks/useCreditCards";
 import { useSearchParams } from "next/navigation";
 import { getCurrentDateInUserTimezone } from "@/lib/utils/timezone";
+import { ProcessDueTransactions } from "@/components/ProcessDueTransactions";
 
 // Helper function to convert date string to ISO string in user's timezone
 const dateToUserTimezone = (dateString: string): string => {
@@ -297,12 +298,7 @@ export default function TransactionsPage() {
 
     // Convert API transactions to UI format
     const transactions: Transaction[] = useMemo(() => {
-        // Deduplicate transactions by $id to prevent React key errors
-        const uniqueTransactions = Array.from(
-            new Map(apiTransactions.map(tx => [tx.$id, tx])).values()
-        );
-        
-        return uniqueTransactions.map((apiTx) => {
+        return apiTransactions.map((apiTx) => {
             // Map API type to UI TransactionType
             const mapTransactionType = (type: string, source?: string): Transaction['type'] => {
                 if (source === 'integration' || source === 'import') {
@@ -558,6 +554,7 @@ export default function TransactionsPage() {
 
     return (
         <>
+            <ProcessDueTransactions />
             <header className="mb-8">
                 <div className="flex justify-between items-start mb-2">
                     <div>
@@ -723,8 +720,8 @@ export default function TransactionsPage() {
 
             <main>
                 {Object.keys(groupedTransactions).length > 0 ? (
-                    Object.entries(groupedTransactions).map(([date, transactions]) => (
-                        <div key={date} className="mb-6">
+                    Object.entries(groupedTransactions).map(([date, transactions], groupIndex) => (
+                        <div key={`${date}-${groupIndex}`} className="mb-6">
                             <h2 className="font-medium text-sm text-on-surface-variant pb-2 border-b border-outline mb-2">
                                 {date}
                             </h2>

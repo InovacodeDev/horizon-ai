@@ -257,16 +257,18 @@ export class AccountService {
         created_at: now,
       });
 
-      // Update balances
-      await this.dbAdapter.updateDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, data.fromAccountId, {
-        balance: fromAccount.balance - data.amount,
-        updated_at: now,
-      });
+      // Sync balances using BalanceSyncService
+      try {
+        const { BalanceSyncService } = await import('./balance-sync.service');
+        const balanceSyncService = new BalanceSyncService();
 
-      await this.dbAdapter.updateDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, data.toAccountId, {
-        balance: toAccount.balance + data.amount,
-        updated_at: now,
-      });
+        // Sync both accounts
+        await balanceSyncService.syncAccountBalance(data.fromAccountId);
+        await balanceSyncService.syncAccountBalance(data.toAccountId);
+      } catch (syncError: any) {
+        console.error('Failed to sync account balances after transfer:', syncError);
+        // Don't fail the transfer if balance sync fails
+      }
     } catch (error: any) {
       // Log failed transfer
       try {

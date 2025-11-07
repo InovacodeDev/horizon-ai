@@ -345,3 +345,63 @@ export async function getTransactionStatsAction(startDate?: string, endDate?: st
     throw new Error(error instanceof Error ? error.message : 'Failed to fetch transaction statistics');
   }
 }
+
+/**
+ * Process due transactions action
+ * Processa transações futuras que chegaram na data de hoje
+ */
+export async function processDueTransactionsAction(): Promise<{ processed: number }> {
+  try {
+    // Require authentication
+    const user = await requireAuth();
+
+    // Process due transactions
+    const { BalanceSyncService } = await import('@/lib/services/balance-sync.service');
+    const balanceSyncService = new BalanceSyncService();
+    const processed = await balanceSyncService.processDueTransactions(user.sub);
+
+    // Revalidate paths if any transactions were processed
+    if (processed > 0) {
+      revalidatePath('/transactions');
+      revalidatePath('/overview');
+      revalidatePath('/accounts');
+    }
+
+    return { processed };
+  } catch (error) {
+    console.error('Process due transactions action error:', error);
+    throw new Error(error instanceof Error ? error.message : 'Failed to process due transactions');
+  }
+}
+
+/**
+ * Reprocess all account balances action
+ * Recalcula todos os saldos das contas do zero
+ */
+export async function reprocessAllBalancesAction(): Promise<{ success: boolean; message: string }> {
+  try {
+    // Require authentication
+    const user = await requireAuth();
+
+    // Reprocess all balances
+    const { BalanceSyncService } = await import('@/lib/services/balance-sync.service');
+    const balanceSyncService = new BalanceSyncService();
+    await balanceSyncService.recalculateAllBalances(user.sub);
+
+    // Revalidate paths
+    revalidatePath('/transactions');
+    revalidatePath('/overview');
+    revalidatePath('/accounts');
+
+    return {
+      success: true,
+      message: 'Saldos recalculados com sucesso!',
+    };
+  } catch (error) {
+    console.error('Reprocess balances action error:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Falha ao recalcular saldos',
+    };
+  }
+}

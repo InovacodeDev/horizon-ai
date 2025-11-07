@@ -29,6 +29,7 @@ import { getAppwriteUsers } from "@/lib/appwrite/client";
 import { useUser } from "@/lib/contexts/UserContext";
 import CashFlowProjection from "@/components/CashFlowProjection";
 import { useProjections } from "@/hooks/useProjections";
+import { ProcessDueTransactions } from "@/components/ProcessDueTransactions";
 
 // --- Helper Functions for Date Filtering ---
 const getMonthKey = (date: Date): string => {
@@ -585,6 +586,7 @@ export default function OverviewPage() {
 
     return (
         <>
+            <ProcessDueTransactions />
             <header className="mb-8 flex justify-between items-end">
                 <div>
                     <h1 className="text-4xl font-light text-on-surface">Olá, {user.name}!</h1>

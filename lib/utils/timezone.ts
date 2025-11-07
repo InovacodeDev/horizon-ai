@@ -57,18 +57,18 @@ export function getTimezoneOffset(timezone?: string, date?: Date): number {
  * This ensures the date is stored correctly considering the user's timezone
  *
  * IMPORTANTE: Esta função converte a data local para UTC subtraindo o offset do timezone.
- * Por exemplo, se você está em UTC-3 e salva 01/11/2025 00:00:00, será salvo como
- * 01/11/2025 03:00:00 UTC (somando 3 horas porque -3 significa 3 horas atrás do UTC).
+ * Por exemplo, se você está em UTC-3 e salva 01/11/2025 12:00:00, será salvo como
+ * 01/11/2025 15:00:00 UTC (somando 3 horas porque -3 significa 3 horas atrás do UTC).
  *
- * @param dateString - Date in YYYY-MM-DD format (treated as local time at midnight)
+ * @param dateString - Date in YYYY-MM-DD format (treated as local time at noon/12h)
  * @param timezone - User's timezone (optional, defaults to browser timezone)
  * @returns ISO string in UTC
  *
  * @example
  * // User in São Paulo (UTC-3)
  * dateToUserTimezone('2025-11-01')
- * // Input: 2025-11-01 00:00:00 (GMT-3)
- * // Returns: '2025-11-01T03:00:00.000Z' (GMT 0)
+ * // Input: 2025-11-01 12:00:00 (GMT-3)
+ * // Returns: '2025-11-01T15:00:00.000Z' (GMT 0)
  */
 export function dateToUserTimezone(dateString: string, timezone?: string): string {
   const tz = timezone || getUserTimezone();
@@ -76,9 +76,9 @@ export function dateToUserTimezone(dateString: string, timezone?: string): strin
   // Parse the date components
   const [year, month, day] = dateString.split('-').map(Number);
 
-  // Create a Date object in local time (JavaScript's default behavior)
-  // This treats the date as midnight in the system's local timezone
-  const localDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+  // Create a Date object in local time at noon (12:00:00)
+  // This treats the date as 12:00 PM in the system's local timezone
+  const localDate = new Date(year, month - 1, day, 12, 0, 0, 0);
 
   // Get the offset for the target timezone at this date
   // We need to create a date in the target timezone and compare with UTC

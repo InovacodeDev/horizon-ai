@@ -19,14 +19,101 @@ export class BalanceSyncService {
   }
 
   /**
-   * Sincroniza o balance de uma conta após criar/editar/remover transação
+   * Busca todas as transações de uma conta com paginação
    */
-  async syncAccountBalance(accountId: string): Promise<number> {
+  private async getAllTransactions(accountId: string, startDate?: string, endDate?: string): Promise<any[]> {
+    const allTransactions: any[] = [];
+    let offset = 0;
+    const limit = 500; // Buscar em lotes de 500
+    let hasMore = true;
+
+    while (hasMore) {
+      const queries = [
+        Query.equal('account_id', accountId),
+        Query.limit(limit),
+        Query.offset(offset),
+        Query.orderDesc('date'),
+      ];
+
+      // Adicionar filtros de data se fornecidos
+      if (startDate) {
+        queries.push(Query.greaterThanEqual('date', startDate));
+      }
+      if (endDate) {
+        queries.push(Query.lessThanEqual('date', endDate));
+      }
+
+      const result = await this.dbAdapter.listDocuments(DATABASE_ID, COLLECTIONS.TRANSACTIONS, queries);
+      const transactions = result.documents || [];
+
+      allTransactions.push(...transactions);
+
+      if (transactions.length < limit) {
+        hasMore = false;
+      } else {
+        offset += limit;
+      }
+    }
+
+    return allTransactions;
+  }
+
+  /**
+   * Busca todas as transferências de uma conta com paginação
+   */
+  private async getAllTransfers(
+    accountId: string,
+    direction: 'from' | 'to',
+    startDate?: string,
+    endDate?: string,
+  ): Promise<any[]> {
+    const allTransfers: any[] = [];
+    let offset = 0;
+    const limit = 500; // Buscar em lotes de 500
+    let hasMore = true;
+
+    while (hasMore) {
+      const queries = [
+        Query.equal(direction === 'from' ? 'from_account_id' : 'to_account_id', accountId),
+        Query.equal('status', 'completed'),
+        Query.limit(limit),
+        Query.offset(offset),
+        Query.orderDesc('created_at'),
+      ];
+
+      // Adicionar filtros de data se fornecidos
+      if (startDate) {
+        queries.push(Query.greaterThanEqual('created_at', startDate));
+      }
+      if (endDate) {
+        queries.push(Query.lessThanEqual('created_at', endDate));
+      }
+
+      const result = await this.dbAdapter.listDocuments(DATABASE_ID, COLLECTIONS.TRANSFER_LOGS, queries);
+      const transfers = result.documents || [];
+
+      allTransfers.push(...transfers);
+
+      if (transfers.length < limit) {
+        hasMore = false;
+      } else {
+        offset += limit;
+      }
+    }
+
+    return allTransfers;
+  }
+
+  /**
+   * Sincroniza o balance de uma conta após criar/editar/remover transação
+   * @param accountId - ID da conta
+   * @param startDate - Data inicial para filtrar transações (opcional, formato ISO)
+   * @param endDate - Data final para filtrar transações (opcional, formato ISO)
+   */
+  async syncAccountBalance(accountId: string, startDate?: string, endDate?: string): Promise<number> {
     try {
       // Buscar a conta
       const account = await this.dbAdapter.getDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, accountId);
-
-      console.log(`[BalanceSync] Syncing account ${accountId} (${account.name}, type: ${account.account_type})`);
 
       // Parse synced transaction IDs
       let syncedIds: string[] = [];
@@ -38,13 +125,12 @@ export class BalanceSyncService {
         }
       }
 
-      // Buscar todas as transações desta conta
-      const transactionsResult = await this.dbAdapter.listDocuments(DATABASE_ID, COLLECTIONS.TRANSACTIONS, [
-        Query.equal('account_id', accountId),
-        Query.limit(10000),
-      ]);
+      // Buscar todas as transações desta conta com paginação
+      const transactions = await this.getAllTransactions(accountId, startDate, endDate);
 
-      const transactions = transactionsResult.documents || [];
+      // Buscar todas as transferências relacionadas a esta conta com paginação
+      const transfersFrom = await this.getAllTransfers(accountId, 'from', startDate, endDate);
+      const transfersTo = await this.getAllTransfers(accountId, 'to', startDate, endDate);
 
       // Identificar transações novas, editadas e removidas
       const currentTransactionIds = new Set(transactions.map((t: any) => t.$id));
@@ -63,13 +149,14 @@ export class BalanceSyncService {
         return false;
       });
 
-      // Recalcular balance do zero baseado apenas nas transações
-      // O balance sempre começa em 0 e é calculado pela soma das transações
+      // Recalcular balance do zero baseado nas transações e transferências
+      // O saldo inicial já está contabilizado como uma transação de receita (categoria "balance")
+      // quando a conta é criada com initial_balance > 0
       let newBalance = 0;
 
-      console.log(`[BalanceSync] Found ${transactions.length} transactions for account ${accountId}`);
-
       // Somar/subtrair todas as transações
+      const now = new Date();
+
       for (const transaction of transactions) {
         // Ignorar transações de cartão de crédito
         // Verifica tanto a coluna dedicada quanto o campo no JSON (para compatibilidade)
@@ -86,16 +173,40 @@ export class BalanceSyncService {
 
         if (data.credit_card_id) continue;
 
+        // Ignorar transações futuras (não contabilizar no saldo)
+        const transactionDate = new Date(transaction.date);
+        if (transactionDate > now) {
+          continue;
+        }
+
         if (transaction.type === 'income' || transaction.type === 'salary') {
           newBalance += transaction.amount;
-          console.log(`[BalanceSync] Added income/salary: +${transaction.amount}, new balance: ${newBalance}`);
         } else if (transaction.type === 'expense') {
           newBalance -= transaction.amount;
-          console.log(`[BalanceSync] Subtracted expense: -${transaction.amount}, new balance: ${newBalance}`);
         }
       }
 
-      console.log(`[BalanceSync] Final calculated balance for account ${accountId}: ${newBalance}`);
+      // Processar transferências de saída (diminuem o saldo)
+      for (const transfer of transfersFrom) {
+        // Ignorar transferências futuras
+        const transferDate = new Date(transfer.created_at);
+        if (transferDate > now) {
+          continue;
+        }
+
+        newBalance -= transfer.amount;
+      }
+
+      // Processar transferências de entrada (aumentam o saldo)
+      for (const transfer of transfersTo) {
+        // Ignorar transferências futuras
+        const transferDate = new Date(transfer.created_at);
+        if (transferDate > now) {
+          continue;
+        }
+
+        newBalance += transfer.amount;
+      }
 
       // Atualizar conta com novo balance e IDs sincronizados
       const updatedSyncedIds = transactions
@@ -116,7 +227,6 @@ export class BalanceSyncService {
       // Prepare update payload with only the fields we want to change
       // Include all required fields from the account to avoid validation errors
       const { dateToUserTimezone } = await import('@/lib/utils/timezone');
-      const now = dateToUserTimezone(new Date().toISOString().split('T')[0]);
 
       const updatePayload = {
         user_id: account.user_id,
@@ -125,14 +235,10 @@ export class BalanceSyncService {
         is_manual: account.is_manual ?? true, // Default to true if missing
         balance: newBalance,
         synced_transaction_ids: JSON.stringify(updatedSyncedIds),
-        updated_at: now,
+        updated_at: dateToUserTimezone(new Date().toISOString().split('T')[0]),
       };
 
-      console.log(`[BalanceSync] Updating account ${accountId} with balance: ${newBalance}`);
-
       await this.dbAdapter.updateDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, accountId, updatePayload);
-
-      console.log(`[BalanceSync] Successfully updated account ${accountId} balance to ${newBalance}`);
 
       return newBalance;
     } catch (error: any) {
@@ -164,22 +270,96 @@ export class BalanceSyncService {
 
   /**
    * Recalcula o balance de todas as contas de um usuário
+   * @param userId - ID do usuário
+   * @param startDate - Data inicial para filtrar transações (opcional, formato ISO)
+   * @param endDate - Data final para filtrar transações (opcional, formato ISO)
    */
-  async recalculateAllBalances(userId: string): Promise<void> {
+  async recalculateAllBalances(userId: string, startDate?: string, endDate?: string): Promise<void> {
     try {
+      console.log(`[BalanceSync] Recalculating balances for user ${userId}`);
+
+      // Se não foi fornecido período, usar últimos 2 anos até hoje
+      if (!startDate && !endDate) {
+        const now = new Date();
+        const twoYearsAgo = new Date(now);
+        twoYearsAgo.setFullYear(now.getFullYear() - 2);
+
+        startDate = twoYearsAgo.toISOString();
+        endDate = now.toISOString();
+
+        console.log(`[BalanceSync] Using default period: last 2 years (${startDate} to ${endDate})`);
+      }
+
       const accountsResult = await this.dbAdapter.listDocuments(DATABASE_ID, COLLECTIONS.ACCOUNTS, [
         Query.equal('user_id', userId),
         Query.limit(1000),
       ]);
 
       const accounts = accountsResult.documents || [];
+      console.log(`[BalanceSync] Found ${accounts.length} accounts to recalculate`);
 
       for (const account of accounts) {
-        await this.syncAccountBalance(account.$id);
+        console.log(`[BalanceSync] Processing account: ${account.name} (${account.$id})`);
+        await this.syncAccountBalance(account.$id, startDate, endDate);
       }
+
+      console.log(`[BalanceSync] Successfully recalculated all balances`);
     } catch (error: any) {
       console.error(`Error recalculating balances for user ${userId}:`, error);
       throw new Error(`Failed to recalculate balances: ${error.message}`);
+    }
+  }
+
+  /**
+   * Processa transações futuras que chegaram na data de hoje
+   * Retorna o número de transações processadas
+   */
+  async processDueTransactions(userId: string): Promise<number> {
+    try {
+      // Buscar todas as transações do usuário
+      const transactionsResult = await this.dbAdapter.listDocuments(DATABASE_ID, COLLECTIONS.TRANSACTIONS, [
+        Query.equal('user_id', userId),
+        Query.limit(10000),
+      ]);
+
+      const transactions = transactionsResult.documents || [];
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+      // Identificar transações que eram futuras mas agora são de hoje ou passado
+      const dueTransactions = transactions.filter((t: any) => {
+        const transactionDate = new Date(t.date);
+        const transactionDay = new Date(
+          transactionDate.getFullYear(),
+          transactionDate.getMonth(),
+          transactionDate.getDate(),
+        );
+
+        // Transação é de hoje ou passado
+        return transactionDay <= today;
+      });
+
+      if (dueTransactions.length === 0) {
+        return 0;
+      }
+
+      // Agrupar por conta
+      const accountIds = new Set<string>();
+      for (const transaction of dueTransactions) {
+        if (transaction.account_id && !transaction.credit_card_id) {
+          accountIds.add(transaction.account_id);
+        }
+      }
+
+      // Recalcular saldo de cada conta afetada
+      for (const accountId of accountIds) {
+        await this.syncAccountBalance(accountId);
+      }
+
+      return accountIds.size;
+    } catch (error: any) {
+      console.error(`Error processing due transactions for user ${userId}:`, error);
+      throw new Error(`Failed to process due transactions: ${error.message}`);
     }
   }
 }
