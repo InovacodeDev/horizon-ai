@@ -24,15 +24,15 @@ const CATEGORY_LABELS: Record<string, string> = {
   other: 'Outro',
 };
 
-const CATEGORY_COLORS: Record<string, 'primary' | 'secondary' | 'error' | 'warning' | 'default'> = {
+const CATEGORY_COLORS: Record<string, 'success' | 'warning' | 'error' | 'info' | 'neutral'> = {
   pharmacy: 'error',
-  groceries: 'secondary',
-  supermarket: 'primary',
+  groceries: 'success',
+  supermarket: 'info',
   restaurant: 'warning',
-  fuel: 'default',
-  retail: 'primary',
-  services: 'secondary',
-  other: 'default',
+  fuel: 'neutral',
+  retail: 'info',
+  services: 'success',
+  other: 'neutral',
 };
 
 export default function InvoiceCard({ invoice, onDelete, onCreateTransaction }: InvoiceCardProps) {
@@ -65,7 +65,7 @@ export default function InvoiceCard({ invoice, onDelete, onCreateTransaction }: 
 
   // Get category color
   const getCategoryColor = (category: string) => {
-    return CATEGORY_COLORS[category] || 'default';
+    return CATEGORY_COLORS[category] || 'neutral';
   };
 
   const handleDeleteClick = (e: React.MouseEvent) => {

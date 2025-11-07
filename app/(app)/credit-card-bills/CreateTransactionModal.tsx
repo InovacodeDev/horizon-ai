@@ -387,7 +387,7 @@ const CreateTransactionModal: React.FC<CreateTransactionModalProps> = ({ creditC
         </div>
 
         <div className="p-4 bg-surface-variant/20 flex justify-end gap-3 border-t border-outline sticky bottom-0">
-          <Button type="button" variant="outlined" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose}>
             Cancelar
           </Button>
           <Button type="submit" disabled={loading}>

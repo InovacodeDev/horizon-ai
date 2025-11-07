@@ -56,7 +56,7 @@ export function ConfirmDialog({
 
         {/* Actions */}
         <div className="flex gap-3 justify-end p-6 pt-0">
-          <Button variant="text" onClick={onClose} disabled={loading}>
+          <Button variant="ghost" onClick={onClose} disabled={loading}>
             {cancelText}
           </Button>
           <button

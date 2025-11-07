@@ -200,7 +200,7 @@ const FinancialInsightCard: React.FC<{ insight: FinancialInsight; onNavigateToTr
                     <h4 className="font-medium text-on-surface">{insight.title}</h4>
                     <p className="text-sm text-on-surface-variant mt-1 mb-3">{insight.description}</p>
                     <Button 
-                        variant="text" 
+                        variant="ghost" 
                         className="!h-auto !p-0 text-sm"
                         onClick={onNavigateToTransactions}
                     >
@@ -414,9 +414,9 @@ export default function OverviewPage() {
         transactions: creditCardTransactions, 
         loading: loadingCreditCardTransactions 
     } = useCreditCardTransactions({
-        startPurchaseDate: currentMonthStart,
-        endPurchaseDate: currentMonthEnd,
-        limit: 100,
+        creditCardId: undefined,
+        startDate: new Date(currentMonthStart),
+        enableRealtime: true,
     });
 
     // Get open credit card bills for cash flow calculation
@@ -509,7 +509,7 @@ export default function OverviewPage() {
                 const closingDay = card.closing_day || 10;
                 
                 creditCardTransactions
-                    .filter(tx => tx.credit_card_id === card.$id)
+                    .filter(tx => (tx as any).credit_card_id === card.$id)
                     .forEach(tx => {
                         const txDate = new Date(tx.date);
                         const txDay = txDate.getDate();

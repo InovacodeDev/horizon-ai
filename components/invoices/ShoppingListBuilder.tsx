@@ -177,7 +177,7 @@ export default function ShoppingListBuilder({ availableProducts }: ShoppingListB
               </p>
             </div>
             {selectedProducts.size > 0 && (
-              <Button variant="text" onClick={handleClear}>
+              <Button variant="ghost" onClick={handleClear}>
                 Limpar Lista
               </Button>
             )}
@@ -235,7 +235,7 @@ export default function ShoppingListBuilder({ availableProducts }: ShoppingListB
                 <Button onClick={handleOptimize} disabled={loading} className="flex-1">
                   {loading ? 'Otimizando...' : 'Encontrar Melhores Preços'}
                 </Button>
-                <Button variant="outlined" onClick={handleShare}>
+                <Button variant="outline" onClick={handleShare}>
                   Compartilhar
                 </Button>
               </div>
@@ -292,7 +292,7 @@ export default function ShoppingListBuilder({ availableProducts }: ShoppingListB
       {showResults && optimization && (
         <div className="space-y-4">
           {/* Back Button */}
-          <Button variant="text" onClick={() => setShowResults(false)}>
+          <Button variant="ghost" onClick={() => setShowResults(false)}>
             ← Voltar para Lista
           </Button>
 

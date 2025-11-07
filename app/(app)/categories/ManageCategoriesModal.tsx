@@ -143,7 +143,7 @@ const ManageCategoriesModal: React.FC<ManageCategoriesModalProps> = ({
                                                 }
                                             />
                                             <div className="flex justify-end gap-2">
-                                                <Button variant="outlined" onClick={handleCancelEdit}>
+                                                <Button variant="outline" onClick={handleCancelEdit}>
                                                     Cancel
                                                 </Button>
                                                 <Button onClick={handleSaveEdit}>Save</Button>
@@ -159,14 +159,14 @@ const ManageCategoriesModal: React.FC<ManageCategoriesModalProps> = ({
                                                 <>
                                                     <span className="text-sm text-error">Are you sure?</span>
                                                     <Button
-                                                        variant="text"
+                                                        variant="ghost"
                                                         className="!text-error !px-2 !h-auto !py-1"
                                                         onClick={() => handleDelete(category.$id)}
                                                     >
                                                         Confirm
                                                     </Button>
                                                     <Button
-                                                        variant="text"
+                                                        variant="ghost"
                                                         className="!px-2 !h-auto !py-1"
                                                         onClick={() => setDeleteConfirmId(null)}
                                                     >
@@ -176,14 +176,14 @@ const ManageCategoriesModal: React.FC<ManageCategoriesModalProps> = ({
                                             ) : (
                                                 <>
                                                     <Button
-                                                        variant="text"
+                                                        variant="ghost"
                                                         className="!px-2 !h-auto !py-1"
                                                         onClick={() => handleEdit(category)}
                                                     >
                                                         Edit
                                                     </Button>
                                                     <Button
-                                                        variant="text"
+                                                        variant="ghost"
                                                         className="!text-error !px-2 !h-auto !py-1"
                                                         onClick={() => setDeleteConfirmId(category.$id)}
                                                     >

@@ -79,7 +79,7 @@ const RetirementGoalCard: React.FC = () => {
                     <p className="text-sm text-on-primary-container">
                         Contribuição mensal atual: <strong>{formatCurrency(monthlyContribution)}</strong>
                     </p>
-                    <Button variant="text" className="!text-primary">
+                    <Button variant="ghost" className="!text-primary">
                         Ajustar Plano
                     </Button>
                 </div>
@@ -108,10 +108,10 @@ const FinancialGoalCard: React.FC<FinancialGoalCardProps> = ({ goal, onEdit, onD
                     <p className="text-sm text-on-surface-variant">Data Alvo: {goal.targetDate}</p>
                 </div>
                 <div className="flex gap-1">
-                    <Button variant="text" className="!p-2 !h-auto !rounded-full" onClick={() => onEdit(goal)}>
+                    <Button variant="ghost" className="!p-2 !h-auto !rounded-full" onClick={() => onEdit(goal)}>
                         <EditIcon className="w-5 h-5 text-on-surface-variant" />
                     </Button>
-                    <Button variant="text" className="!p-2 !h-auto !rounded-full" onClick={() => onDelete(goal)}>
+                    <Button variant="ghost" className="!p-2 !h-auto !rounded-full" onClick={() => onDelete(goal)}>
                         <Trash2Icon className="w-5 h-5 text-error" />
                     </Button>
                 </div>
@@ -301,7 +301,7 @@ export default function PlanningGoalsPage() {
                     </div>
                     <div className="flex items-center gap-3">
                         <Button
-                            variant="outlined"
+                            variant="outline"
                             leftIcon={<SparklesIcon className="w-5 h-5" />}
                             onClick={handleGenerateGoals}
                             disabled={isGenerating}
@@ -372,7 +372,7 @@ export default function PlanningGoalsPage() {
                         <p className="text-on-surface-variant text-center py-4">Todas as sugestões foram adicionadas!</p>
                     )}
                     <div className="flex justify-end mt-6">
-                        <Button variant="outlined" onClick={handleCloseModals}>
+                        <Button variant="outline" onClick={handleCloseModals}>
                             Fechar
                         </Button>
                     </div>
@@ -432,7 +432,7 @@ export default function PlanningGoalsPage() {
                             />
                         </form>
                         <div className="flex justify-end gap-3 mt-6">
-                            <Button variant="outlined" onClick={handleCloseModals}>
+                            <Button variant="outline" onClick={handleCloseModals}>
                                 Cancelar
                             </Button>
                             <Button onClick={handleSaveGoal}>Salvar Meta</Button>
@@ -450,7 +450,7 @@ export default function PlanningGoalsPage() {
                             desfeita.
                         </p>
                         <div className="flex justify-end gap-3">
-                            <Button variant="outlined" onClick={handleCloseModals}>
+                            <Button variant="outline" onClick={handleCloseModals}>
                                 Cancelar
                             </Button>
                             <Button className="bg-error hover:opacity-90" onClick={handleConfirmDelete}>

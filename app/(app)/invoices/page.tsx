@@ -328,7 +328,7 @@ export default function InvoicesPage() {
           </p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outlined" onClick={() => setIsExportModalOpen(true)} disabled={loading || invoices.length === 0}>
+          <Button variant="outline" onClick={() => setIsExportModalOpen(true)} disabled={loading || invoices.length === 0}>
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
@@ -370,7 +370,7 @@ export default function InvoicesPage() {
                 />
               </svg>
             </div>
-            <Button variant="outlined" onClick={() => setShowFilters(!showFilters)}>
+            <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
               <svg
                 className="w-5 h-5 mr-2"
                 fill="none"
@@ -481,7 +481,7 @@ export default function InvoicesPage() {
               {/* Clear Filters Button */}
               {hasActiveFilters && (
                 <div className="mt-4 flex justify-end">
-                  <Button variant="text" onClick={handleClearFilters}>
+                  <Button variant="ghost" onClick={handleClearFilters}>
                     Limpar Filtros
                   </Button>
                 </div>
@@ -540,7 +540,7 @@ export default function InvoicesPage() {
       {error && (
         <Card className="p-4 mb-6 bg-error/10 border-error/20">
           <p className="text-error">{error}</p>
-          <Button variant="text" onClick={fetchInvoices} className="mt-2">
+          <Button variant="ghost" onClick={fetchInvoices} className="mt-2">
             Tentar Novamente
           </Button>
         </Card>

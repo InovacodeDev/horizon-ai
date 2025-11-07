@@ -23,11 +23,11 @@ const IntegrationCard: React.FC<{ integration: Integration }> = ({ integration }
         <p className="text-sm text-on-surface-variant">{description}</p>
       </div>
       {connected ? (
-        <Button variant="outlined" disabled leftIcon={<CheckIcon className="w-4 h-4" />}>
+        <Button variant="outline" disabled leftIcon={<CheckIcon className="w-4 h-4" />}>
           Conectado
         </Button>
       ) : (
-        <Button variant="outlined">Conectar</Button>
+        <Button variant="outline">Conectar</Button>
       )}
     </Card>
   );

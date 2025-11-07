@@ -28,7 +28,7 @@ export default function PricingPage() {
             <h1 className="text-2xl font-light text-primary cursor-pointer">Horizon AI</h1>
           </Link>
           <Link href="/login">
-            <Button variant="outlined">Sign In</Button>
+            <Button variant="outline">Sign In</Button>
           </Link>
         </div>
       </header>
@@ -91,7 +91,7 @@ export default function PricingPage() {
 
         <Link href="/">
           <Button
-            variant="outlined"
+            variant="outline"
             className="mt-6 border-none text-on-surface-variant hover:bg-transparent"
           >
             Maybe later

@@ -465,7 +465,7 @@ export default function InsightsPage() {
             <div className="flex-grow">
               <h3 className="font-medium text-error mb-1">Erro ao Carregar Insights</h3>
               <p className="text-sm text-error/80">{error}</p>
-              <Button variant="text" onClick={fetchInsights} className="mt-3">
+              <Button variant="ghost" onClick={fetchInsights} className="mt-3">
                 Tentar Novamente
               </Button>
             </div>
@@ -553,7 +553,7 @@ export default function InsightsPage() {
             Análise detalhada dos seus padrões de consumo
           </p>
         </div>
-        <Button variant="outlined" onClick={fetchInsights}>
+        <Button variant="outline" onClick={fetchInsights}>
           <svg
             className="w-5 h-5 mr-2"
             fill="none"
@@ -1053,7 +1053,7 @@ export default function InsightsPage() {
               </div>
             </div>
             <div className="mt-3 flex justify-end gap-2">
-              <Button variant="text" onClick={() => setShowAddBudget(false)}>
+              <Button variant="ghost" onClick={() => setShowAddBudget(false)}>
                 Cancelar
               </Button>
               <Button onClick={handleAddBudget}>

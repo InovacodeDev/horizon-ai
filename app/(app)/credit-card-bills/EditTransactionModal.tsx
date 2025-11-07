@@ -199,7 +199,7 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
           </div>
           
           <div className='p-4 bg-surface-variant/20 flex justify-end gap-3 border-t border-outline sticky bottom-0'>
-            <Button variant="outlined" onClick={() => setShowDeleteConfirm(false)}>
+            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
               Cancelar
             </Button>
             <Button 
@@ -329,7 +329,7 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
               Excluir
             </Button>
             <div className='flex gap-3'>
-              <Button type="button" variant="outlined" onClick={onClose}>
+              <Button type="button" variant="outline" onClick={onClose}>
                 Cancelar
               </Button>
               <Button type="submit" disabled={loading}>

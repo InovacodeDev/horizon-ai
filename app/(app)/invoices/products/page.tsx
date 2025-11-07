@@ -218,7 +218,7 @@ export default function ProductsPage() {
       {error && (
         <Card className="p-4 mb-6 bg-error/10 border-error/20">
           <p className="text-error">{error}</p>
-          <Button variant="text" onClick={fetchProducts} className="mt-2">
+          <Button variant="ghost" onClick={fetchProducts} className="mt-2">
             Tentar Novamente
           </Button>
         </Card>

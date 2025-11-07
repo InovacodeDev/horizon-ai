@@ -183,7 +183,7 @@ const PayBillModal: React.FC<PayBillModalProps> = ({ bill, creditCard, onClose, 
             <div className="flex gap-3 pt-4">
               <Button
                 type="button"
-                variant="outlined"
+                variant="outline"
                 onClick={onClose}
                 className="flex-1"
                 disabled={isSubmitting}
@@ -192,7 +192,7 @@ const PayBillModal: React.FC<PayBillModalProps> = ({ bill, creditCard, onClose, 
               </Button>
               <Button
                 type="submit"
-                variant="filled"
+                variant="primary"
                 className="flex-1"
                 disabled={isSubmitting || !hasEnoughBalance}
               >

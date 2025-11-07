@@ -185,7 +185,7 @@ export default function InvoiceDetailsModal({ invoiceId, isOpen, onClose, onDele
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
               <p>{error}</p>
-              <Button variant="text" onClick={fetchInvoiceDetails} className="mt-2">
+              <Button variant="ghost" onClick={fetchInvoiceDetails} className="mt-2">
                 Tentar Novamente
               </Button>
             </div>
@@ -346,7 +346,7 @@ export default function InvoiceDetailsModal({ invoiceId, isOpen, onClose, onDele
           <div className="flex justify-between items-center p-6 border-t border-gray-200 bg-gray-50">
             <div className="flex gap-2">
               <Button
-                variant="outlined"
+                variant="outline"
                 onClick={handleDeleteClick}
                 disabled={deleting}
                 className="text-error border-error hover:bg-error/5"
@@ -355,7 +355,7 @@ export default function InvoiceDetailsModal({ invoiceId, isOpen, onClose, onDele
               </Button>
               {onCreateTransaction && !invoiceData.transaction_id && (
                 <Button
-                  variant="outlined"
+                  variant="outline"
                   onClick={() => {
                     onCreateTransaction(invoice);
                     onClose();
@@ -379,7 +379,7 @@ export default function InvoiceDetailsModal({ invoiceId, isOpen, onClose, onDele
               )}
               {invoiceData.transaction_id && (
                 <Button
-                  variant="outlined"
+                  variant="outline"
                   onClick={() => {
                     window.location.href = `/transactions?highlight=${invoiceData.transaction_id}`;
                   }}

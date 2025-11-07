@@ -57,12 +57,12 @@ export class ErrorBoundary extends Component<Props, State> {
               {this.state.error?.message || 'An unexpected error occurred'}
             </p>
             <div className="flex gap-3 justify-center">
-              <Button onClick={this.handleReset} variant="filled">
+              <Button onClick={this.handleReset} variant="primary">
                 Try Again
               </Button>
               <Button
                 onClick={() => window.location.reload()}
-                variant="outlined"
+                variant="outline"
               >
                 Reload Page
               </Button>

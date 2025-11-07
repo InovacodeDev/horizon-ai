@@ -158,7 +158,7 @@ export default function RetirementPage() {
                                 />
                             </div>
                             <div className="flex justify-end gap-3">
-                                <Button variant="outlined" onClick={() => setIsEditing(false)}>
+                                <Button variant="outline" onClick={() => setIsEditing(false)}>
                                     Cancel
                                 </Button>
                                 <Button type="submit">Save Changes</Button>

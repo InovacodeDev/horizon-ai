@@ -41,7 +41,7 @@ export function RetryError({
         )}
 
         {onRetry && (
-          <Button onClick={onRetry} variant="filled">
+          <Button onClick={onRetry} variant="primary">
             Try Again
           </Button>
         )}
@@ -80,7 +80,7 @@ export function EmptyState({
           </p>
         )}
         {action && actionLabel && (
-          <Button onClick={action} variant="filled">
+          <Button onClick={action} variant="primary">
             {actionLabel}
           </Button>
         )}

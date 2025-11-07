@@ -586,7 +586,7 @@ export default function TransactionsPage() {
                         />
                     </div>
                     <Button
-                        variant="outlined"
+                        variant="outline"
                         onClick={() => setShowFilters(!showFilters)}
                         leftIcon={<FilterIcon className="w-5 h-5" />}
                     >
@@ -681,7 +681,7 @@ export default function TransactionsPage() {
                         </div>
                     </div>
                     <div className="mt-4 text-right">
-                        <Button variant="text" onClick={resetFilters}>
+                        <Button variant="ghost" onClick={resetFilters}>
                             Limpar Todos os Filtros
                         </Button>
                     </div>
@@ -748,7 +748,7 @@ export default function TransactionsPage() {
                         <p className="text-on-surface-variant text-sm mt-1">
                             Tente ajustar sua pesquisa ou critérios de filtro.
                         </p>
-                        <Button variant="outlined" onClick={resetFilters} className="mt-4">
+                        <Button variant="outline" onClick={resetFilters} className="mt-4">
                             Limpar Filtros
                         </Button>
                     </div>
@@ -1066,7 +1066,7 @@ export default function TransactionsPage() {
                         </div>
                     </div>
                     <div className="p-4 bg-surface-variant/20 flex justify-end gap-3 border-t border-outline sticky bottom-0">
-                        <Button type="button" variant="outlined" onClick={() => setIsAddModalOpen(false)}>
+                        <Button type="button" variant="outline" onClick={() => setIsAddModalOpen(false)}>
                             Cancelar
                         </Button>
                         <Button type="submit">Salvar Transação</Button>
@@ -1183,7 +1183,7 @@ export default function TransactionsPage() {
                         </div>
                     </div>
                     <div className="p-4 bg-surface-variant/20 flex justify-end gap-3">
-                        <Button type="button" variant="outlined" onClick={() => setIsEditModalOpen(false)}>
+                        <Button type="button" variant="outline" onClick={() => setIsEditModalOpen(false)}>
                             Cancelar
                         </Button>
                         <Button type="submit">Salvar Alterações</Button>
@@ -1219,7 +1219,7 @@ export default function TransactionsPage() {
                         Esta ação não pode ser desfeita e o saldo da conta será recalculado.
                     </p>
                     <div className="flex justify-end gap-3">
-                        <Button variant="outlined" onClick={() => setIsDeleteModalOpen(false)}>
+                        <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>
                             Cancelar
                         </Button>
                         <Button 
@@ -1293,7 +1293,7 @@ export default function TransactionsPage() {
                                 {selectedTransaction.source === 'manual' && (
                                     <>
                                         <Button 
-                                            variant="outlined" 
+                                            variant="outline" 
                                             onClick={() => {
                                                 handleEditTransaction(selectedTransaction);
                                                 setSelectedTransaction(null);
@@ -1302,7 +1302,7 @@ export default function TransactionsPage() {
                                             Editar
                                         </Button>
                                         <Button 
-                                            variant="outlined" 
+                                            variant="outline" 
                                             onClick={() => handleDeleteClick(selectedTransaction)}
                                             className="text-error border-error hover:bg-error/10"
                                         >
@@ -1311,7 +1311,7 @@ export default function TransactionsPage() {
                                     </>
                                 )}
                             </div>
-                            <Button variant="outlined" onClick={() => setSelectedTransaction(null)}>
+                            <Button variant="outline" onClick={() => setSelectedTransaction(null)}>
                                 Fechar
                             </Button>
                         </div>

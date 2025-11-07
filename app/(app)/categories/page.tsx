@@ -70,7 +70,7 @@ export default function CategoriesPage() {
                     <p className="text-base text-on-surface-variant mt-1">Entenda para onde seu dinheiro está indo.</p>
                 </div>
                 <Button
-                    variant="outlined"
+                    variant="outline"
                     leftIcon={<SettingsIcon className="w-5 h-5" />}
                     onClick={() => setIsModalOpen(true)}
                 >

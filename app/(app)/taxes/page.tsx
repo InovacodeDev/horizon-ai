@@ -255,7 +255,7 @@ Este é um resumo gerado por IA e não substitui a consulta a um contador profis
                     <h3 className="text-lg font-medium">Bens e Direitos</h3>
                     <p className="text-sm text-on-surface-variant">Seu patrimônio em 31/12/2023 e 31/12/2024.</p>
                   </div>
-                  <Button variant="outlined" leftIcon={<PlusIcon className="w-4 h-4" />}>
+                  <Button variant="outline" leftIcon={<PlusIcon className="w-4 h-4" />}>
                     Adicionar Bem
                   </Button>
                 </div>
@@ -287,7 +287,7 @@ Este é um resumo gerado por IA e não substitui a consulta a um contador profis
                       Valores recebidos que não possuem incidência de imposto.
                     </p>
                   </div>
-                  <Button variant="outlined" leftIcon={<PlusIcon className="w-4 h-4" />}>
+                  <Button variant="outline" leftIcon={<PlusIcon className="w-4 h-4" />}>
                     Adicionar Rendimento
                   </Button>
                 </div>
@@ -316,7 +316,7 @@ Este é um resumo gerado por IA e não substitui a consulta a um contador profis
                     <h3 className="text-lg font-medium">Rendimentos Sujeitos à Tributação Exclusiva/Definitiva</h3>
                     <p className="text-sm text-on-surface-variant">Rendimentos com imposto retido na fonte.</p>
                   </div>
-                  <Button variant="outlined" leftIcon={<PlusIcon className="w-4 h-4" />}>
+                  <Button variant="outline" leftIcon={<PlusIcon className="w-4 h-4" />}>
                     Adicionar Rendimento
                   </Button>
                 </div>

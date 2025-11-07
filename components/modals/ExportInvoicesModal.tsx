@@ -222,7 +222,7 @@ export function ExportInvoicesModal({ isOpen, onClose, onExport, currentFilters 
 
         {/* Action Buttons */}
         <div className="flex gap-3 justify-end pt-4 border-t border-gray-200">
-          <Button variant="outlined" onClick={handleClose} disabled={isExporting}>
+          <Button variant="outline" onClick={handleClose} disabled={isExporting}>
             Cancelar
           </Button>
           <Button onClick={handleExport} disabled={isExporting}>

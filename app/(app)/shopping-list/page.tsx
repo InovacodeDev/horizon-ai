@@ -347,7 +347,7 @@ export default function ShoppingListPage() {
                                             onKeyDown={(e) => e.key === "Enter" && handleAddManualItem()}
                                         />
                                         <Button
-                                            variant="outlined"
+                                            variant="outline"
                                             onClick={handleAddManualItem}
                                             leftIcon={<PlusIcon className="w-5 h-5" />}
                                         >
@@ -378,7 +378,7 @@ export default function ShoppingListPage() {
                                     disabled={isImporting}
                                 />
                                 <Button
-                                    variant="outlined"
+                                    variant="outline"
                                     onClick={() => {}}
                                     leftIcon={<QrCodeIcon className="w-5 h-5" />}
                                 >
