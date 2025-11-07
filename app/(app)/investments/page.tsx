@@ -391,7 +391,7 @@ const InvestmentsPage: React.FC = () => {
           <div className='p-4 bg-surface-variant/20 flex justify-end gap-3'>
             <Button
               type='button'
-              variant='outlined'
+              variant='outline'
               onClick={() => setIsAddModalOpen(false)}
             >
               Cancelar
