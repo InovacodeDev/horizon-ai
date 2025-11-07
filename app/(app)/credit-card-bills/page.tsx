@@ -7,6 +7,7 @@ import Card from '@/components/ui/Card';
 import Skeleton from '@/components/ui/Skeleton';
 import Button from '@/components/ui/Button';
 import { useCreditCardsWithCache } from '@/hooks/useCreditCardsWithCache';
+import { useCreditCardTransactions } from '@/hooks/useCreditCardTransactions';
 import { getCategoryById } from '@/lib/constants/categories';
 import CreateTransactionModal from './CreateTransactionModal';
 import EditTransactionModal from './EditTransactionModal';
@@ -79,14 +80,45 @@ const TransactionCategoryBadge: React.FC<{ categoryId: string }> = ({ categoryId
 
 const CreditCardBillsPage: React.FC = () => {
   const searchParams = useSearchParams();
-  const { creditCards, loading, fetchCreditCards } = useCreditCardsWithCache();
+  const { creditCards, loading } = useCreditCardsWithCache();
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [selectedBillMonth, setSelectedBillMonth] = useState<string | null>(null);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loadingTransactions, setLoadingTransactions] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [payingBill, setPayingBill] = useState<Bill | null>(null);
+
+  // Use o hook otimizado de transações
+  const startDate = useMemo(() => {
+    const date = new Date();
+    date.setMonth(date.getMonth() - 6); // Últimos 6 meses
+    return date;
+  }, []);
+
+  const {
+    transactions: rawTransactions,
+    loading: loadingTransactions,
+    invalidateCache: invalidateTransactionsCache,
+  } = useCreditCardTransactions({
+    creditCardId: selectedCardId || '',
+    startDate,
+    enableRealtime: true,
+  });
+
+  // Mapeia as transações para o formato esperado
+  const transactions = useMemo(() => {
+    return rawTransactions.map((t: any) => ({
+      id: t.$id,
+      amount: t.amount,
+      date: t.date,
+      category: t.category,
+      description: t.description,
+      merchant: t.merchant,
+      installment: t.installment,
+      installments: t.installments,
+      is_recurring: t.is_recurring,
+      credit_card_transaction_created_at: t.purchase_date,
+    }));
+  }, [rawTransactions]);
 
   // Check URL params for cardId and select it
   useEffect(() => {
@@ -106,54 +138,6 @@ const CreditCardBillsPage: React.FC = () => {
   const selectedCard = useMemo(() => {
     return creditCards.find((card) => card.$id === selectedCardId);
   }, [creditCards, selectedCardId]);
-
-  // Fetch transactions for selected card
-  useEffect(() => {
-    const fetchTransactions = async () => {
-      if (!selectedCardId) return;
-
-      setLoadingTransactions(true);
-      try {
-        const start_date = new Date();
-        start_date.setMonth(new Date().getMonth() - 6); // Get last 6 months of transactions
-        const response = await fetch(`/api/credit-cards/transactions?credit_card_id=${selectedCardId}&start_date=${start_date.toISOString()}`, {
-          credentials: 'include',
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          
-          // API returns data for transactions
-          const transactionsData = result.data || [];
-          
-          // Map API response to local Transaction interface
-          const mappedTransactions = transactionsData.map((t: any) => ({
-            id: t.$id,
-            amount: t.amount,
-            date: t.date,
-            category: t.category,
-            description: t.description,
-            merchant: t.merchant,
-            installment: t.installment,
-            installments: t.installments,
-            is_recurring: t.is_recurring,
-            credit_card_transaction_created_at: t.purchase_date,
-          }));
-          
-          setTransactions(mappedTransactions);
-        } else {
-          console.error('Response not OK:', await response.text());
-        }
-      } catch (error) {
-        console.error('Error fetching transactions:', error);
-        setTransactions([]);
-      } finally {
-        setLoadingTransactions(false);
-      }
-    };
-
-    fetchTransactions();
-  }, [selectedCardId]);
 
   const formatCurrency = (value: number) => {
     return value.toLocaleString('pt-BR', {
@@ -338,43 +322,8 @@ const CreditCardBillsPage: React.FC = () => {
   }, [openBills, selectedBillMonth]);
 
   const handleTransactionCreated = () => {
-    // Refresh transactions
-    const fetchTransactions = async () => {
-      if (!selectedCardId) return;
-
-      try {
-        const start_date = new Date();
-        start_date.setMonth(new Date().getMonth() - 6); // Get last 6 months of transactions
-        const response = await fetch(`/api/credit-cards/transactions?credit_card_id=${selectedCardId}&start_date=${start_date.toISOString()}`, {
-          credentials: 'include',
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          const transactionsData = result.data || [];
-          
-          // Map API response to local Transaction interface
-          const mappedTransactions = transactionsData.map((t: any) => ({
-            id: t.$id,
-            amount: t.amount,
-            date: t.date,
-            category: t.category,
-            description: t.description,
-            merchant: t.merchant,
-            installment: t.installment,
-            installments: t.installments,
-            is_recurring: t.is_recurring,
-            credit_card_transaction_created_at: t.purchase_date,
-          }));
-          
-          setTransactions(mappedTransactions);
-        }
-      } catch (error) {
-        console.error('Error fetching transactions:', error);
-      }
-    };
-
-    fetchTransactions();
+    // Invalida o cache e recarrega as transações
+    invalidateTransactionsCache();
   };
 
   if (loading) {

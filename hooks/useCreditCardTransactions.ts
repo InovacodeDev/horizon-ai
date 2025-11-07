@@ -1,114 +1,172 @@
-import { cacheManager, getCacheKey, invalidateCache } from '@/lib/utils/cache';
-import { useCallback, useEffect, useState } from 'react';
+'use client';
 
-export interface CreditCardTransaction {
+import { cacheManager, getCacheKey, invalidateCache as invalidateCacheUtil } from '@/lib/utils/cache';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+interface Transaction {
   $id: string;
-  user_id: string;
-  credit_card_id: string;
   amount: number;
   date: string;
-  purchase_date: string;
   category: string;
   description?: string;
   merchant?: string;
   installment?: number;
   installments?: number;
   is_recurring?: boolean;
-  status: 'pending' | 'paid' | 'cancelled';
-  $createdAt: string;
-  $updatedAt: string;
+  purchase_date?: string;
 }
 
 interface UseCreditCardTransactionsOptions {
-  creditCardId?: string;
-  startDate?: string;
-  endDate?: string;
-  startPurchaseDate?: string;
-  endPurchaseDate?: string;
-  status?: 'pending' | 'paid' | 'cancelled';
-  isRecurring?: boolean;
-  limit?: number;
+  creditCardId: string;
+  startDate?: Date;
+  enableRealtime?: boolean;
+  cacheTime?: number;
 }
 
-export function useCreditCardTransactions(options: UseCreditCardTransactionsOptions = {}) {
-  const [transactions, setTransactions] = useState<CreditCardTransaction[]>([]);
-  const [loading, setLoading] = useState(true);
+// Cache global por cartão
+const transactionsCache = new Map<string, Transaction[]>();
+const fetchPromises = new Map<string, Promise<Transaction[]>>();
+const subscriptions = new Map<string, { unsubscribe: () => void; count: number }>();
+
+/**
+ * Hook otimizado para transações de cartão de crédito
+ * - Cache por cartão com TTL de 12h
+ * - Deduplicação de requests
+ * - Realtime subscribe compartilhado por cartão
+ */
+export function useCreditCardTransactions(options: UseCreditCardTransactionsOptions) {
+  const { creditCardId, startDate, enableRealtime = true, cacheTime = 12 * 60 * 60 * 1000 } = options;
+
+  const [transactions, setTransactions] = useState<Transaction[]>(() => {
+    // Tenta carregar do cache global
+    const cached = transactionsCache.get(creditCardId);
+    if (cached) return cached;
+
+    // Tenta carregar do cache manager
+    const cacheKey = getCacheKey.creditCardTransactions(creditCardId);
+    const cachedData = cacheManager.get<Transaction[]>(cacheKey);
+    if (cachedData) {
+      transactionsCache.set(creditCardId, cachedData);
+      return cachedData;
+    }
+
+    return [];
+  });
+
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [initialized, setInitialized] = useState(!!transactionsCache.get(creditCardId));
+  const mountedRef = useRef(true);
 
-  const fetchTransactions = useCallback(
-    async (skipCache = false) => {
-      const params = new URLSearchParams();
-
-      if (options.creditCardId) params.append('credit_card_id', options.creditCardId);
-      if (options.startDate) params.append('start_date', options.startDate);
-      if (options.endDate) params.append('end_date', options.endDate);
-      if (options.startPurchaseDate) params.append('start_purchase_date', options.startPurchaseDate);
-      if (options.endPurchaseDate) params.append('end_purchase_date', options.endPurchaseDate);
-      if (options.status) params.append('status', options.status);
-      if (options.isRecurring !== undefined) params.append('is_recurring', String(options.isRecurring));
-      if (options.limit) params.append('limit', String(options.limit));
-
-      const paramsString = params.toString();
-
-      // Check cache first
-      if (!skipCache) {
-        const cacheKey = getCacheKey.creditCardTransactions(paramsString);
-        const cached = cacheManager.get<CreditCardTransaction[]>(cacheKey);
-
-        if (cached) {
-          setTransactions(cached);
-          setLoading(false);
-          return;
-        }
-      }
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        const response = await fetch(`/api/credit-cards/transactions?${paramsString}`, {
-          credentials: 'include',
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch credit card transactions');
-        }
-
-        const result = await response.json();
-        const data = result.data || [];
-        setTransactions(data);
-
-        // Cache the result
-        const cacheKey = getCacheKey.creditCardTransactions(paramsString);
-        cacheManager.set(cacheKey, data);
-      } catch (err: any) {
-        setError(err.message || 'An error occurred');
-        setTransactions([]);
-      } finally {
-        setLoading(false);
-      }
+  const saveToCache = useCallback(
+    (data: Transaction[]) => {
+      const cacheKey = getCacheKey.creditCardTransactions(creditCardId);
+      cacheManager.set(cacheKey, data, cacheTime);
+      transactionsCache.set(creditCardId, data);
     },
-    [
-      options.creditCardId,
-      options.startDate,
-      options.endDate,
-      options.startPurchaseDate,
-      options.endPurchaseDate,
-      options.status,
-      options.isRecurring,
-      options.limit,
-    ],
+    [creditCardId, cacheTime],
   );
 
-  useEffect(() => {
-    fetchTransactions();
-  }, [fetchTransactions]);
+  const fetchTransactions = useCallback(
+    async (silent = false) => {
+      const cacheKey = `${creditCardId}-${startDate?.toISOString() || 'all'}`;
 
-  // Setup realtime subscription for credit card transactions
+      // Se já existe uma chamada em andamento para este cartão, reutiliza
+      if (fetchPromises.has(cacheKey)) {
+        try {
+          const data = await fetchPromises.get(cacheKey)!;
+          if (mountedRef.current) {
+            setTransactions(data);
+          }
+          return data;
+        } catch (err) {
+          return [];
+        }
+      }
+
+      // Cria nova promise de fetch
+      const promise = (async () => {
+        try {
+          if (!silent && mountedRef.current) setLoading(true);
+          setError(null);
+
+          const start = startDate || new Date(Date.now() - 6 * 30 * 24 * 60 * 60 * 1000); // 6 meses
+          const url = `/api/credit-cards/transactions?credit_card_id=${creditCardId}&start_date=${start.toISOString()}`;
+
+          const response = await fetch(url, {
+            credentials: 'include',
+            cache: 'no-store',
+          });
+
+          if (!response.ok) {
+            console.warn('Credit card transactions API error');
+            const emptyData: Transaction[] = [];
+            saveToCache(emptyData);
+            if (mountedRef.current) {
+              setTransactions(emptyData);
+              setInitialized(true);
+            }
+            return emptyData;
+          }
+
+          const result = await response.json();
+          const transactionsData = result.data || [];
+
+          saveToCache(transactionsData);
+
+          if (mountedRef.current) {
+            setTransactions(transactionsData);
+            setInitialized(true);
+          }
+
+          return transactionsData;
+        } catch (err: any) {
+          console.warn('Error fetching credit card transactions:', err);
+          const emptyData: Transaction[] = [];
+          if (mountedRef.current) {
+            setTransactions(emptyData);
+            setError(null);
+            setInitialized(true);
+          }
+          return emptyData;
+        } finally {
+          if (!silent && mountedRef.current) setLoading(false);
+          fetchPromises.delete(cacheKey);
+        }
+      })();
+
+      fetchPromises.set(cacheKey, promise);
+      return promise;
+    },
+    [creditCardId, startDate, saveToCache],
+  );
+
+  // Initial fetch
   useEffect(() => {
+    if (!initialized) {
+      fetchTransactions();
+    }
+  }, [initialized, fetchTransactions]);
+
+  // Setup realtime subscription (compartilhado por cartão)
+  useEffect(() => {
+    if (!enableRealtime || !initialized || !creditCardId) return;
+
+    const existing = subscriptions.get(creditCardId);
+    if (existing) {
+      existing.count++;
+      return () => {
+        existing.count--;
+        if (existing.count === 0) {
+          existing.unsubscribe();
+          subscriptions.delete(creditCardId);
+        }
+      };
+    }
+
     const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID;
     if (!databaseId) {
-      console.warn('NEXT_PUBLIC_APPWRITE_DATABASE_ID not set, realtime disabled for credit card transactions');
+      console.warn('NEXT_PUBLIC_APPWRITE_DATABASE_ID not set, realtime disabled');
       return;
     }
 
@@ -119,27 +177,51 @@ export function useCreditCardTransactions(options: UseCreditCardTransactionsOpti
       const channels = [`databases.${databaseId}.collections.credit_card_transactions.documents`];
 
       const unsubscribe = client.subscribe(channels, (response: any) => {
-        console.log('📡 Realtime event received for credit card transactions:', response.events);
-
-        // Refetch transactions on any change
-        fetchTransactions(true);
+        // Verifica se o evento é relacionado a este cartão
+        const payload = response.payload;
+        if (payload && payload.credit_card_id === creditCardId) {
+          console.log('📡 Realtime: transaction updated for card', creditCardId);
+          fetchTransactions(true);
+        }
       });
 
-      console.log('✅ Subscribed to credit card transactions realtime updates');
+      subscriptions.set(creditCardId, { unsubscribe, count: 1 });
+      console.log('✅ Subscribed to transactions realtime for card', creditCardId);
 
       return () => {
-        unsubscribe();
-        console.log('🔌 Unsubscribed from credit card transactions realtime');
+        const sub = subscriptions.get(creditCardId);
+        if (sub) {
+          sub.count--;
+          if (sub.count === 0) {
+            sub.unsubscribe();
+            subscriptions.delete(creditCardId);
+            console.log('🔌 Unsubscribed from transactions realtime for card', creditCardId);
+          }
+        }
       };
     } catch (error) {
-      console.error('❌ Error setting up realtime for credit card transactions:', error);
+      console.error('❌ Error setting up realtime for transactions:', error);
     }
-  }, [fetchTransactions]);
+  }, [enableRealtime, initialized, creditCardId, fetchTransactions]);
+
+  // Cleanup
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const invalidateCache = useCallback(() => {
+    invalidateCacheUtil.creditCardTransactions();
+    transactionsCache.delete(creditCardId);
+    fetchTransactions();
+  }, [creditCardId, fetchTransactions]);
 
   return {
     transactions,
     loading,
     error,
-    refetch: fetchTransactions,
+    fetchTransactions,
+    invalidateCache,
   };
 }

@@ -12,82 +12,127 @@ interface UseCreditCardsOptions {
   cacheTime?: number;
 }
 
+// Global state para evitar múltiplas chamadas simultâneas
+let globalCreditCards: CreditCard[] | null = null;
+let globalFetchPromise: Promise<CreditCard[]> | null = null;
+let globalSubscription: (() => void) | null = null;
+let subscriberCount = 0;
+
 /**
- * Hook for managing credit cards with cache and realtime updates
- * Now uses centralized cache manager with 12h TTL
+ * Hook otimizado para gerenciar cartões de crédito com cache e realtime
+ * - Cache de 12h por padrão
+ * - Batch loading (carrega todos os cartões de uma vez)
+ * - Realtime subscribe compartilhado entre todos os componentes
+ * - Deduplicação de requests
  */
 export function useCreditCardsWithCache(options: UseCreditCardsOptions = {}) {
   const { accounts } = useAccounts();
   const { accountId, enableRealtime = true, cacheTime = 12 * 60 * 60 * 1000 } = options; // 12 hours default
 
   const [creditCards, setCreditCards] = useState<CreditCard[]>(() => {
-    // Try to load from cache
+    // Primeiro tenta carregar do estado global
+    if (globalCreditCards) {
+      return accountId ? globalCreditCards.filter((c) => c.account_id === accountId) : globalCreditCards;
+    }
+
+    // Depois tenta carregar do cache
     const cacheKey = getKey.creditCards('user');
     const cached = cacheManager.get<CreditCard[]>(cacheKey);
-    return cached || [];
+    if (cached) {
+      globalCreditCards = cached;
+      return accountId ? cached.filter((c) => c.account_id === accountId) : cached;
+    }
+
+    return [];
   });
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [initialized, setInitialized] = useState(false);
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [initialized, setInitialized] = useState(!!globalCreditCards);
+  const mountedRef = useRef(true);
 
   const saveToCache = useCallback(
     (data: CreditCard[]) => {
       const cacheKey = getKey.creditCards('user');
       cacheManager.set(cacheKey, data, cacheTime);
+      globalCreditCards = data;
     },
     [cacheTime],
   );
 
   const fetchCreditCards = useCallback(
-    async (silent = false, accountIds?: string[]) => {
-      try {
-        if (!silent) setLoading(true);
-        setError(null);
-
-        let url = '/api/credit-cards';
-
-        if (accountId) {
-          url = `/api/credit-cards/account/${accountId}`;
-        } else if (accounts && accounts.length > 0) {
-          url = `/api/credit-cards?account_ids=${accounts.map((a) => a.$id).join(',')}`;
-        }
-
-        const response = await fetch(url, {
-          credentials: 'include',
-          cache: 'no-store',
-        });
-
-        if (!response.ok) {
-          // If API doesn't exist or returns error, just return empty array
-          console.warn('Credit cards API not available or returned error');
-          setCreditCards([]);
-          saveToCache([]);
-          setInitialized(true);
+    async (silent = false) => {
+      // Se já existe uma chamada em andamento, reutiliza
+      if (globalFetchPromise) {
+        try {
+          const data = await globalFetchPromise;
+          if (mountedRef.current) {
+            setCreditCards(accountId ? data.filter((c) => c.account_id === accountId) : data);
+          }
+          return data;
+        } catch (err) {
+          // Ignora erro se já foi tratado
           return [];
         }
-
-        const data = await response.json();
-        const cardsData = Array.isArray(data) ? data : data.data || [];
-
-        setCreditCards(cardsData);
-        saveToCache(cardsData);
-        setInitialized(true);
-
-        return cardsData;
-      } catch (err: any) {
-        console.warn('Error fetching credit cards:', err);
-        // Don't throw error, just set empty array
-        setCreditCards([]);
-        setError(null); // Clear error to not break UI
-        setInitialized(true);
-        return [];
-      } finally {
-        if (!silent) setLoading(false);
       }
+
+      // Cria nova promise de fetch
+      globalFetchPromise = (async () => {
+        try {
+          if (!silent && mountedRef.current) setLoading(true);
+          setError(null);
+
+          // Sempre busca TODOS os cartões de uma vez
+          let url = '/api/credit-cards';
+          if (accounts && accounts.length > 0) {
+            url = `/api/credit-cards?account_ids=${accounts.map((a) => a.$id).join(',')}`;
+          }
+
+          const response = await fetch(url, {
+            credentials: 'include',
+            cache: 'no-store',
+          });
+
+          if (!response.ok) {
+            console.warn('Credit cards API not available or returned error');
+            const emptyData: CreditCard[] = [];
+            saveToCache(emptyData);
+            if (mountedRef.current) {
+              setCreditCards(emptyData);
+              setInitialized(true);
+            }
+            return emptyData;
+          }
+
+          const data = await response.json();
+          const cardsData = Array.isArray(data) ? data : data.data || [];
+
+          saveToCache(cardsData);
+
+          if (mountedRef.current) {
+            setCreditCards(accountId ? cardsData.filter((c: CreditCard) => c.account_id === accountId) : cardsData);
+            setInitialized(true);
+          }
+
+          return cardsData;
+        } catch (err: any) {
+          console.warn('Error fetching credit cards:', err);
+          const emptyData: CreditCard[] = [];
+          if (mountedRef.current) {
+            setCreditCards(emptyData);
+            setError(null);
+            setInitialized(true);
+          }
+          return emptyData;
+        } finally {
+          if (!silent && mountedRef.current) setLoading(false);
+          globalFetchPromise = null;
+        }
+      })();
+
+      return globalFetchPromise;
     },
-    [accountId, saveToCache],
+    [accountId, accounts, saveToCache],
   );
 
   // Initial fetch
@@ -97,22 +142,28 @@ export function useCreditCardsWithCache(options: UseCreditCardsOptions = {}) {
     }
   }, [initialized, fetchCreditCards]);
 
-  // Setup realtime subscription
+  // Setup realtime subscription (compartilhado globalmente)
   useEffect(() => {
     if (!enableRealtime || !initialized) return;
 
-    const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID;
-    if (!databaseId) {
-      console.warn('NEXT_PUBLIC_APPWRITE_DATABASE_ID not set, falling back to polling');
-      // Fallback to polling
-      pollingIntervalRef.current = setInterval(() => {
-        fetchCreditCards(true);
-      }, 30000);
+    subscriberCount++;
+
+    // Se já existe uma subscription global, apenas incrementa o contador
+    if (globalSubscription) {
       return () => {
-        if (pollingIntervalRef.current) {
-          clearInterval(pollingIntervalRef.current);
+        subscriberCount--;
+        // Só desinscreve quando não há mais subscribers
+        if (subscriberCount === 0 && globalSubscription) {
+          globalSubscription();
+          globalSubscription = null;
         }
       };
+    }
+
+    const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID;
+    if (!databaseId) {
+      console.warn('NEXT_PUBLIC_APPWRITE_DATABASE_ID not set, realtime disabled');
+      return;
     }
 
     try {
@@ -122,42 +173,56 @@ export function useCreditCardsWithCache(options: UseCreditCardsOptions = {}) {
       const channels = [`databases.${databaseId}.collections.credit_cards.documents`];
 
       const unsubscribe = client.subscribe(channels, (response: any) => {
-        console.log('📡 Realtime event received for credit cards:', response.events);
+        console.log('📡 Realtime: credit card updated');
 
-        // Refetch credit cards on any change
+        // Atualiza o cache global silenciosamente
         fetchCreditCards(true);
       });
 
-      console.log('✅ Subscribed to credit cards realtime updates');
+      globalSubscription = unsubscribe;
+      console.log('✅ Subscribed to credit cards realtime (shared)');
 
       return () => {
-        unsubscribe();
-        console.log('🔌 Unsubscribed from credit cards realtime');
+        subscriberCount--;
+        if (subscriberCount === 0 && globalSubscription) {
+          globalSubscription();
+          globalSubscription = null;
+          console.log('🔌 Unsubscribed from credit cards realtime');
+        }
       };
     } catch (error) {
       console.error('❌ Error setting up realtime for credit cards:', error);
-      // Fallback to polling on error
-      pollingIntervalRef.current = setInterval(() => {
-        fetchCreditCards(true);
-      }, 30000);
-      return () => {
-        if (pollingIntervalRef.current) {
-          clearInterval(pollingIntervalRef.current);
-        }
-      };
     }
   }, [enableRealtime, initialized, fetchCreditCards]);
+
+  // Cleanup
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  // Atualiza quando o estado global muda
+  useEffect(() => {
+    if (globalCreditCards) {
+      setCreditCards(accountId ? globalCreditCards.filter((c) => c.account_id === accountId) : globalCreditCards);
+    }
+  }, [accountId]);
 
   const deleteCreditCard = useCallback(
     async (cardId: string) => {
       let deletedCard: CreditCard | undefined;
 
+      // Atualiza estado local e global otimisticamente
       setCreditCards((prev) => {
         deletedCard = prev.find((c) => c.$id === cardId);
-        const updated = prev.filter((c) => c.$id !== cardId);
-        saveToCache(updated);
-        return updated;
+        return prev.filter((c) => c.$id !== cardId);
       });
+
+      if (globalCreditCards) {
+        globalCreditCards = globalCreditCards.filter((c) => c.$id !== cardId);
+        saveToCache(globalCreditCards);
+      }
 
       try {
         setError(null);
@@ -173,12 +238,14 @@ export function useCreditCardsWithCache(options: UseCreditCardsOptions = {}) {
       } catch (err: any) {
         console.error('Error deleting credit card:', err);
         setError(err.message || 'Failed to delete credit card');
+
+        // Rollback
         if (deletedCard) {
-          setCreditCards((prev) => {
-            const updated = [...prev, deletedCard!];
-            saveToCache(updated);
-            return updated;
-          });
+          setCreditCards((prev) => [...prev, deletedCard!]);
+          if (globalCreditCards) {
+            globalCreditCards = [...globalCreditCards, deletedCard];
+            saveToCache(globalCreditCards);
+          }
         }
         throw err;
       }
@@ -188,6 +255,7 @@ export function useCreditCardsWithCache(options: UseCreditCardsOptions = {}) {
 
   const invalidateCache = useCallback(() => {
     invalidateCacheUtil.creditCards('user');
+    globalCreditCards = null;
     fetchCreditCards();
   }, [fetchCreditCards]);
 
