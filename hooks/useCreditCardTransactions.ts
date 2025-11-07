@@ -17,7 +17,7 @@ interface Transaction {
 }
 
 interface UseCreditCardTransactionsOptions {
-  creditCardId: string;
+  creditCardId: string | undefined;
   startDate?: Date;
   enableRealtime?: boolean;
   cacheTime?: number;
@@ -38,6 +38,9 @@ export function useCreditCardTransactions(options: UseCreditCardTransactionsOpti
   const { creditCardId, startDate, enableRealtime = true, cacheTime = 12 * 60 * 60 * 1000 } = options;
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
+    // Se não há cartão selecionado, retorna vazio
+    if (!creditCardId) return [];
+
     // Tenta carregar do cache global
     const cached = transactionsCache.get(creditCardId);
     if (cached) return cached;
@@ -55,11 +58,12 @@ export function useCreditCardTransactions(options: UseCreditCardTransactionsOpti
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [initialized, setInitialized] = useState(!!transactionsCache.get(creditCardId));
+  const [initialized, setInitialized] = useState(creditCardId ? !!transactionsCache.get(creditCardId) : true);
   const mountedRef = useRef(true);
 
   const saveToCache = useCallback(
     (data: Transaction[]) => {
+      if (!creditCardId) return;
       const cacheKey = getCacheKey.creditCardTransactions(creditCardId);
       cacheManager.set(cacheKey, data, cacheTime);
       transactionsCache.set(creditCardId, data);
@@ -69,6 +73,15 @@ export function useCreditCardTransactions(options: UseCreditCardTransactionsOpti
 
   const fetchTransactions = useCallback(
     async (silent = false) => {
+      // Não busca se não há cartão selecionado
+      if (!creditCardId) {
+        if (mountedRef.current) {
+          setTransactions([]);
+          setInitialized(true);
+        }
+        return [];
+      }
+
       const cacheKey = `${creditCardId}-${startDate?.toISOString() || 'all'}`;
 
       // Se já existe uma chamada em andamento para este cartão, reutiliza
@@ -141,12 +154,42 @@ export function useCreditCardTransactions(options: UseCreditCardTransactionsOpti
     [creditCardId, startDate, saveToCache],
   );
 
+  // Update transactions when creditCardId changes
+  useEffect(() => {
+    if (!creditCardId) {
+      setTransactions([]);
+      setInitialized(true);
+      return;
+    }
+
+    // Tenta carregar do cache primeiro
+    const cached = transactionsCache.get(creditCardId);
+    if (cached) {
+      setTransactions(cached);
+      setInitialized(true);
+      return;
+    }
+
+    // Tenta carregar do cache manager
+    const cacheKey = getCacheKey.creditCardTransactions(creditCardId);
+    const cachedData = cacheManager.get<Transaction[]>(cacheKey);
+    if (cachedData) {
+      transactionsCache.set(creditCardId, cachedData);
+      setTransactions(cachedData);
+      setInitialized(true);
+      return;
+    }
+
+    // Se não tem cache, marca como não inicializado para buscar
+    setInitialized(false);
+  }, [creditCardId]);
+
   // Initial fetch
   useEffect(() => {
-    if (!initialized) {
+    if (!initialized && creditCardId) {
       fetchTransactions();
     }
-  }, [initialized, fetchTransactions]);
+  }, [initialized, creditCardId, fetchTransactions]);
 
   // Setup realtime subscription (compartilhado por cartão)
   useEffect(() => {
@@ -213,7 +256,9 @@ export function useCreditCardTransactions(options: UseCreditCardTransactionsOpti
 
   const invalidateCache = useCallback(() => {
     invalidateCacheUtil.creditCardTransactions();
-    transactionsCache.delete(creditCardId);
+    if (creditCardId) {
+      transactionsCache.delete(creditCardId);
+    }
     fetchTransactions();
   }, [creditCardId, fetchTransactions]);
 

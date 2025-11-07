@@ -16,11 +16,21 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
+    const creditCardIdParam = searchParams.get('credit_card_id');
+
+    // Se não há credit_card_id ou é vazio, retorna vazio
+    if (!creditCardIdParam || creditCardIdParam.trim() === '') {
+      return NextResponse.json({
+        success: true,
+        data: [],
+        total: 0,
+      });
+    }
 
     const creditCardTransactionService = new CreditCardTransactionService();
     const result = await creditCardTransactionService.listTransactions({
       userId,
-      creditCardId: searchParams.get('credit_card_id') || undefined,
+      creditCardId: creditCardIdParam,
       category: searchParams.get('category') || undefined,
       status: (searchParams.get('status') as any) || undefined,
       startDate: searchParams.get('start_date') || undefined,

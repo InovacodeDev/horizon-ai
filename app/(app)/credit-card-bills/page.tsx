@@ -99,7 +99,7 @@ const CreditCardBillsPage: React.FC = () => {
     loading: loadingTransactions,
     invalidateCache: invalidateTransactionsCache,
   } = useCreditCardTransactions({
-    creditCardId: selectedCardId || '',
+    creditCardId: selectedCardId || undefined,
     startDate,
     enableRealtime: true,
   });
@@ -527,7 +527,7 @@ const CreditCardBillsPage: React.FC = () => {
                 <div className="mb-4">
                   <Button
                     onClick={() => setPayingBill(selectedBill)}
-                    variant="filled"
+                    variant="primary"
                     className="w-full sm:w-auto"
                   >
                     Pagar Fatura - {formatCurrency(selectedBill.totalAmount)}
