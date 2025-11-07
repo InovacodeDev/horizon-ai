@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
 import ShoppingListBuilder from '@/components/invoices/ShoppingListBuilder';
+import PriceHistoryModal from '@/components/modals/PriceHistoryModal';
 
 interface Product {
   id: string;
@@ -39,8 +40,9 @@ export default function ProductsPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
-  const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<{ id: string; name: string } | null>(null);
   const [showShoppingList, setShowShoppingList] = useState(false);
+  const [showPriceHistory, setShowPriceHistory] = useState(false);
 
   // Fetch products
   const fetchProducts = useCallback(async () => {
@@ -137,11 +139,10 @@ export default function ProductsPage() {
     }).format(date);
   };
 
-  // Handle product click
-  const handleProductClick = (productId: string) => {
-    setSelectedProduct(productId);
-    // Navigate to product details (will be implemented in next subtasks)
-    router.push(`/invoices/products/${productId}`);
+  // Handle product click - open price history modal
+  const handleProductClick = (productId: string, productName: string) => {
+    setSelectedProduct({ id: productId, name: productName });
+    setShowPriceHistory(true);
   };
 
   return (
@@ -272,7 +273,7 @@ export default function ProductsPage() {
             <Card
               key={product.id}
               className="p-4 hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => handleProductClick(product.id)}
+              onClick={() => handleProductClick(product.id, product.name)}
             >
               {/* Product Icon */}
               <div className="flex items-start gap-3 mb-3">
@@ -329,7 +330,7 @@ export default function ProductsPage() {
                   className="w-full text-sm text-primary hover:text-primary-dark font-medium flex items-center justify-center gap-1"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleProductClick(product.id);
+                    handleProductClick(product.id, product.name);
                   }}
                 >
                   Ver Histórico de Preços
@@ -351,6 +352,19 @@ export default function ProductsPage() {
             </Card>
           ))}
         </div>
+      )}
+
+      {/* Price History Modal */}
+      {selectedProduct && (
+        <PriceHistoryModal
+          isOpen={showPriceHistory}
+          onClose={() => {
+            setShowPriceHistory(false);
+            setSelectedProduct(null);
+          }}
+          productId={selectedProduct.id}
+          productName={selectedProduct.name}
+        />
       )}
     </div>
   );

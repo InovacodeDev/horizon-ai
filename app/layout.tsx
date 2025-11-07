@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { initializeAppwrite } from '@/lib/appwrite/client';
+import '@/lib/server-init'; // Inicializa serviços em background
 
 export const metadata: Metadata = {
   title: 'Horizon AI - Financial Management Platform',

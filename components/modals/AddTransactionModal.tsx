@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import CurrencyInput from '@/components/ui/CurrencyInput';
 import DateInput from '@/components/ui/DateInput';
 import CategorySelect from '@/components/ui/CategorySelect';
+import { getCurrentDateInUserTimezone } from '@/lib/utils/timezone';
 
 export interface CreateTransactionInput {
   amount: number;
@@ -28,7 +29,7 @@ export function AddTransactionModal({ isOpen, onClose, onSubmit, accounts }: Add
     type: 'expense',
     category: '',
     description: '',
-    date: new Date().toISOString().split('T')[0],
+    date: getCurrentDateInUserTimezone(),
     accountId: '',
     taxAmount: undefined,
   });
@@ -63,7 +64,7 @@ export function AddTransactionModal({ isOpen, onClose, onSubmit, accounts }: Add
         type: 'expense',
         category: '',
         description: '',
-        date: new Date().toISOString().split('T')[0],
+        date: getCurrentDateInUserTimezone(),
         accountId: '',
         taxAmount: undefined,
       });

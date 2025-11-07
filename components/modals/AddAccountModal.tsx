@@ -5,7 +5,7 @@ import CurrencyInput from '@/components/ui/CurrencyInput';
 
 export interface CreateAccountInput {
   name: string;
-  account_type: 'checking' | 'savings' | 'investment' | 'other';
+  account_type: 'checking' | 'savings' | 'investment' | 'vale' | 'other';
   initial_balance?: number;
   is_manual?: boolean;
   bank_id?: string;
@@ -103,6 +103,7 @@ export function AddAccountModal({ isOpen, onClose, onSubmit }: AddAccountModalPr
               <option value="checking">Conta Corrente</option>
               <option value="savings">Poupança</option>
               <option value="investment">Investimento</option>
+              <option value="vale">Vale (Alimentação/Flexível)</option>
               <option value="other">Outro</option>
             </select>
           </div>

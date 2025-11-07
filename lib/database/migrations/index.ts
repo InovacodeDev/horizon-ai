@@ -26,6 +26,7 @@ import { migration as createInvoicesTable } from './20251105_000021_create_invoi
 import { migration as createInvoiceItemsTable } from './20251105_000022_create_invoice_items_table';
 import { migration as createProductsTable } from './20251105_000023_create_products_table';
 import { migration as createPriceHistoryTable } from './20251105_000024_create_price_history_table';
+import { migration as addValeAccountType } from './20251106_000020_add_vale_account_type';
 import { Migration } from './migration.interface';
 
 /**
@@ -58,4 +59,5 @@ export const migrations: Migration[] = [
   createInvoiceItemsTable,
   createProductsTable,
   createPriceHistoryTable,
+  addValeAccountType,
 ];

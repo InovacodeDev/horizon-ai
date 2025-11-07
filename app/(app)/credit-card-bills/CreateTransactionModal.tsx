@@ -6,6 +6,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import CurrencyInput from '@/components/ui/CurrencyInput';
 import CategorySelect from '@/components/ui/CategorySelect';
+import { getCurrentDateInUserTimezone } from '@/lib/utils/timezone';
 
 interface CreateTransactionModalProps {
   creditCard: any;
@@ -19,7 +20,7 @@ const CreateTransactionModal: React.FC<CreateTransactionModalProps> = ({ creditC
     category: '',
     description: '',
     merchant: '',
-    date: new Date().toISOString().split('T')[0],
+    date: getCurrentDateInUserTimezone(),
     installments: '1',
     isRecurring: false,
     recurringDay: '1',

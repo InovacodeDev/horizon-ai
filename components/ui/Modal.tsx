@@ -9,16 +9,20 @@ interface ModalProps {
     onClose: () => void;
     title: string;
     children: React.ReactNode;
+    size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'large';
     maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 }
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, maxWidth = 'md' }) => {
+const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size, maxWidth = 'md' }) => {
+    // Support both 'size' and 'maxWidth' props for backwards compatibility
+    const effectiveSize = size || maxWidth;
     const maxWidthClasses = {
         sm: 'max-w-sm',
         md: 'max-w-md',
         lg: 'max-w-lg',
         xl: 'max-w-xl',
         '2xl': 'max-w-2xl',
+        large: 'max-w-4xl',
     };
     useEffect(() => {
         const handleEsc = (event: KeyboardEvent) => {
@@ -43,7 +47,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, maxWidt
             onClick={onClose}
         >
             <div
-                className={`bg-surface rounded-l w-full ${maxWidthClasses[maxWidth]} shadow-xl transform transition-all`}
+                className={`bg-surface rounded-l w-full ${maxWidthClasses[effectiveSize]} shadow-xl transform transition-all`}
                 onClick={(e) => e.stopPropagation()}
             >
                 <header className="flex items-center justify-between p-4 border-b border-outline">

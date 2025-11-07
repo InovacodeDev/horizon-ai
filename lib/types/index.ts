@@ -73,7 +73,7 @@ export interface UserSettings {
 // Account Types
 // ============================================
 
-export type AccountType = 'checking' | 'savings' | 'investment' | 'other';
+export type AccountType = 'checking' | 'savings' | 'investment' | 'vale' | 'other';
 export type AccountStatus = 'Connected' | 'Sync Error' | 'Disconnected' | 'Manual';
 
 /**

@@ -31,7 +31,7 @@ export async function createAccountAction(
 
     // Extract form data
     const name = formData.get('name') as string;
-    const accountType = formData.get('account_type') as 'checking' | 'savings' | 'investment' | 'other';
+    const accountType = formData.get('account_type') as 'checking' | 'savings' | 'investment' | 'vale' | 'other';
     const initialBalance = parseFloat(formData.get('initial_balance') as string) || 0;
     const bankId = formData.get('bank_id') as string;
     const lastDigits = formData.get('last_digits') as string;
@@ -104,7 +104,7 @@ export async function updateAccountAction(
 
     // Extract form data
     const name = formData.get('name') as string;
-    const accountType = formData.get('account_type') as 'checking' | 'savings' | 'investment' | 'other';
+    const accountType = formData.get('account_type') as 'checking' | 'savings' | 'investment' | 'vale' | 'other';
     const bankId = formData.get('bank_id') as string;
     const lastDigits = formData.get('last_digits') as string;
 

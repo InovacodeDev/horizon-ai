@@ -81,7 +81,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
 
     if (body.account_type !== undefined) {
-      const validAccountTypes = ['checking', 'savings', 'investment', 'other'];
+      const validAccountTypes = ['checking', 'savings', 'investment', 'vale', 'other'];
       if (!validAccountTypes.includes(body.account_type)) {
         return NextResponse.json(
           {

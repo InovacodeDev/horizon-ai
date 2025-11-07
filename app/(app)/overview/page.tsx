@@ -453,7 +453,7 @@ export default function OverviewPage() {
                 date: apiTx.date,
                 bankName: accountName,
                 category: category?.name || apiTx.category || 'Uncategorized',
-                type: 'expense',
+                type: apiTx.type,
                 icon: categoryIcon,
                 notes: apiTx.description || '',
                 account_id: apiTx.account_id,

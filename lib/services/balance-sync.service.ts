@@ -26,6 +26,8 @@ export class BalanceSyncService {
       // Buscar a conta
       const account = await this.dbAdapter.getDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, accountId);
 
+      console.log(`[BalanceSync] Syncing account ${accountId} (${account.name}, type: ${account.account_type})`);
+
       // Parse synced transaction IDs
       let syncedIds: string[] = [];
       if (account.synced_transaction_ids) {
@@ -65,6 +67,8 @@ export class BalanceSyncService {
       // O balance sempre começa em 0 e é calculado pela soma das transações
       let newBalance = 0;
 
+      console.log(`[BalanceSync] Found ${transactions.length} transactions for account ${accountId}`);
+
       // Somar/subtrair todas as transações
       for (const transaction of transactions) {
         // Ignorar transações de cartão de crédito
@@ -82,12 +86,16 @@ export class BalanceSyncService {
 
         if (data.credit_card_id) continue;
 
-        if (transaction.type === 'income') {
+        if (transaction.type === 'income' || transaction.type === 'salary') {
           newBalance += transaction.amount;
+          console.log(`[BalanceSync] Added income/salary: +${transaction.amount}, new balance: ${newBalance}`);
         } else if (transaction.type === 'expense') {
           newBalance -= transaction.amount;
+          console.log(`[BalanceSync] Subtracted expense: -${transaction.amount}, new balance: ${newBalance}`);
         }
       }
+
+      console.log(`[BalanceSync] Final calculated balance for account ${accountId}: ${newBalance}`);
 
       // Atualizar conta com novo balance e IDs sincronizados
       const updatedSyncedIds = transactions
@@ -105,11 +113,26 @@ export class BalanceSyncService {
         })
         .map((t: any) => t.$id);
 
-      await this.dbAdapter.updateDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, accountId, {
+      // Prepare update payload with only the fields we want to change
+      // Include all required fields from the account to avoid validation errors
+      const { dateToUserTimezone } = await import('@/lib/utils/timezone');
+      const now = dateToUserTimezone(new Date().toISOString().split('T')[0]);
+
+      const updatePayload = {
+        user_id: account.user_id,
+        name: account.name,
+        account_type: account.account_type || 'checking', // Default to 'checking' if missing
+        is_manual: account.is_manual ?? true, // Default to true if missing
         balance: newBalance,
         synced_transaction_ids: JSON.stringify(updatedSyncedIds),
-        updated_at: new Date().toISOString(),
-      });
+        updated_at: now,
+      };
+
+      console.log(`[BalanceSync] Updating account ${accountId} with balance: ${newBalance}`);
+
+      await this.dbAdapter.updateDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, accountId, updatePayload);
+
+      console.log(`[BalanceSync] Successfully updated account ${accountId} balance to ${newBalance}`);
 
       return newBalance;
     } catch (error: any) {

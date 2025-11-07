@@ -19,6 +19,7 @@ import DateInput from '@/components/ui/DateInput';
 import Modal from '@/components/ui/Modal';
 import { useAccounts } from '@/hooks/useAccounts';
 import type { Investment, InvestmentType } from '@/lib/types/investment.types';
+import { getCurrentDateInUserTimezone } from '@/lib/utils/timezone';
 
 // Mock data - substituir com chamadas reais à API
 const mockInvestments: Investment[] = [
@@ -74,7 +75,7 @@ const InvestmentsPage: React.FC = () => {
     ticker: '',
     quantity: 0,
     purchase_price: 0,
-    purchase_date: new Date().toISOString().split('T')[0],
+    purchase_date: getCurrentDateInUserTimezone(),
     current_price: 0,
     account_id: '',
   });

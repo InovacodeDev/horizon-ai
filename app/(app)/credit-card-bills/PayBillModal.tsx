@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { XIcon } from '@/components/assets/Icons';
 import Button from '@/components/ui/Button';
 import { useAccounts } from '@/hooks/useAccounts';
+import { getCurrentDateInUserTimezone } from '@/lib/utils/timezone';
 
 interface PayBillModalProps {
   bill: {
@@ -24,9 +25,7 @@ interface PayBillModalProps {
 const PayBillModal: React.FC<PayBillModalProps> = ({ bill, creditCard, onClose, onSuccess }) => {
   const { accounts } = useAccounts();
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
-  const [paymentDate, setPaymentDate] = useState<string>(
-    new Date().toISOString().split('T')[0]
-  );
+  const [paymentDate, setPaymentDate] = useState<string>(getCurrentDateInUserTimezone());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

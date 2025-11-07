@@ -124,7 +124,7 @@ export class TransactionService {
    */
   async createManualTransaction(data: CreateTransactionData): Promise<Transaction> {
     const id = ID.unique();
-    const now = new Date().toISOString();
+    const now = dateToUserTimezone(new Date().toISOString().split('T')[0]);
 
     // Build data object only for fields that don't have dedicated columns
     const transactionData: any = {};
@@ -278,7 +278,7 @@ export class TransactionService {
    */
   async createIntegrationTransaction(data: CreateIntegrationTransactionData): Promise<Transaction> {
     const id = ID.unique();
-    const now = new Date().toISOString();
+    const now = dateToUserTimezone(new Date().toISOString().split('T')[0]);
 
     // Build data object with ALL fields except core indexed ones
     const transactionData: any = {};
@@ -358,7 +358,7 @@ export class TransactionService {
    */
   async updateTransaction(transactionId: string, data: UpdateTransactionData): Promise<Transaction> {
     try {
-      const now = new Date().toISOString();
+      const now = dateToUserTimezone(new Date().toISOString().split('T')[0]);
 
       // Get existing transaction to merge data and track account changes
       const existing = await this.getTransactionById(transactionId);
@@ -714,7 +714,7 @@ export class TransactionService {
     const categoryBreakdown: Record<string, number> = {};
 
     for (const transaction of transactions) {
-      if (transaction.type === 'income') {
+      if (transaction.type === 'income' || transaction.type === 'salary') {
         totalIncome += transaction.amount;
       } else if (transaction.type === 'expense') {
         totalExpense += transaction.amount;

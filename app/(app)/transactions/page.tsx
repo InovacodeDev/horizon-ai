@@ -34,6 +34,7 @@ import { useTransactions } from "@/hooks/useTransactions";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useCreditCards } from "@/hooks/useCreditCards";
 import { useSearchParams } from "next/navigation";
+import { getCurrentDateInUserTimezone } from "@/lib/utils/timezone";
 
 // Helper function to convert date string to ISO string in user's timezone
 const dateToUserTimezone = (dateString: string): string => {
@@ -271,7 +272,7 @@ export default function TransactionsPage() {
     const initialNewTransactionState = {
         description: "",
         amount: 0,
-        date: new Date().toISOString().split("T")[0],
+        date: getCurrentDateInUserTimezone(),
         bankName: "",
         category: "",
         type: "debit" as Transaction['type'],
@@ -296,7 +297,12 @@ export default function TransactionsPage() {
 
     // Convert API transactions to UI format
     const transactions: Transaction[] = useMemo(() => {
-        return apiTransactions.map((apiTx) => {
+        // Deduplicate transactions by $id to prevent React key errors
+        const uniqueTransactions = Array.from(
+            new Map(apiTransactions.map(tx => [tx.$id, tx])).values()
+        );
+        
+        return uniqueTransactions.map((apiTx) => {
             // Map API type to UI TransactionType
             const mapTransactionType = (type: string, source?: string): Transaction['type'] => {
                 if (source === 'integration' || source === 'import') {

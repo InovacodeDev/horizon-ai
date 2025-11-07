@@ -208,7 +208,7 @@ export async function getProjectionSummary(): Promise<{
     }
 
     const totalIncome = projectedTransactions
-      .filter((tx) => tx.type === 'income')
+      .filter((tx) => tx.type === 'income' || tx.type === 'salary')
       .reduce((sum, tx) => sum + tx.amount, 0);
 
     const totalExpenses = projectedTransactions

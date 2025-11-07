@@ -52,7 +52,7 @@ async function testBalanceSync() {
 
       if (data.credit_card_id) continue;
 
-      if (tx.type === 'income') {
+      if (tx.type === 'income' || tx.type === 'salary') {
         calculatedBalance += tx.amount;
         console.log(`   ✅ Receita: +R$ ${tx.amount.toFixed(2)} (${tx.description || 'Sem descrição'})`);
       } else if (tx.type === 'expense') {

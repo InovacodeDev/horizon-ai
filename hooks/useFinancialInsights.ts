@@ -138,7 +138,11 @@ export function useFinancialInsights(transactions: Transaction[]): FinancialInsi
       const currentMonthIncome = transactions
         .filter((tx) => {
           const txDate = new Date(tx.date);
-          return txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear && tx.type === 'income';
+          return (
+            txDate.getMonth() === currentMonth &&
+            txDate.getFullYear() === currentYear &&
+            (tx.type === 'income' || tx.type === 'salary')
+          );
         })
         .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
 
@@ -157,8 +161,9 @@ export function useFinancialInsights(transactions: Transaction[]): FinancialInsi
 
       // Estimate income for the month (assume similar to average or already received)
       const avgPreviousIncome =
-        transactions.filter((tx) => tx.type === 'income').reduce((sum, tx) => sum + Math.abs(tx.amount), 0) /
-        previousMonthsCount;
+        transactions
+          .filter((tx) => tx.type === 'income' || tx.type === 'salary')
+          .reduce((sum, tx) => sum + Math.abs(tx.amount), 0) / previousMonthsCount;
 
       const estimatedTotalIncome = Math.max(currentMonthIncome, avgPreviousIncome);
       const estimatedSurplus = estimatedTotalIncome - estimatedTotalExpenses;

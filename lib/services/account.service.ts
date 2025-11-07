@@ -9,7 +9,7 @@ import { ID, Query } from 'node-appwrite';
 
 export interface CreateAccountData {
   name: string;
-  account_type: 'checking' | 'savings' | 'investment' | 'other';
+  account_type: 'checking' | 'savings' | 'investment' | 'vale' | 'other';
   initial_balance?: number;
   is_manual?: boolean;
   bank_id?: string;
@@ -21,7 +21,7 @@ export interface CreateAccountData {
 
 export interface UpdateAccountData {
   name?: string;
-  account_type?: 'checking' | 'savings' | 'investment' | 'other';
+  account_type?: 'checking' | 'savings' | 'investment' | 'vale' | 'other';
   bank_id?: string;
   last_digits?: string;
   status?: 'Connected' | 'Sync Error' | 'Disconnected' | 'Manual';
@@ -47,6 +47,9 @@ export class AccountService {
         integration_data: data.integration_data,
       };
 
+      const { dateToUserTimezone } = await import('@/lib/utils/timezone');
+      const now = dateToUserTimezone(new Date().toISOString().split('T')[0]);
+
       const document = await this.dbAdapter.createDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, ID.unique(), {
         user_id: userId,
         name: data.name,
@@ -54,8 +57,8 @@ export class AccountService {
         balance: 0, // Balance sempre começa em 0 e é calculado pelas transações
         is_manual: data.is_manual ?? true,
         data: JSON.stringify(accountData),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        created_at: now,
+        updated_at: now,
       });
 
       const account = this.deserializeAccount(document);
@@ -72,7 +75,7 @@ export class AccountService {
             type: 'income',
             category: 'balance',
             description: `Saldo inicial da conta ${data.name}`,
-            date: new Date().toISOString(),
+            date: now,
             currency: 'BRL',
             accountId: account.$id,
             status: 'completed',
@@ -136,8 +139,11 @@ export class AccountService {
       // First verify the account exists and belongs to the user
       const existingAccount = await this.getAccountById(accountId, userId);
 
+      const { dateToUserTimezone } = await import('@/lib/utils/timezone');
+      const now = dateToUserTimezone(new Date().toISOString().split('T')[0]);
+
       const updateData: Record<string, any> = {
-        updated_at: new Date().toISOString(),
+        updated_at: now,
       };
 
       if (data.name !== undefined) {
@@ -238,6 +244,9 @@ export class AccountService {
 
       // Create transfer log
       const { COLLECTIONS, DATABASE_ID } = await import('@/lib/appwrite/schema');
+      const { dateToUserTimezone } = await import('@/lib/utils/timezone');
+      const now = dateToUserTimezone(new Date().toISOString().split('T')[0]);
+
       await this.dbAdapter.createDocument(DATABASE_ID, COLLECTIONS.TRANSFER_LOGS, ID.unique(), {
         user_id: userId,
         from_account_id: data.fromAccountId,
@@ -245,23 +254,26 @@ export class AccountService {
         amount: data.amount,
         description: data.description || `Transferência de ${fromAccount.name} para ${toAccount.name}`,
         status: 'completed',
-        created_at: new Date().toISOString(),
+        created_at: now,
       });
 
       // Update balances
       await this.dbAdapter.updateDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, data.fromAccountId, {
         balance: fromAccount.balance - data.amount,
-        updated_at: new Date().toISOString(),
+        updated_at: now,
       });
 
       await this.dbAdapter.updateDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, data.toAccountId, {
         balance: toAccount.balance + data.amount,
-        updated_at: new Date().toISOString(),
+        updated_at: now,
       });
     } catch (error: any) {
       // Log failed transfer
       try {
         const { COLLECTIONS, DATABASE_ID } = await import('@/lib/appwrite/schema');
+        const { dateToUserTimezone } = await import('@/lib/utils/timezone');
+        const now = dateToUserTimezone(new Date().toISOString().split('T')[0]);
+
         await this.dbAdapter.createDocument(DATABASE_ID, COLLECTIONS.TRANSFER_LOGS, ID.unique(), {
           user_id: userId,
           from_account_id: data.fromAccountId,
@@ -269,7 +281,7 @@ export class AccountService {
           amount: data.amount,
           description: data.description || 'Transferência',
           status: 'failed',
-          created_at: new Date().toISOString(),
+          created_at: now,
         });
       } catch (logError) {
         console.error('Failed to log transfer error:', logError);

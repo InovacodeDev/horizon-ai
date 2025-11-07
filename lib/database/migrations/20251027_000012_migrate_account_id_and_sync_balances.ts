@@ -114,7 +114,7 @@ export const migration: Migration = {
           // Ignorar transações de cartão de crédito
           if (data.credit_card_id) continue;
 
-          if (transaction.type === 'income') {
+          if (transaction.type === 'income' || transaction.type === 'salary') {
             transactionSum += transaction.amount;
           } else if (transaction.type === 'expense') {
             transactionSum -= transaction.amount;

@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate account type
-    const validAccountTypes = ['checking', 'savings', 'investment', 'other'];
+    const validAccountTypes = ['checking', 'savings', 'investment', 'vale', 'other'];
     if (!validAccountTypes.includes(body.account_type)) {
       return NextResponse.json(
         {

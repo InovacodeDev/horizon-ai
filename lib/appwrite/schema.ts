@@ -463,7 +463,7 @@ export const accountsSchema = {
     {
       key: 'account_type',
       type: 'enum',
-      elements: ['checking', 'savings', 'investment', 'other'],
+      elements: ['checking', 'savings', 'investment', 'vale', 'other'],
       required: true,
       array: false,
     },
@@ -486,7 +486,7 @@ export interface Account {
   $updatedAt: string;
   user_id: string;
   name: string;
-  account_type: 'checking' | 'savings' | 'investment' | 'other';
+  account_type: 'checking' | 'savings' | 'investment' | 'vale' | 'other';
   balance: number;
   is_manual: boolean;
   synced_transaction_ids?: string; // JSON array of synced transaction IDs
