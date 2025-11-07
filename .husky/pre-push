@@ -1,0 +1,30 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Running pre-push validations..."
+
+# Run TypeScript type checking
+echo "📝 Type checking..."
+pnpm typecheck
+if [ $? -ne 0 ]; then
+  echo "❌ TypeScript errors found. Push aborted."
+  exit 1
+fi
+
+# Run linting
+echo "🧹 Linting..."
+pnpm lint
+if [ $? -ne 0 ]; then
+  echo "❌ Linting errors found. Push aborted."
+  exit 1
+fi
+
+# Run build to ensure it compiles
+echo "🏗️  Building..."
+pnpm build
+if [ $? -ne 0 ]; then
+  echo "❌ Build failed. Push aborted."
+  exit 1
+fi
+
+echo "✅ All validations passed! Pushing..."
