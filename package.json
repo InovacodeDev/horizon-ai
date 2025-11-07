@@ -17,7 +17,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
     "clean": "rm -rf .next dist build",
     "pre-push": "bash scripts/pre-push-check.sh",
-    "prepare": "command -v husky >/dev/null 2>&1 && husky install || true",
+    "prepare": "husky",
     "validate:env": "tsx scripts/validate-env.ts",
     "validate:env:verbose": "tsx scripts/validate-env.ts --verbose",
     "validate:appwrite": "tsx scripts/validate-appwrite.ts",
