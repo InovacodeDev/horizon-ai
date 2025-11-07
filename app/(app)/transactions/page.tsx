@@ -337,7 +337,12 @@ export default function TransactionsPage() {
     const allAccounts = useMemo(() => [...new Set(transactions.map((tx) => tx.bankName))], [transactions]);
 
     const filteredTransactions = useMemo(() => {
-        return transactions.filter((tx) => {
+        // Deduplicate transactions by ID first
+        const uniqueTransactions = Array.from(
+            new Map(transactions.map(tx => [tx.$id, tx])).values()
+        );
+        
+        return uniqueTransactions.filter((tx) => {
             const searchMatch = (tx.description || '').toLowerCase().includes(searchTerm.toLowerCase());
             const categoryMatch = filters.category === "all" || tx.category === filters.category;
             const accountMatch = filters.account === "all" || tx.bankName === filters.account;
@@ -726,9 +731,9 @@ export default function TransactionsPage() {
                                 {date}
                             </h2>
                             <ul className="divide-y divide-outline bg-surface-container rounded-xl p-1">
-                                {(transactions as Transaction[]).map((tx) => (
+                                {(transactions as Transaction[]).map((tx, txIndex) => (
                                     <TransactionItem
-                                        key={tx.$id}
+                                        key={`${tx.$id}-${txIndex}`}
                                         transaction={tx}
                                         onClick={() => setSelectedTransaction(tx)}
                                     />
