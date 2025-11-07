@@ -2,6 +2,14 @@
 
 Este projeto possui validações automáticas para garantir que apenas código funcional seja deployado.
 
+## ✅ Sistema Implementado
+
+O projeto agora conta com:
+
+- **Pre-Push Hook**: Valida TypeScript e Build antes de cada push
+- **GitHub Actions CI/CD**: Pipeline completo de validação e deploy
+- **Vercel Integration**: Deploy automático apenas na branch `main`
+
 ## 📋 Opções de Validação
 
 ### 1. Pre-Push Hook (Recomendado)
