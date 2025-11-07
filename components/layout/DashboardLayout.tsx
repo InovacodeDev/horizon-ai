@@ -49,7 +49,7 @@ const NavItem: React.FC<NavItemProps> = ({
   onToggle,
   isSubmenuItem = false
 }) => {
-  const baseClasses = `flex items-center p-2.5 rounded-md text-sm font-medium transition-colors-smooth
+  const baseClasses = `flex items-center p-2.5 rounded-md text-sm font-medium transition-colors-smooth focus:outline-none
     ${isSubmenuItem ? 'pl-11' : ''}
     ${disabled ? 'opacity-50 cursor-not-allowed text-text-secondary' : isActive ? 'bg-blue-primary text-white' : 'text-text-secondary hover:bg-bg-secondary'}`;
 
@@ -76,7 +76,7 @@ const NavItem: React.FC<NavItemProps> = ({
   if (hasSubmenu && onToggle) {
     return (
       <div className="flex items-center gap-1">
-        <Link href={href} className="flex-1">
+        <Link href={href} className="flex-1 focus:outline-none">
           <div className={baseClasses}>
             <div className="mr-3 w-5 h-5 flex items-center justify-center">{icon}</div>
             <span className="flex-grow">{label}</span>
@@ -84,7 +84,7 @@ const NavItem: React.FC<NavItemProps> = ({
         </Link>
         <button
           onClick={onToggle}
-          className="p-3 rounded-md text-text-secondary hover:bg-bg-secondary transition-colors-smooth"
+          className="p-3 rounded-md text-text-secondary hover:bg-bg-secondary transition-colors-smooth focus:outline-none"
           aria-label={isExpanded ? 'Recolher submenu' : 'Expandir submenu'}
         >
           <svg
@@ -101,7 +101,7 @@ const NavItem: React.FC<NavItemProps> = ({
   }
 
   return (
-    <Link href={href} className="block">
+    <Link href={href} className="block focus:outline-none">
       <div className={baseClasses}>
         <div className="mr-3 w-5 h-5 flex items-center justify-center">{icon}</div>
         <span className="flex-grow">{label}</span>
