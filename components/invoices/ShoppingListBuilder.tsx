@@ -185,42 +185,42 @@ export default function ShoppingListBuilder({ availableProducts }: ShoppingListB
 
           {/* Selected Products Summary */}
           {selectedProducts.size > 0 && (
-            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="mb-4 p-4 bg-primary/10 border border-primary/20 rounded-lg dark:bg-primary/20 dark:border-primary/30">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-blue-900">
+                <span className="text-sm font-medium text-on-surface">
                   {selectedProducts.size} {selectedProducts.size === 1 ? 'produto selecionado' : 'produtos selecionados'}
                 </span>
-                <span className="text-sm font-semibold text-blue-900">
+                <span className="text-sm font-semibold text-on-surface">
                   Total Estimado: {formatCurrency(estimatedTotal)}
                 </span>
               </div>
               
               <div className="space-y-2 mt-3">
                 {Array.from(selectedProducts.values()).map((item) => (
-                  <div key={item.productId} className="flex items-center justify-between bg-white p-2 rounded">
-                    <span className="text-sm text-gray-900">{item.productName}</span>
+                  <div key={item.productId} className="flex items-center justify-between bg-surface p-2 rounded dark:bg-surface-variant/30">
+                    <span className="text-sm text-on-surface">{item.productName}</span>
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => updateQuantity(item.productId, item.quantity - 1)}
-                          className="w-6 h-6 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded text-gray-700"
+                          className="w-6 h-6 flex items-center justify-center bg-surface-variant hover:bg-surface-variant/80 rounded text-on-surface dark:bg-surface-variant/50 dark:hover:bg-surface-variant/70"
                         >
                           -
                         </button>
-                        <span className="text-sm font-medium w-8 text-center">{item.quantity}</span>
+                        <span className="text-sm font-medium w-8 text-center text-on-surface">{item.quantity}</span>
                         <button
                           onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                          className="w-6 h-6 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded text-gray-700"
+                          className="w-6 h-6 flex items-center justify-center bg-surface-variant hover:bg-surface-variant/80 rounded text-on-surface dark:bg-surface-variant/50 dark:hover:bg-surface-variant/70"
                         >
                           +
                         </button>
                       </div>
-                      <span className="text-sm text-gray-600 w-24 text-right">
+                      <span className="text-sm text-on-surface-variant w-24 text-right">
                         {formatCurrency((item.estimatedPrice || 0) * item.quantity)}
                       </span>
                       <button
                         onClick={() => toggleProduct(availableProducts.find((p) => p.id === item.productId)!)}
-                        className="text-red-600 hover:text-red-700"
+                        className="text-error hover:text-error/80"
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -260,13 +260,13 @@ export default function ShoppingListBuilder({ availableProducts }: ShoppingListB
                   onClick={() => toggleProduct(product)}
                   className={`p-3 border-2 rounded-lg cursor-pointer transition-all ${
                     isSelected
-                      ? 'border-primary bg-primary/5'
-                      : 'border-gray-200 hover:border-gray-300 bg-white'
+                      ? 'border-primary bg-primary/5 dark:bg-primary/10'
+                      : 'border-outline hover:border-outline-variant bg-surface dark:bg-surface-variant/20 dark:hover:border-outline'
                   }`}
                 >
                   <div className="flex items-start gap-2">
                     <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                      isSelected ? 'border-primary bg-primary' : 'border-gray-300'
+                      isSelected ? 'border-primary bg-primary' : 'border-outline dark:border-outline-variant'
                     }`}>
                       {isSelected && (
                         <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -275,8 +275,8 @@ export default function ShoppingListBuilder({ availableProducts }: ShoppingListB
                       )}
                     </div>
                     <div className="flex-grow min-w-0">
-                      <p className="text-sm font-medium text-gray-900 line-clamp-2">{product.name}</p>
-                      <p className="text-xs text-gray-600 mt-1">
+                      <p className="text-sm font-medium text-on-surface line-clamp-2">{product.name}</p>
+                      <p className="text-xs text-on-surface-variant mt-1">
                         Média: {formatCurrency(product.statistics.averagePrice)}
                       </p>
                     </div>

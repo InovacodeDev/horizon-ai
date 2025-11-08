@@ -82,13 +82,34 @@ export default function PriceHistoryModal({ isOpen, onClose, productId, productN
     }).format(date);
   };
 
-  // Prepare chart data
-  const chartData = priceHistory.map((entry) => ({
-    date: formatChartDate(entry.purchaseDate),
-    fullDate: formatDate(entry.purchaseDate),
-    price: entry.unitPrice,
-    merchant: entry.merchantName,
+  // Prepare chart data - group by unique purchase days (same merchant + same price on same day = 1 purchase)
+  const uniquePurchaseDays = new Set<string>();
+  const purchasesByDay = new Map<string, { date: string; price: number; merchant: string; count: number }>();
+  
+  priceHistory.forEach((entry) => {
+    const dayKey = entry.purchaseDate.split('T')[0]; // Get just the date part
+    const purchaseKey = `${dayKey}-${entry.merchantCnpj}-${entry.unitPrice}`;
+    
+    if (!purchasesByDay.has(dayKey)) {
+      purchasesByDay.set(dayKey, {
+        date: dayKey,
+        price: entry.unitPrice,
+        merchant: entry.merchantName,
+        count: 1,
+      });
+      uniquePurchaseDays.add(dayKey);
+    }
+  });
+
+  const chartData = Array.from(purchasesByDay.values()).map((entry) => ({
+    date: formatChartDate(entry.date),
+    fullDate: formatDate(entry.date),
+    price: entry.price,
+    merchant: entry.merchant,
   }));
+
+  // Determine if we should show the chart (only if more than 1 unique purchase day)
+  const shouldShowChart = uniquePurchaseDays.size > 1;
 
   // Calculate statistics
   const stats = priceHistory.length > 0 ? {
@@ -151,73 +172,80 @@ export default function PriceHistoryModal({ isOpen, onClose, productId, productN
             {/* Statistics Cards */}
             {stats && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-surface-variant/20 rounded-lg p-4">
+                <div className="bg-surface-variant/20 rounded-lg p-4 dark:bg-surface-variant/30">
                   <p className="text-sm text-on-surface-variant mb-1">Preço Mínimo</p>
                   <p className="text-xl font-semibold text-success">{formatCurrency(stats.minPrice)}</p>
                 </div>
-                <div className="bg-surface-variant/20 rounded-lg p-4">
+                <div className="bg-surface-variant/20 rounded-lg p-4 dark:bg-surface-variant/30">
                   <p className="text-sm text-on-surface-variant mb-1">Preço Máximo</p>
                   <p className="text-xl font-semibold text-error">{formatCurrency(stats.maxPrice)}</p>
                 </div>
-                <div className="bg-surface-variant/20 rounded-lg p-4">
+                <div className="bg-surface-variant/20 rounded-lg p-4 dark:bg-surface-variant/30">
                   <p className="text-sm text-on-surface-variant mb-1">Preço Médio</p>
                   <p className="text-xl font-semibold text-on-surface">{formatCurrency(stats.avgPrice)}</p>
                 </div>
-                <div className="bg-surface-variant/20 rounded-lg p-4">
+                <div className="bg-surface-variant/20 rounded-lg p-4 dark:bg-surface-variant/30">
                   <p className="text-sm text-on-surface-variant mb-1">Total de Compras</p>
                   <p className="text-xl font-semibold text-on-surface">{stats.totalPurchases}</p>
                 </div>
               </div>
             )}
 
-            {/* Chart */}
-            <div className="bg-surface-variant/10 rounded-lg p-4">
-              <h3 className="text-lg font-medium text-on-surface mb-4">Evolução de Preços</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                  <XAxis 
-                    dataKey="date" 
-                    stroke="#666"
-                    style={{ fontSize: '12px' }}
-                  />
-                  <YAxis 
-                    stroke="#666"
-                    style={{ fontSize: '12px' }}
-                    tickFormatter={(value) => `R$ ${value.toFixed(2)}`}
-                  />
-                  <Tooltip 
-                    formatter={(value: number) => formatCurrency(value)}
-                    labelFormatter={(label, payload) => {
-                      if (payload && payload[0]) {
-                        return payload[0].payload.fullDate;
-                      }
-                      return label;
-                    }}
-                    contentStyle={{
-                      backgroundColor: '#fff',
-                      border: '1px solid #ccc',
-                      borderRadius: '8px',
-                      padding: '8px',
-                    }}
-                  />
-                  <Legend />
-                  <Line 
-                    type="monotone" 
-                    dataKey="price" 
-                    stroke="#1976d2" 
-                    strokeWidth={2}
-                    dot={{ fill: '#1976d2', r: 4 }}
-                    activeDot={{ r: 6 }}
-                    name="Preço"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            {/* Chart - Only show if more than 1 unique purchase day */}
+            {shouldShowChart && (
+              <div className="bg-surface-variant/10 rounded-lg p-4 dark:bg-surface-variant/20">
+                <h3 className="text-lg font-medium text-on-surface mb-4">Evolução de Preços</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-outline opacity-30" />
+                    <XAxis 
+                      dataKey="date" 
+                      stroke="currentColor"
+                      className="text-on-surface-variant"
+                      style={{ fontSize: '12px' }}
+                    />
+                    <YAxis 
+                      stroke="currentColor"
+                      className="text-on-surface-variant"
+                      style={{ fontSize: '12px' }}
+                      tickFormatter={(value) => `R$ ${value.toFixed(2)}`}
+                    />
+                    <Tooltip 
+                      formatter={(value: number) => formatCurrency(value)}
+                      labelFormatter={(label, payload) => {
+                        if (payload && payload[0]) {
+                          return payload[0].payload.fullDate;
+                        }
+                        return label;
+                      }}
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--surface))',
+                        color: 'hsl(var(--on-surface))',
+                        border: '1px solid hsl(var(--outline))',
+                        borderRadius: '8px',
+                        padding: '8px',
+                      }}
+                    />
+                    <Legend />
+                    <Line 
+                      type="monotone" 
+                      dataKey="price" 
+                      stroke="hsl(var(--primary))" 
+                      strokeWidth={2}
+                      dot={{ fill: 'hsl(var(--primary))', r: 4 }}
+                      activeDot={{ r: 6 }}
+                      name="Preço"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
 
             {/* Purchase History Table */}
             <div>
-              <h3 className="text-lg font-medium text-on-surface mb-4">Histórico Detalhado</h3>
+              <h3 className="text-lg font-medium text-on-surface mb-4">
+                Histórico Detalhado {!shouldShowChart && <span className="text-sm font-normal text-on-surface-variant">(Todas as compras)</span>}
+              </h3>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
@@ -230,7 +258,7 @@ export default function PriceHistoryModal({ isOpen, onClose, productId, productN
                   </thead>
                   <tbody>
                     {priceHistory.map((entry) => (
-                      <tr key={entry.id} className="border-b border-outline/50 hover:bg-surface-variant/10">
+                      <tr key={entry.id} className="border-b border-outline/50 hover:bg-surface-variant/10 dark:hover:bg-surface-variant/20">
                         <td className="py-3 px-4 text-sm text-on-surface">{formatDate(entry.purchaseDate)}</td>
                         <td className="py-3 px-4 text-sm text-on-surface">{entry.merchantName}</td>
                         <td className="py-3 px-4 text-sm text-on-surface text-right">{entry.quantity}</td>

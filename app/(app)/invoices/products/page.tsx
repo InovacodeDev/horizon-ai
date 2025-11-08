@@ -176,10 +176,10 @@ export default function ProductsPage() {
                 placeholder="Buscar produtos..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-4 py-2 pl-10 border border-outline rounded-lg bg-surface text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary dark:bg-surface-variant/20 dark:border-outline-variant"
               />
               <svg
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-on-surface-variant"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -197,7 +197,7 @@ export default function ProductsPage() {
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              className="px-4 py-2 border border-outline rounded-lg bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary dark:bg-surface-variant/20 dark:border-outline-variant"
             >
               <option value="">Todas as categorias</option>
               <option value="pharmacy">Farmácia</option>
@@ -301,7 +301,7 @@ export default function ProductsPage() {
               </div>
 
               {/* Product Statistics */}
-              <div className="space-y-2 border-t border-gray-200 pt-3">
+              <div className="space-y-2 border-t border-outline pt-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-on-surface-variant">Preço Médio</span>
                   <span className="text-sm font-medium text-on-surface">
@@ -325,7 +325,7 @@ export default function ProductsPage() {
               </div>
 
               {/* View Details Button */}
-              <div className="mt-3 pt-3 border-t border-gray-200">
+              <div className="mt-3 pt-3 border-t border-outline">
                 <button
                   className="w-full text-sm text-primary hover:text-primary-dark font-medium flex items-center justify-center gap-1"
                   onClick={(e) => {

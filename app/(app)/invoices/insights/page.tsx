@@ -684,7 +684,7 @@ export default function InsightsPage() {
               const confidenceColor = prediction.confidence >= 0.8 ? 'text-green-600' : prediction.confidence >= 0.6 ? 'text-yellow-600' : 'text-gray-600';
 
               return (
-                <div key={index} className="border border-gray-200 rounded-lg p-4">
+                <div key={index} className="border border-outline rounded-lg p-4 dark:border-outline-variant dark:bg-surface-variant/10">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-medium text-on-surface">
                       {formatCategory(prediction.category)}
@@ -716,7 +716,7 @@ export default function InsightsPage() {
                       <span>Progresso</span>
                       <span>{Math.min(progressPercentage, 100).toFixed(0)}%</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="w-full bg-surface-variant/30 rounded-full h-2 dark:bg-surface-variant/50">
                       <div
                         className={`${progressBarColor} h-2 rounded-full transition-all duration-300`}
                         style={{ width: `${Math.min(progressPercentage, 100)}%` }}
@@ -751,7 +751,7 @@ export default function InsightsPage() {
 
                   {/* Trend Indicator */}
                   {prediction.trend !== 0 && (
-                    <div className="mt-2 pt-2 border-t border-gray-100">
+                    <div className="mt-2 pt-2 border-t border-outline/50 dark:border-outline-variant/50">
                       <div className="flex items-center gap-1 text-xs">
                         {prediction.trend > 0 ? (
                           <>
@@ -827,8 +827,9 @@ export default function InsightsPage() {
                 <Tooltip
                   formatter={(value: number) => formatCurrency(value)}
                   contentStyle={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                    border: '1px solid #e5e7eb',
+                    backgroundColor: 'hsl(var(--surface))',
+                    color: 'hsl(var(--on-surface))',
+                    border: '1px solid hsl(var(--outline))',
                     borderRadius: '8px',
                   }}
                 />
@@ -847,31 +848,34 @@ export default function InsightsPage() {
           {lineChartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={lineChartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-outline opacity-30" />
                 <XAxis
                   dataKey="month"
                   tick={{ fontSize: 12 }}
-                  stroke="#6b7280"
+                  stroke="currentColor"
+                  className="text-on-surface-variant"
                 />
                 <YAxis
                   tick={{ fontSize: 12 }}
-                  stroke="#6b7280"
+                  stroke="currentColor"
+                  className="text-on-surface-variant"
                   tickFormatter={(value) => `R$ ${(value / 1000).toFixed(1)}k`}
                 />
                 <Tooltip
                   formatter={(value: number) => formatCurrency(value)}
                   contentStyle={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                    border: '1px solid #e5e7eb',
+                    backgroundColor: 'hsl(var(--surface))',
+                    color: 'hsl(var(--on-surface))',
+                    border: '1px solid hsl(var(--outline))',
                     borderRadius: '8px',
                   }}
                 />
                 <Line
                   type="monotone"
                   dataKey="total"
-                  stroke="#3b82f6"
+                  stroke="hsl(var(--primary))"
                   strokeWidth={2}
-                  dot={{ fill: '#3b82f6', r: 4 }}
+                  dot={{ fill: 'hsl(var(--primary))', r: 4 }}
                   activeDot={{ r: 6 }}
                 />
               </LineChart>
@@ -889,18 +893,20 @@ export default function InsightsPage() {
           {barChartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={barChartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-outline opacity-30" />
                 <XAxis
                   dataKey="name"
                   tick={{ fontSize: 11 }}
-                  stroke="#6b7280"
+                  stroke="currentColor"
+                  className="text-on-surface-variant"
                   angle={-15}
                   textAnchor="end"
                   height={80}
                 />
                 <YAxis
                   tick={{ fontSize: 12 }}
-                  stroke="#6b7280"
+                  stroke="currentColor"
+                  className="text-on-surface-variant"
                   tickFormatter={(value) => `R$ ${(value / 1000).toFixed(1)}k`}
                 />
                 <Tooltip
@@ -910,12 +916,13 @@ export default function InsightsPage() {
                     return [value, name];
                   }}
                   contentStyle={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                    border: '1px solid #e5e7eb',
+                    backgroundColor: 'hsl(var(--surface))',
+                    color: 'hsl(var(--on-surface))',
+                    border: '1px solid hsl(var(--outline))',
                     borderRadius: '8px',
                   }}
                 />
-                <Bar dataKey="totalSpent" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="totalSpent" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -931,7 +938,7 @@ export default function InsightsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200">
+                <tr className="border-b border-outline">
                   <th className="text-left py-2 text-on-surface-variant font-medium">Categoria</th>
                   <th className="text-right py-2 text-on-surface-variant font-medium">Total</th>
                   <th className="text-right py-2 text-on-surface-variant font-medium">Média</th>
@@ -940,7 +947,7 @@ export default function InsightsPage() {
               </thead>
               <tbody>
                 {insights?.categoryBreakdown.map((cat, index) => (
-                  <tr key={index} className="border-b border-gray-100">
+                  <tr key={index} className="border-b border-outline/50 dark:border-outline-variant/50">
                     <td className="py-2 text-on-surface">
                       <div className="flex items-center gap-2">
                         <div
@@ -1018,16 +1025,16 @@ export default function InsightsPage() {
 
         {/* Add Budget Form */}
         {showAddBudget && (
-          <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <div className="mb-4 p-4 bg-surface-variant/20 rounded-lg border border-outline dark:bg-surface-variant/30 dark:border-outline-variant">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-on-surface mb-1">
                   Categoria
                 </label>
                 <select
                   value={newBudgetCategory}
                   onChange={(e) => setNewBudgetCategory(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 border border-outline rounded-md bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary dark:bg-surface-variant/20 dark:border-outline-variant"
                 >
                   <option value="">Selecione uma categoria</option>
                   {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
@@ -1038,7 +1045,7 @@ export default function InsightsPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-on-surface mb-1">
                   Limite Mensal (R$)
                 </label>
                 <input
@@ -1048,7 +1055,7 @@ export default function InsightsPage() {
                   placeholder="0.00"
                   step="0.01"
                   min="0"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 border border-outline rounded-md bg-surface text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary dark:bg-surface-variant/20 dark:border-outline-variant"
                 />
               </div>
             </div>
@@ -1103,7 +1110,7 @@ export default function InsightsPage() {
               const config = statusConfig[budget.status];
 
               return (
-                <div key={index} className="p-4 border border-gray-200 rounded-lg">
+                <div key={index} className="p-4 border border-outline rounded-lg dark:border-outline-variant dark:bg-surface-variant/10">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-medium text-on-surface">
                       {formatCategory(budget.category)}
@@ -1136,7 +1143,7 @@ export default function InsightsPage() {
 
                   {/* Progress Bar */}
                   <div className="mb-2">
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="w-full bg-surface-variant/30 rounded-full h-2 dark:bg-surface-variant/50">
                       <div
                         className={`${config.bgColor} h-2 rounded-full transition-all duration-300`}
                         style={{ width: `${Math.min(budget.percentage, 100)}%` }}
@@ -1166,10 +1173,10 @@ export default function InsightsPage() {
 
                   {/* Recommendation */}
                   {budget.recommendation && (
-                    <div className="mt-3 pt-3 border-t border-gray-100">
+                    <div className="mt-3 pt-3 border-t border-outline/50 dark:border-outline-variant/50">
                       <div className="flex items-start gap-2">
                         <svg
-                          className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5"
+                          className="w-4 h-4 text-primary flex-shrink-0 mt-0.5"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
