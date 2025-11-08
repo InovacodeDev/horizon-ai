@@ -93,7 +93,7 @@ export default function InvoiceDetailsModal({ invoiceId, isOpen, onClose, onDele
       await onDelete(invoiceId);
       setShowDeleteConfirm(false);
       onClose();
-    } catch (err: unknown) {
+    } catch (err: any) {
       setDeleting(false);
       setShowDeleteConfirm(false);
       setError(err.message || 'Falha ao excluir nota fiscal');
