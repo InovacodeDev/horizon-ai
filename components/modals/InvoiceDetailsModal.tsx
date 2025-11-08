@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import type { Invoice, InvoiceItem, InvoiceData } from '@/lib/appwrite/schema';
+import { unknown } from 'zod';
 
 interface InvoiceDetailsModalProps {
   invoiceId: string;
@@ -54,13 +55,7 @@ export default function InvoiceDetailsModal({ invoiceId, isOpen, onClose, onDele
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  useEffect(() => {
-    if (isOpen && invoiceId) {
-      fetchInvoiceDetails();
-    }
-  }, [isOpen, invoiceId]);
-
-  const fetchInvoiceDetails = async () => {
+  const fetchInvoiceDetails = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -81,7 +76,13 @@ export default function InvoiceDetailsModal({ invoiceId, isOpen, onClose, onDele
     } finally {
       setLoading(false);
     }
-  };
+  }, [invoiceId]);
+
+  useEffect(() => {
+    if (isOpen && invoiceId) {
+      fetchInvoiceDetails();
+    }
+  }, [isOpen, invoiceId, fetchInvoiceDetails]);
 
   const handleDeleteClick = () => {
     setShowDeleteConfirm(true);
@@ -141,13 +142,13 @@ export default function InvoiceDetailsModal({ invoiceId, isOpen, onClose, onDele
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto my-8">
+      <div className="bg-surface rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto my-8 dark:bg-surface-variant/95">
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
-          <h2 className="text-xl font-semibold text-gray-900">Detalhes da Nota Fiscal</h2>
+        <div className="flex justify-between items-center p-6 border-b border-outline sticky top-0 bg-surface z-10 dark:bg-surface-variant/95 dark:border-outline-variant">
+          <h2 className="text-xl font-semibold text-on-surface">Detalhes da Nota Fiscal</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-on-surface-variant hover:text-on-surface"
             type="button"
           >
             <svg
@@ -183,7 +184,7 @@ export default function InvoiceDetailsModal({ invoiceId, isOpen, onClose, onDele
 
           {/* Error State */}
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
+            <div className="bg-error/10 border border-error/20 text-error px-4 py-3 rounded dark:bg-error/20 dark:border-error/30">
               <p>{error}</p>
               <Button variant="ghost" onClick={fetchInvoiceDetails} className="mt-2">
                 Tentar Novamente
@@ -196,68 +197,68 @@ export default function InvoiceDetailsModal({ invoiceId, isOpen, onClose, onDele
             <div className="space-y-6">
               {/* Merchant Information */}
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Informações do Estabelecimento</h3>
-                <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                <h3 className="text-lg font-semibold text-on-surface mb-3">Informações do Estabelecimento</h3>
+                <div className="bg-surface-variant/20 rounded-lg p-4 space-y-2 dark:bg-surface-variant/30">
                   <div className="flex justify-between">
-                    <span className="text-sm font-medium text-gray-700">Nome:</span>
-                    <span className="text-sm text-gray-900">{invoice.merchant_name}</span>
+                    <span className="text-sm font-medium text-on-surface-variant">Nome:</span>
+                    <span className="text-sm text-on-surface">{invoice.merchant_name}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm font-medium text-gray-700">CNPJ:</span>
-                    <span className="text-sm text-gray-900 font-mono">{formatCNPJ(invoice.merchant_cnpj)}</span>
+                    <span className="text-sm font-medium text-on-surface-variant">CNPJ:</span>
+                    <span className="text-sm text-on-surface font-mono">{formatCNPJ(invoice.merchant_cnpj)}</span>
                   </div>
                   {invoiceData.merchant_address && (
                     <div className="flex justify-between">
-                      <span className="text-sm font-medium text-gray-700">Endereço:</span>
-                      <span className="text-sm text-gray-900 text-right max-w-md">{invoiceData.merchant_address}</span>
+                      <span className="text-sm font-medium text-on-surface-variant">Endereço:</span>
+                      <span className="text-sm text-on-surface text-right max-w-md">{invoiceData.merchant_address}</span>
                     </div>
                   )}
                   <div className="flex justify-between">
-                    <span className="text-sm font-medium text-gray-700">Data de Emissão:</span>
-                    <span className="text-sm text-gray-900">{formatDate(invoice.issue_date)}</span>
+                    <span className="text-sm font-medium text-on-surface-variant">Data de Emissão:</span>
+                    <span className="text-sm text-on-surface">{formatDate(invoice.issue_date)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm font-medium text-gray-700">Número da Nota:</span>
-                    <span className="text-sm text-gray-900">{invoice.invoice_number}</span>
+                    <span className="text-sm font-medium text-on-surface-variant">Número da Nota:</span>
+                    <span className="text-sm text-on-surface">{invoice.invoice_number}</span>
                   </div>
                 </div>
               </div>
 
               {/* Line Items */}
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Itens da Nota</h3>
+                <h3 className="text-lg font-semibold text-on-surface mb-3">Itens da Nota</h3>
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse">
                     <thead>
-                      <tr className="bg-gray-50 border-b border-gray-200">
-                        <th className="text-left text-xs font-medium text-gray-700 uppercase tracking-wider p-3">
+                      <tr className="bg-surface-variant/20 border-b border-outline dark:bg-surface-variant/30 dark:border-outline-variant">
+                        <th className="text-left text-xs font-medium text-on-surface-variant uppercase tracking-wider p-3">
                           Produto
                         </th>
-                        <th className="text-right text-xs font-medium text-gray-700 uppercase tracking-wider p-3">
+                        <th className="text-right text-xs font-medium text-on-surface-variant uppercase tracking-wider p-3">
                           Qtd
                         </th>
-                        <th className="text-right text-xs font-medium text-gray-700 uppercase tracking-wider p-3">
+                        <th className="text-right text-xs font-medium text-on-surface-variant uppercase tracking-wider p-3">
                           Preço Unit.
                         </th>
-                        <th className="text-right text-xs font-medium text-gray-700 uppercase tracking-wider p-3">
+                        <th className="text-right text-xs font-medium text-on-surface-variant uppercase tracking-wider p-3">
                           Total
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200">
+                    <tbody className="divide-y divide-outline/50 dark:divide-outline-variant/50">
                       {groupInvoiceItems(invoice.items).map((item, index) => (
-                        <tr key={`${item.$id}-${index}`} className="hover:bg-gray-50">
+                        <tr key={`${item.$id}-${index}`} className="hover:bg-surface-variant/10 dark:hover:bg-surface-variant/20">
                           <td className="p-3">
                             <div>
-                              <p className="text-sm font-medium text-gray-900">{item.description}</p>
+                              <p className="text-sm font-medium text-on-surface">{item.description}</p>
                               {item.product_code && (
-                                <p className="text-xs text-gray-500 font-mono mt-1">Cód: {item.product_code}</p>
+                                <p className="text-xs text-on-surface-variant font-mono mt-1">Cód: {item.product_code}</p>
                               )}
                             </div>
                           </td>
-                          <td className="p-3 text-right text-sm text-gray-900">{item.groupedQuantity}</td>
-                          <td className="p-3 text-right text-sm text-gray-900">{formatCurrency(item.unit_price)}</td>
-                          <td className="p-3 text-right text-sm font-medium text-gray-900">
+                          <td className="p-3 text-right text-sm text-on-surface">{item.groupedQuantity}</td>
+                          <td className="p-3 text-right text-sm text-on-surface">{formatCurrency(item.unit_price)}</td>
+                          <td className="p-3 text-right text-sm font-medium text-on-surface">
                             {formatCurrency(item.total_price)}
                           </td>
                         </tr>
@@ -269,14 +270,14 @@ export default function InvoiceDetailsModal({ invoiceId, isOpen, onClose, onDele
 
               {/* Totals Breakdown */}
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Resumo dos Valores</h3>
-                <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                <h3 className="text-lg font-semibold text-on-surface mb-3">Resumo dos Valores</h3>
+                <div className="bg-surface-variant/20 rounded-lg p-4 space-y-2 dark:bg-surface-variant/30">
                   {/* Subtotal - só mostra se houver desconto ou imposto */}
                   {((invoiceData.discount_amount && invoiceData.discount_amount > 0) || 
                     (invoiceData.tax_amount && invoiceData.tax_amount > 0)) && (
                     <div className="flex justify-between">
-                      <span className="text-sm text-gray-700">Subtotal:</span>
-                      <span className="text-sm text-gray-900">
+                      <span className="text-sm text-on-surface-variant">Subtotal:</span>
+                      <span className="text-sm text-on-surface">
                         {formatCurrency(
                           invoice.total_amount + (invoiceData.discount_amount || 0) - (invoiceData.tax_amount || 0),
                         )}
@@ -286,21 +287,21 @@ export default function InvoiceDetailsModal({ invoiceId, isOpen, onClose, onDele
                   {/* Descontos - só mostra se for maior que 0 */}
                   {invoiceData.discount_amount && invoiceData.discount_amount > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-sm text-gray-700">Descontos:</span>
+                      <span className="text-sm text-on-surface-variant">Descontos:</span>
                       <span className="text-sm text-green-600">-{formatCurrency(invoiceData.discount_amount)}</span>
                     </div>
                   )}
                   {/* Impostos - só mostra se for maior que 0 */}
                   {invoiceData.tax_amount && invoiceData.tax_amount > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-sm text-gray-700">Impostos:</span>
-                      <span className="text-sm text-gray-900">{formatCurrency(invoiceData.tax_amount)}</span>
+                      <span className="text-sm text-on-surface-variant">Impostos:</span>
+                      <span className="text-sm text-on-surface">{formatCurrency(invoiceData.tax_amount)}</span>
                     </div>
                   )}
                   {/* Total - sempre mostra */}
-                  <div className={`flex justify-between ${((invoiceData.discount_amount && invoiceData.discount_amount > 0) || (invoiceData.tax_amount && invoiceData.tax_amount > 0)) ? 'pt-2 border-t border-gray-300' : ''}`}>
-                    <span className="text-base font-semibold text-gray-900">Total:</span>
-                    <span className="text-base font-semibold text-gray-900">
+                  <div className={`flex justify-between ${((invoiceData.discount_amount && invoiceData.discount_amount > 0) || (invoiceData.tax_amount && invoiceData.tax_amount > 0)) ? 'pt-2 border-t border-outline dark:border-outline-variant' : ''}`}>
+                    <span className="text-base font-semibold text-on-surface">Total:</span>
+                    <span className="text-base font-semibold text-on-surface">
                       {formatCurrency(invoice.total_amount)}
                     </span>
                   </div>
@@ -310,8 +311,8 @@ export default function InvoiceDetailsModal({ invoiceId, isOpen, onClose, onDele
               {/* Original Invoice Link */}
               {invoiceData.xml_data && (
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Nota Fiscal Original</h3>
-                  <p className="text-sm text-gray-600 mb-2">
+                  <h3 className="text-lg font-semibold text-on-surface mb-3">Nota Fiscal Original</h3>
+                  <p className="text-sm text-on-surface-variant mb-2">
                     Chave de Acesso: <span className="font-mono text-xs">{invoice.invoice_key}</span>
                   </p>
                   <a
@@ -343,7 +344,7 @@ export default function InvoiceDetailsModal({ invoiceId, isOpen, onClose, onDele
 
         {/* Footer Actions */}
         {!loading && !error && invoice && (
-          <div className="flex justify-between items-center p-6 border-t border-gray-200 bg-gray-50">
+          <div className="flex justify-between items-center p-6 border-t border-outline bg-surface-variant/20 dark:bg-surface-variant/30 dark:border-outline-variant">
             <div className="flex gap-2">
               <Button
                 variant="outline"
