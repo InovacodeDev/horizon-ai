@@ -4,14 +4,18 @@ import type { Account, CreateAccountDto, UpdateAccountDto } from '@/lib/types';
 import { cacheManager, getCacheKey, invalidateCache } from '@/lib/utils/cache';
 import { useCallback, useEffect, useState, useTransition } from 'react';
 
+import { useAppwriteRealtime } from './useAppwriteRealtime';
+
 interface UseAccountsOptions {
   initialAccounts?: Account[];
+  enableRealtime?: boolean;
 }
 
 /**
  * Hook for managing bank accounts with React 19.2 optimistic updates
  */
 export function useAccounts(options: UseAccountsOptions = {}) {
+  const { enableRealtime = true } = options;
   const [accounts, setAccounts] = useState<Account[]>(() => {
     const initial = options.initialAccounts || [];
     return initial;
@@ -234,6 +238,83 @@ export function useAccounts(options: UseAccountsOptions = {}) {
       throw err;
     }
   }, []);
+
+  // Setup realtime subscription for accounts
+  useAppwriteRealtime({
+    channels: [`databases.${process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID}.collections.accounts.documents`],
+    enabled: enableRealtime && initialized,
+    onUpdate: (payload: any) => {
+      console.log('📡 Realtime: account updated', payload.$id);
+      // Update the account in the list
+      setAccounts((prev) => {
+        const index = prev.findIndex((a) => a.$id === payload.$id);
+        if (index !== -1) {
+          const updated = [...prev];
+          updated[index] = { ...updated[index], ...payload };
+          return updated;
+        }
+        return prev;
+      });
+    },
+    onCreate: (payload: any) => {
+      console.log('📡 Realtime: account created', payload.$id);
+      // Add new account to the list
+      setAccounts((prev) => {
+        // Check if account already exists (avoid duplicates)
+        if (prev.some((a) => a.$id === payload.$id)) {
+          return prev;
+        }
+        return [...prev, payload];
+      });
+    },
+    onDelete: (payload: any) => {
+      console.log('📡 Realtime: account deleted', payload.$id);
+      // Remove account from the list
+      setAccounts((prev) => prev.filter((a) => a.$id !== payload.$id));
+    },
+  });
+
+  // Setup realtime subscription for transfer_logs
+  useAppwriteRealtime({
+    channels: [`databases.${process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID}.collections.transfer_logs.documents`],
+    enabled: enableRealtime && initialized,
+    onCreate: async (payload: any) => {
+      console.log('📡 Realtime: transfer detected', payload);
+
+      // When a transfer is created, refresh the affected accounts
+      if (payload.from_account_id || payload.to_account_id) {
+        try {
+          // Fetch updated accounts
+          const accountIds = [payload.from_account_id, payload.to_account_id].filter(Boolean);
+
+          for (const accountId of accountIds) {
+            const response = await fetch(`/api/accounts/${accountId}`, {
+              credentials: 'include',
+            });
+
+            if (response.ok) {
+              const updatedAccount = await response.json();
+
+              // Update the account in the list
+              setAccounts((prev) => {
+                const index = prev.findIndex((a) => a.$id === accountId);
+                if (index !== -1) {
+                  const updated = [...prev];
+                  updated[index] = updatedAccount;
+                  return updated;
+                }
+                return prev;
+              });
+            }
+          }
+
+          console.log('✅ Account balances updated after transfer');
+        } catch (err) {
+          console.error('❌ Error updating accounts after transfer:', err);
+        }
+      }
+    },
+  });
 
   return {
     accounts,

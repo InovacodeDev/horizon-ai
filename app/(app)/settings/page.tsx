@@ -5,8 +5,10 @@ import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
+import { useUser } from '@/lib/contexts/UserContext';
 
 export default function SettingsPage() {
+  const { user } = useUser();
   const [toastMessage, setToastMessage] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>, message: string) => {
@@ -48,12 +50,12 @@ export default function SettingsPage() {
               onSubmit={(e) => handleSubmit(e, 'Informações da conta salvas!')}
             >
               <h3 className="text-lg font-semibold text-on-surface">Informações do Perfil</h3>
-              <Input id="firstName" label="Nome" defaultValue="Mariana" />
+              <Input id="firstName" label="Nome" defaultValue={user.name} />
               <Input
                 id="email"
                 label="Endereço de Email"
                 type="email"
-                defaultValue="mariana@example.com"
+                defaultValue={user.email}
                 readOnly
               />
               <Button type="submit">Salvar Alterações</Button>
@@ -130,22 +132,6 @@ export default function SettingsPage() {
                       <option value="USD">Dólar Americano (USD)</option>
                       <option value="EUR">Euro (EUR)</option>
                     </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-on-surface-variant mb-2">
-                      Aparência
-                    </label>
-                    <div className="flex gap-4">
-                      <label className="flex items-center gap-2">
-                        <input type="radio" name="theme" value="light" defaultChecked /> Claro
-                      </label>
-                      <label className="flex items-center gap-2">
-                        <input type="radio" name="theme" value="dark" /> Escuro
-                      </label>
-                      <label className="flex items-center gap-2">
-                        <input type="radio" name="theme" value="system" /> Sistema
-                      </label>
-                    </div>
                   </div>
                 </div>
               </div>

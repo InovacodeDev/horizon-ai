@@ -1,5 +1,6 @@
 'use client';
 
+import { getAppwriteBrowserClient } from '@/lib/appwrite/client-browser';
 import type { CreditCard } from '@/lib/types';
 import { cacheManager, getCacheKey as getKey, invalidateCache as invalidateCacheUtil } from '@/lib/utils/cache';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -167,7 +168,6 @@ export function useCreditCardsWithCache(options: UseCreditCardsOptions = {}) {
     }
 
     try {
-      const { getAppwriteBrowserClient } = require('@/lib/appwrite/client-browser');
       const client = getAppwriteBrowserClient();
 
       const channels = [`databases.${databaseId}.collections.credit_cards.documents`];

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { Activity } from 'react';
 import { useTheme } from '@/lib/contexts/ThemeContext';
 
 export function ThemeToggle() {
