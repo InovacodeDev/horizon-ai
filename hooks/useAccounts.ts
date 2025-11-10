@@ -241,7 +241,7 @@ export function useAccounts(options: UseAccountsOptions = {}) {
 
   // Setup realtime subscription for accounts
   useAppwriteRealtime({
-    channels: [`databases.${process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID}.collections.accounts.documents`],
+    channels: [`databases.${process.env.APPWRITE_DATABASE_ID}.collections.accounts.documents`],
     enabled: enableRealtime && initialized,
     onUpdate: (payload: any) => {
       console.log('📡 Realtime: account updated', payload.$id);
@@ -276,7 +276,7 @@ export function useAccounts(options: UseAccountsOptions = {}) {
 
   // Setup realtime subscription for transfer_logs
   useAppwriteRealtime({
-    channels: [`databases.${process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID}.collections.transfer_logs.documents`],
+    channels: [`databases.${process.env.APPWRITE_DATABASE_ID}.collections.transfer_logs.documents`],
     enabled: enableRealtime && initialized,
     onCreate: async (payload: any) => {
       console.log('📡 Realtime: transfer detected', payload);

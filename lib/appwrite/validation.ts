@@ -42,12 +42,12 @@ export function validateEnvironment(): ValidationResult {
   }
 
   // Public variables (for client-side)
-  if (!process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT) {
-    warnings.push('NEXT_PUBLIC_APPWRITE_ENDPOINT is not set (needed for client-side)');
+  if (!process.env.APPWRITE_ENDPOINT) {
+    warnings.push('APPWRITE_ENDPOINT is not set (needed for client-side)');
   }
 
-  if (!process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID) {
-    warnings.push('NEXT_PUBLIC_APPWRITE_PROJECT_ID is not set (needed for client-side)');
+  if (!process.env.APPWRITE_PROJECT_ID) {
+    warnings.push('APPWRITE_PROJECT_ID is not set (needed for client-side)');
   }
 
   return {

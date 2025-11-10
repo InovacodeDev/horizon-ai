@@ -161,9 +161,9 @@ export function useCreditCardsWithCache(options: UseCreditCardsOptions = {}) {
       };
     }
 
-    const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID;
+    const databaseId = process.env.APPWRITE_DATABASE_ID;
     if (!databaseId) {
-      console.warn('NEXT_PUBLIC_APPWRITE_DATABASE_ID not set, realtime disabled');
+      console.warn('APPWRITE_DATABASE_ID not set, realtime disabled');
       return;
     }
 

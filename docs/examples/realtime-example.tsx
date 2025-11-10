@@ -20,7 +20,7 @@ interface MyDocument {
 
 export function RealtimeExample() {
   const [documents, setDocuments] = useState<MyDocument[]>([]);
-  const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID;
+  const databaseId = process.env.APPWRITE_DATABASE_ID;
   const collectionId = 'my_collection';
 
   // Exemplo 1: Usando callbacks específicos

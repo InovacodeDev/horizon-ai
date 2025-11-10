@@ -26,8 +26,7 @@ export const COLLECTIONS = {
 // Database ID - Configure no Appwrite Console
 // Note: This is evaluated when the module is first imported
 // Make sure dotenv is loaded before importing this file in scripts
-export const DATABASE_ID =
-  process.env.APPWRITE_DATABASE_ID || process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || 'horizon_ai_db';
+export const DATABASE_ID = process.env.APPWRITE_DATABASE_ID || process.env.APPWRITE_DATABASE_ID || 'horizon_ai_db';
 
 /**
  * Schema Definition for Appwrite Collections
