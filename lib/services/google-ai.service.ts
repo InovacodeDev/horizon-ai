@@ -4,8 +4,11 @@
  * Handles all interactions with Google Generative AI (Gemini) API.
  * Provides typed methods for shopping list generation, NFe parsing, and insights generation.
  * This service ensures API keys are only accessed server-side.
+ *
+ * Uses TOON format for token-efficient data transmission (20-60% token savings).
  */
 import type { PurchaseRecord, PurchasedItem } from '@/lib/types';
+import { formatForAIPrompt } from '@/lib/utils/toon';
 import { GoogleGenAI, Type } from '@google/genai';
 
 // ============================================
@@ -278,6 +281,8 @@ export class GoogleAIService {
 
   /**
    * Generate savings insights from purchase history
+   * Uses TOON format for 20-60% token savings compared to JSON
+   * Optimized for prompt caching: static instructions first, variable data last
    * @param purchaseHistory - Array of past purchases
    * @returns Markdown-formatted insights
    */
@@ -291,21 +296,22 @@ export class GoogleAIService {
         throw new GoogleAIServiceError('Purchase history cannot be empty', 'EMPTY_HISTORY');
       }
 
+      // Format purchase history using TOON for token efficiency
+      const formattedHistory = formatForAIPrompt({ purchases: purchaseHistory }, 'Purchase History');
+
+      // IMPORTANT: Static instructions first (cacheable), variable data last
+      // This allows LLMs to cache the instructions and save even more tokens
       const prompt = `
             You are a helpful financial assistant focused on saving money on groceries and shopping.
-            Based on the user's purchase history provided in JSON format, analyze their spending habits and provide actionable, personalized insights on how they can save money.
-
-            Purchase History:
-            ${JSON.stringify(purchaseHistory, null, 2)}
-
+            
             Instructions:
-            1. Analyze the items, brands, prices, and stores.
+            1. Analyze the items, brands, prices, and stores from the purchase data.
             2. Identify patterns like frequent purchases of the same item or brand loyalty.
             3. Provide 2-3 specific, concrete saving tips in a friendly tone.
             4. Use Markdown for formatting (headings with ##, lists with *, bold with **).
             5. Examples of insights: Suggesting a cheaper alternative brand, recommending buying in bulk, or pointing out frequent purchases of non-essential items.
             
-            Example response:
+            Example response format:
             "## Your Personalized Savings Insights 💰
 
             Here are a few ways you might be able to save based on your recent purchases:
@@ -313,6 +319,12 @@ export class GoogleAIService {
             *   **Switch your coffee brand:** You frequently buy **Café em Pó 3 Corações** for **R$ 18.50**. Consider trying the store brand, which often costs around R$ 12-14, saving you over 20% on this item!
             *   **Buy milk in larger quantities:** We noticed you buy milk in 1-liter cartons. If your family consumes it quickly, buying a larger pack or "caixa fechada" can often reduce the per-liter price.
             "
+
+            ---
+
+            Now analyze the following purchase history (provided in TOON format - a token-efficient tabular format):
+
+            ${formattedHistory}
         `;
 
       const response = await this.client.models.generateContent({

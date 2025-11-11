@@ -4,6 +4,11 @@
  * Uses AI (Anthropic Claude, OpenAI, or Google Gemini) to parse HTML content from Brazilian
  * fiscal invoices into structured data. Optimized for prompt caching by
  * placing static instructions first and variable HTML content last.
+ *
+ * Note: TOON format is NOT used here because:
+ * 1. The AI needs to OUTPUT structured JSON, not parse TOON input
+ * 2. HTML input is already compact and doesn't benefit from TOON encoding
+ * 3. JSON schema validation requires JSON output format
  */
 import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenerativeAI } from '@google/generative-ai';
