@@ -16,8 +16,10 @@ import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { TransferBalanceModal } from "@/components/modals/TransferBalanceModal";
 import type { Account, AccountStatus, CreditCard } from "@/lib/types";
 import { useRouter } from "next/navigation";
-import { ProcessDueTransactions, clearProcessedToday } from "@/components/ProcessDueTransactions";
-import { reprocessAllBalancesAction } from "@/actions/transaction.actions";
+import { ProcessDueTransactions } from "@/components/ProcessDueTransactions";
+import { reprocessAccountBalanceAction } from "@/actions/balance-sync.actions";
+import type { CreateCreditCardInput } from "@/components/modals/AddCreditCardModal";
+import type { UpdateCreditCardInput } from "@/components/modals/EditCreditCardModal";
 
 const AccountCardSkeleton: React.FC = () => (
     <Card className="p-4 flex items-center gap-4">
@@ -149,24 +151,24 @@ interface AccountCardProps {
     onViewCreditCardStatement: (cardId: string) => void;
     onConfirmDelete: (accountId: string, accountName: string) => void;
     onConfirmDeleteCard: (cardId: string, cardName: string) => void;
+    onReprocessBalance: (accountId: string, accountName: string) => Promise<void>;
+    isReprocessing: boolean;
+    canReprocess: boolean;
 }
 
 const AccountCard: React.FC<AccountCardProps> = ({
   account,
-  onDelete,
+  creditCards,
   onAddCreditCard,
-  onDeleteCreditCard,
   onEditCreditCard,
   onViewCreditCardStatement,
   onConfirmDelete,
   onConfirmDeleteCard,
+  onReprocessBalance,
+  isReprocessing,
+  canReprocess,
 }) => {
   const [expanded, setExpanded] = useState(false);
-
-    const { creditCards, deleteCreditCard: deleteCreditCardFromHook, fetchCreditCards } = useCreditCardsWithCache({
-        accountId: account.$id,
-        enableRealtime: true,
-    });
     
     const statusColor: Record<AccountStatus, string> = {
         Connected: "bg-green-500",
@@ -199,9 +201,18 @@ const AccountCard: React.FC<AccountCardProps> = ({
                     <p className="text-sm text-on-surface-variant mt-1">{accountTypeLabel[account.account_type]}</p>
                 </div>
                 <div className="text-right">
-                    <p className="font-semibold text-xl text-on-surface">
-                        {(account.balance ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                    </p>
+                    {isReprocessing ? (
+                        <div className="flex items-center gap-2">
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+                            <p className="font-semibold text-xl text-on-surface-variant">
+                                Calculando...
+                            </p>
+                        </div>
+                    ) : (
+                        <p className="font-semibold text-xl text-on-surface">
+                            {(account.balance ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                        </p>
+                    )}
                     <p className="text-sm text-on-surface-variant mt-1">
                         {creditCards.length} cartão(ões)
                     </p>
@@ -229,6 +240,32 @@ const AccountCard: React.FC<AccountCardProps> = ({
                     >
                         Integrar com Open Finance
                     </DropdownMenuItem>
+                    {canReprocess ? (
+                        <DropdownMenuItem
+                            onClick={() => {
+                                if (isReprocessing) return;
+                                onReprocessBalance(account.$id, account.name);
+                            }}
+                            icon={
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                            }
+                        >
+                            {isReprocessing ? 'Reprocessando...' : 'Reprocessar Saldo'}
+                        </DropdownMenuItem>
+                    ) : (
+                        <DropdownMenuItem
+                            onClick={() => alert('Aguarde 15 minutos antes de reprocessar esta conta novamente.')}
+                            icon={
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            }
+                        >
+                            Aguardar cooldown (15min)
+                        </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem
                         onClick={() => onConfirmDelete(account.$id, account.name)}
                         icon={
@@ -282,7 +319,10 @@ const AccountCard: React.FC<AccountCardProps> = ({
 export default function AccountsPage() {
     const router = useRouter();
     const { accounts, loading, createAccount, deleteAccount } = useAccounts();
-    const { totalBalance, loading: loadingBalance } = useTotalBalance();
+    const { loading: loadingBalance } = useTotalBalance();
+    
+    // Local state for accounts to allow manual updates
+    const [localAccounts, setLocalAccounts] = useState<Account[]>(accounts);
     
     // Use cached credit cards hook
     const { creditCards: allCreditCards, deleteCreditCard: deleteCreditCardFromHook, fetchCreditCards } = useCreditCardsWithCache();
@@ -293,7 +333,8 @@ export default function AccountsPage() {
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
     const [activeAccountForCard, setActiveAccountForCard] = useState<string>('');
     const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
-    const [isReprocessing, setIsReprocessing] = useState(false);
+    const [reprocessingAccountId, setReprocessingAccountId] = useState<string | null>(null);
+    const [lastReprocessTime, setLastReprocessTime] = useState<Record<string, number>>({});
     
     // Confirmation modal states
     const [confirmModal, setConfirmModal] = useState<{
@@ -315,7 +356,7 @@ export default function AccountsPage() {
         setIsAddCardModalOpen(true);
     };
 
-    const handleCreateCreditCard = async (input: any) => {
+    const handleCreateCreditCard = async (input: CreateCreditCardInput) => {
         try {
             const response = await fetch('/api/credit-cards', {
                 method: 'POST',
@@ -354,7 +395,7 @@ export default function AccountsPage() {
         setIsEditCardModalOpen(true);
     };
 
-    const handleUpdateCreditCard = async (input: any) => {
+    const handleUpdateCreditCard = async (input: UpdateCreditCardInput) => {
         if (!editingCard) return;
 
         try {
@@ -384,38 +425,61 @@ export default function AccountsPage() {
         return allCreditCards.filter(card => card.account_id === accountId);
     };
 
-    // Reprocess all balances
-    const handleReprocessBalances = async () => {
-        setConfirmModal({
-            isOpen: true,
-            title: 'Reprocessar Saldos',
-            message: 'Isso irá recalcular todos os saldos das contas baseado nas transações e transferências dos últimos 2 anos. O processo busca os dados em lotes para evitar limites de consulta. Deseja continuar?',
-            variant: 'warning',
-            confirmText: 'Reprocessar',
-            onConfirm: async () => {
-                setIsReprocessing(true);
-                try {
-                    const result = await reprocessAllBalancesAction();
-                    if (result.success) {
-                        // Limpar flag de sincronização para permitir nova sincronização automática amanhã
-                        clearProcessedToday();
-                        // Refresh accounts
-                        window.location.reload();
-                    } else {
-                        alert(result.message);
-                    }
-                } catch (error) {
-                    console.error('Error reprocessing balances:', error);
-                    alert('Erro ao reprocessar saldos');
-                } finally {
-                    setIsReprocessing(false);
-                }
-            },
-        });
+    // Check if account can be reprocessed (15 minutes cooldown)
+    const canReprocessAccount = (accountId: string): boolean => {
+        const lastTime = lastReprocessTime[accountId];
+        if (!lastTime) return true;
+        
+        const now = Date.now();
+        const fifteenMinutes = 15 * 60 * 1000; // 15 minutes in milliseconds
+        return (now - lastTime) >= fifteenMinutes;
     };
 
-    // Calculate total balance from accounts
-    const calculatedTotalBalance = accounts.reduce((sum, account) => sum + (account.balance || 0), 0);
+    // Handle reprocess balance for a specific account
+    const handleReprocessBalance = async (accountId: string, _accountName: string) => {
+        if (!canReprocessAccount(accountId)) {
+            alert('Aguarde 15 minutos antes de reprocessar esta conta novamente.');
+            return;
+        }
+
+        setReprocessingAccountId(accountId);
+        try {
+            const result = await reprocessAccountBalanceAction(accountId);
+            if (result.success && result.balance !== undefined) {
+                // Update last reprocess time
+                setLastReprocessTime(prev => ({
+                    ...prev,
+                    [accountId]: Date.now()
+                }));
+                
+                console.log('✅ Saldo reprocessado com sucesso. Novo saldo:', result.balance);
+                
+                // Atualizar apenas esta conta no estado local
+                setLocalAccounts(prev => 
+                    prev.map(account => 
+                        account.$id === accountId 
+                            ? { ...account, balance: result.balance! }
+                            : account
+                    )
+                );
+            } else {
+                alert(result.error || 'Erro ao reprocessar saldo');
+            }
+        } catch (error) {
+            console.error('Error reprocessing account balance:', error);
+            alert('Erro ao reprocessar saldo');
+        } finally {
+            setReprocessingAccountId(null);
+        }
+    };
+
+    // Sync local accounts when hook accounts change (from realtime or initial load)
+    useEffect(() => {
+        setLocalAccounts(accounts);
+    }, [accounts]);
+    
+    // Calculate total balance from local accounts
+    const calculatedTotalBalance = localAccounts.reduce((sum, account) => sum + (account.balance || 0), 0);
     
     const formattedBalance = calculatedTotalBalance.toLocaleString("pt-BR", {
         style: "currency",
@@ -446,18 +510,6 @@ export default function AccountsPage() {
                             variant="outline"
                             leftIcon={
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                </svg>
-                            }
-                            onClick={handleReprocessBalances}
-                            disabled={isReprocessing || accounts.length === 0}
-                        >
-                            {isReprocessing ? 'Reprocessando...' : 'Reprocessar Saldos'}
-                        </Button>
-                        <Button 
-                            variant="outline"
-                            leftIcon={
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                                 </svg>
                             }
@@ -477,8 +529,8 @@ export default function AccountsPage() {
             </header>
             
             <main className="space-y-4">
-                {accounts.length > 0 ? (
-                    accounts.map((account, index) => (
+                {localAccounts.length > 0 ? (
+                    localAccounts.map((account, index) => (
                         <AccountCard
                             key={account.$id || `account-${index}`}
                             account={account}
@@ -506,6 +558,9 @@ export default function AccountsPage() {
                                     variant: 'danger',
                                 });
                             }}
+                            onReprocessBalance={handleReprocessBalance}
+                            isReprocessing={reprocessingAccountId === account.$id}
+                            canReprocess={canReprocessAccount(account.$id)}
                         />
                     ))
                 ) : (
@@ -574,23 +629,6 @@ export default function AccountsPage() {
                 confirmText={confirmModal.confirmText || "Excluir"}
                 cancelText="Cancelar"
             />
-
-            {/* Loading modal for reprocessing */}
-            {isReprocessing && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-surface rounded-lg p-6 shadow-xl max-w-sm w-full mx-4">
-                        <div className="flex flex-col items-center space-y-4">
-                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-                            <p className="text-on-surface text-center font-medium">
-                                Reprocessando saldos das contas...
-                            </p>
-                            <p className="text-on-surface-variant text-center text-sm">
-                                Contabilizando todas as transações e transferências
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            )}
         </>
     );
 }

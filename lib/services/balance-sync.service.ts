@@ -25,9 +25,8 @@ export class BalanceSyncService {
     const allTransactions: any[] = [];
     let offset = 0;
     const limit = 500; // Buscar em lotes de 500
-    let hasMore = true;
 
-    while (hasMore) {
+    while (true) {
       const queries = [
         Query.equal('account_id', accountId),
         Query.limit(limit),
@@ -48,11 +47,12 @@ export class BalanceSyncService {
 
       allTransactions.push(...transactions);
 
-      if (transactions.length < limit) {
-        hasMore = false;
-      } else {
-        offset += limit;
+      // Parar se não há mais documentos ou se retornou menos que o limite
+      if (transactions.length === 0 || transactions.length < limit) {
+        break;
       }
+
+      offset += limit;
     }
 
     return allTransactions;
@@ -70,9 +70,10 @@ export class BalanceSyncService {
     const allTransfers: any[] = [];
     let offset = 0;
     const limit = 500; // Buscar em lotes de 500
-    let hasMore = true;
 
-    while (hasMore) {
+    console.log(`[BalanceSync] Fetching transfers ${direction} for account ${accountId}`);
+
+    while (true) {
       const queries = [
         Query.equal(direction === 'from' ? 'from_account_id' : 'to_account_id', accountId),
         Query.equal('status', 'completed'),
@@ -92,15 +93,19 @@ export class BalanceSyncService {
       const result = await this.dbAdapter.listDocuments(DATABASE_ID, COLLECTIONS.TRANSFER_LOGS, queries);
       const transfers = result.documents || [];
 
+      console.log(`[BalanceSync] Found ${transfers.length} transfers ${direction} (offset: ${offset})`);
+
       allTransfers.push(...transfers);
 
-      if (transfers.length < limit) {
-        hasMore = false;
-      } else {
-        offset += limit;
+      // Parar se não há mais documentos ou se retornou menos que o limite
+      if (transfers.length === 0 || transfers.length < limit) {
+        break;
       }
+
+      offset += limit;
     }
 
+    console.log(`[BalanceSync] Total transfers ${direction}: ${allTransfers.length}`);
     return allTransfers;
   }
 
@@ -157,6 +162,11 @@ export class BalanceSyncService {
       // Somar/subtrair todas as transações
       const now = new Date();
 
+      console.log(`[BalanceSync] Syncing account ${accountId}:`);
+      console.log(`[BalanceSync] - Total transactions: ${transactions.length}`);
+      console.log(`[BalanceSync] - Transfers from: ${transfersFrom.length}`);
+      console.log(`[BalanceSync] - Transfers to: ${transfersTo.length}`);
+
       for (const transaction of transactions) {
         // Ignorar transações de cartão de crédito
         // Verifica tanto a coluna dedicada quanto o campo no JSON (para compatibilidade)
@@ -186,6 +196,8 @@ export class BalanceSyncService {
         }
       }
 
+      console.log(`[BalanceSync] - Balance after transactions: ${newBalance}`);
+
       // Processar transferências de saída (diminuem o saldo)
       for (const transfer of transfersFrom) {
         // Ignorar transferências futuras
@@ -194,8 +206,11 @@ export class BalanceSyncService {
           continue;
         }
 
+        console.log(`[BalanceSync] - Transfer OUT: ${transfer.amount} (${transfer.$id})`);
         newBalance -= transfer.amount;
       }
+
+      console.log(`[BalanceSync] - Balance after transfers out: ${newBalance}`);
 
       // Processar transferências de entrada (aumentam o saldo)
       for (const transfer of transfersTo) {
@@ -205,8 +220,11 @@ export class BalanceSyncService {
           continue;
         }
 
+        console.log(`[BalanceSync] - Transfer IN: ${transfer.amount} (${transfer.$id})`);
         newBalance += transfer.amount;
       }
+
+      console.log(`[BalanceSync] - Final balance: ${newBalance}`);
 
       // Atualizar conta com novo balance e IDs sincronizados
       const updatedSyncedIds = transactions
@@ -238,7 +256,16 @@ export class BalanceSyncService {
         updated_at: dateToUserTimezone(new Date().toISOString().split('T')[0]),
       };
 
-      await this.dbAdapter.updateDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, accountId, updatePayload);
+      console.log(`[BalanceSync] Updating account ${accountId} with balance: ${newBalance}`);
+
+      const updatedAccount = await this.dbAdapter.updateDocument(
+        DATABASE_ID,
+        COLLECTIONS.ACCOUNTS,
+        accountId,
+        updatePayload,
+      );
+
+      console.log(`[BalanceSync] Account updated successfully. New balance in DB: ${updatedAccount.balance}`);
 
       return newBalance;
     } catch (error: any) {
@@ -296,7 +323,6 @@ export class BalanceSyncService {
       for (const account of accounts) {
         await this.syncAccountBalance(account.$id, startDate, endDate);
       }
-
     } catch (error: any) {
       console.error(`[BalanceSync] Error recalculating balances for user ${userId}:`, error);
       throw new Error(`Failed to recalculate balances: ${error.message}`);
@@ -350,6 +376,7 @@ export class BalanceSyncService {
       }
 
       return accountIds.size;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error(`Error processing due transactions for user ${userId}:`, error);
       throw new Error(`Failed to process due transactions: ${error.message}`);

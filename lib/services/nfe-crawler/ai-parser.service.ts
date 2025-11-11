@@ -430,102 +430,141 @@ CRITICAL: Return ONLY the raw JSON object with no markdown formatting, no code b
   }
 
   /**
-   * Call Google Gemini API
+   * Call Google Gemini API with retry logic for 503 errors
    */
   private async callGemini(prompt: string): Promise<string> {
     if (!this.geminiClient) {
       throw new AIParseError('Gemini client not initialized');
     }
 
-    try {
-      // Use gemini-2.5-flash or gemini-2.5-pro
-      const modelName = this.config.model || 'gemini-2.5-flash';
-      const model = this.geminiClient.getGenerativeModel({
-        model: modelName,
-      });
+    const maxRetries = 3;
+    const baseDelay = 2000; // 2 seconds
+    let lastError: Error | null = null;
 
-      // Try with JSON mime type first, fallback to text if it fails
-      let result;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        result = await model.generateContent({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: this.config.temperature,
-            maxOutputTokens: this.config.maxTokens,
-            responseMimeType: 'application/json', // Force JSON response
-          },
-        });
-      } catch (jsonError) {
-        // Fallback: try without JSON mime type
-        loggerService.warn('ai-parser', 'call-gemini', 'JSON mime type failed, retrying without it', {
-          error: jsonError instanceof Error ? jsonError.message : String(jsonError),
+        // Use gemini-2.5-flash or gemini-2.5-pro
+        const modelName = this.config.model || 'gemini-2.5-flash';
+        const model = this.geminiClient.getGenerativeModel({
+          model: modelName,
         });
 
-        result = await model.generateContent({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: this.config.temperature,
-            maxOutputTokens: this.config.maxTokens,
-          },
+        // Try with JSON mime type first, fallback to text if it fails
+        let result;
+        try {
+          result = await model.generateContent({
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: this.config.temperature,
+              maxOutputTokens: this.config.maxTokens,
+              responseMimeType: 'application/json', // Force JSON response
+            },
+          });
+        } catch (jsonError) {
+          // Fallback: try without JSON mime type
+          loggerService.warn('ai-parser', 'call-gemini', 'JSON mime type failed, retrying without it', {
+            error: jsonError instanceof Error ? jsonError.message : String(jsonError),
+          });
+
+          result = await model.generateContent({
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: this.config.temperature,
+              maxOutputTokens: this.config.maxTokens,
+            },
+          });
+        }
+
+        const response = result.response;
+
+        // Log token usage if available
+        if (response.usageMetadata) {
+          loggerService.logAITokenUsage(
+            this.config.model,
+            response.usageMetadata.promptTokenCount || 0,
+            response.usageMetadata.candidatesTokenCount || 0,
+            0, // Gemini doesn't have cache tokens in the same way
+          );
+        }
+
+        // Check if response was blocked or empty
+        if (!response.candidates || response.candidates.length === 0) {
+          loggerService.error('ai-parser', 'call-gemini', 'No candidates in response', {
+            promptFinishReason: response.promptFeedback,
+          });
+          throw new AIParseError('Gemini returned no response candidates', {
+            promptFeedback: response.promptFeedback,
+          });
+        }
+
+        const candidate = response.candidates[0];
+
+        // Check if content was blocked
+        if (candidate.finishReason && candidate.finishReason !== 'STOP') {
+          loggerService.error('ai-parser', 'call-gemini', 'Response blocked or incomplete', {
+            finishReason: candidate.finishReason,
+            safetyRatings: candidate.safetyRatings,
+          });
+          throw new AIParseError(`Gemini response blocked: ${candidate.finishReason}`, {
+            finishReason: candidate.finishReason,
+            safetyRatings: candidate.safetyRatings,
+          });
+        }
+
+        const text = response.text();
+
+        if (!text || text.trim().length === 0) {
+          loggerService.error('ai-parser', 'call-gemini', 'Empty response text', {
+            candidate,
+          });
+          throw new AIParseError('Gemini returned empty response text');
+        }
+
+        // Success - return the text
+        return text;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+
+        // Check if it's a 503 Service Unavailable error (model overloaded)
+        const errorMessage = lastError.message.toLowerCase();
+        const is503Error =
+          errorMessage.includes('503') ||
+          errorMessage.includes('service unavailable') ||
+          errorMessage.includes('overloaded');
+
+        // Only retry on 503 errors
+        if (is503Error && attempt < maxRetries) {
+          const delay = baseDelay * Math.pow(2, attempt); // Exponential backoff: 2s, 4s, 8s
+          loggerService.warn('ai-parser', 'call-gemini', `Gemini API overloaded (503), retrying in ${delay}ms`, {
+            attempt: attempt + 1,
+            maxRetries,
+            error: lastError.message,
+          });
+
+          // Wait before retrying
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          continue; // Retry
+        }
+
+        // If it's already an AIParseError, rethrow it
+        if (error instanceof AIParseError) {
+          throw error;
+        }
+
+        // For non-503 errors or after max retries, throw immediately
+        throw new AIParseError(`Gemini API error: ${lastError.message}`, {
+          originalError: lastError.name,
+          attempt: attempt + 1,
+          maxRetries,
         });
       }
-
-      const response = result.response;
-
-      // Log token usage if available
-      if (response.usageMetadata) {
-        loggerService.logAITokenUsage(
-          this.config.model,
-          response.usageMetadata.promptTokenCount || 0,
-          response.usageMetadata.candidatesTokenCount || 0,
-          0, // Gemini doesn't have cache tokens in the same way
-        );
-      }
-
-      // Check if response was blocked or empty
-      if (!response.candidates || response.candidates.length === 0) {
-        loggerService.error('ai-parser', 'call-gemini', 'No candidates in response', {
-          promptFinishReason: response.promptFeedback,
-        });
-        throw new AIParseError('Gemini returned no response candidates', {
-          promptFeedback: response.promptFeedback,
-        });
-      }
-
-      const candidate = response.candidates[0];
-
-      // Check if content was blocked
-      if (candidate.finishReason && candidate.finishReason !== 'STOP') {
-        loggerService.error('ai-parser', 'call-gemini', 'Response blocked or incomplete', {
-          finishReason: candidate.finishReason,
-          safetyRatings: candidate.safetyRatings,
-        });
-        throw new AIParseError(`Gemini response blocked: ${candidate.finishReason}`, {
-          finishReason: candidate.finishReason,
-          safetyRatings: candidate.safetyRatings,
-        });
-      }
-
-      const text = response.text();
-
-      if (!text || text.trim().length === 0) {
-        loggerService.error('ai-parser', 'call-gemini', 'Empty response text', {
-          candidate,
-        });
-        throw new AIParseError('Gemini returned empty response text');
-      }
-
-      return text;
-    } catch (error) {
-      // If it's already an AIParseError, rethrow it
-      if (error instanceof AIParseError) {
-        throw error;
-      }
-
-      throw new AIParseError(`Gemini API error: ${error instanceof Error ? error.message : String(error)}`, {
-        originalError: error instanceof Error ? error.name : typeof error,
-      });
     }
+
+    // If we exhausted all retries, throw the last error
+    throw new AIParseError(`Gemini API error after ${maxRetries} retries: ${lastError?.message || 'Unknown error'}`, {
+      originalError: lastError?.name,
+      maxRetries,
+    });
   }
 
   /**

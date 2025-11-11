@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid, BarChart, Bar } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid, BarChart, Bar } from 'recharts';
 
 // ============================================
 // Types
@@ -81,7 +81,7 @@ interface SpendingInsights {
   averageInvoiceAmount: number;
   categoryBreakdown: CategorySpending[];
   topMerchants: MerchantStats[];
-  frequentProducts: any[];
+  frequentProducts: unknown[];
   monthlyTrend: MonthlySpending[];
   predictions: SpendingPrediction[];
   anomalies: SpendingAnomaly[];
@@ -110,18 +110,25 @@ const CATEGORY_LABELS: Record<string, string> = {
   other: 'Outro',
 };
 
-const CATEGORY_COLORS: Record<string, string> = {
-  pharmacy: '#ef4444',
-  groceries: '#10b981',
-  supermarket: '#3b82f6',
-  restaurant: '#f59e0b',
-  fuel: '#6b7280',
-  retail: '#8b5cf6',
-  services: '#ec4899',
-  other: '#64748b',
-};
+
 
 const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+
+// Cores para cada mês (12 cores distintas)
+const MONTH_COLORS: Record<number, string> = {
+  1: '#3b82f6',  // Janeiro - Azul
+  2: '#ec4899',  // Fevereiro - Rosa
+  3: '#10b981',  // Março - Verde
+  4: '#f59e0b',  // Abril - Laranja
+  5: '#8b5cf6',  // Maio - Roxo
+  6: '#06b6d4',  // Junho - Ciano
+  7: '#ef4444',  // Julho - Vermelho
+  8: '#84cc16',  // Agosto - Lima
+  9: '#f97316',  // Setembro - Laranja escuro
+  10: '#14b8a6', // Outubro - Teal
+  11: '#a855f7', // Novembro - Roxo claro
+  12: '#0ea5e9', // Dezembro - Azul claro
+};
 
 // ============================================
 // Main Component
@@ -153,28 +160,34 @@ export default function InsightsPage() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const { Client } = require('appwrite');
-    
-    const client = new Client()
-      .setEndpoint(process.env.APPWRITE_ENDPOINT || '')
-      .setProject(process.env.APPWRITE_PROJECT_ID || '');
+    let unsubscribe: (() => void) | undefined;
 
-    const databaseId = process.env.APPWRITE_DATABASE_ID || 'horizon_ai_db';
-    const collectionId = 'invoices';
+    const setupRealtime = async () => {
+      const { Client } = await import('appwrite');
+      
+      const client = new Client()
+        .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || '')
+        .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID || '');
 
-    // Subscribe to invoice changes
-    const unsubscribe = client.subscribe(
-      `databases.${databaseId}.collections.${collectionId}.documents`,
-      (response: any) => {
-        const eventType = response.events[0];
-        
-        if (eventType.includes('create') || eventType.includes('update') || eventType.includes('delete')) {
-          // Refresh insights when invoices change
-          fetchInsights();
-          fetchBudgets();
+      const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || 'horizon_ai_db';
+      const collectionId = 'invoices';
+
+      // Subscribe to invoice changes
+      unsubscribe = client.subscribe(
+        `databases.${databaseId}.collections.${collectionId}.documents`,
+        (response: { events: string[] }) => {
+          const eventType = response.events[0];
+          
+          if (eventType.includes('create') || eventType.includes('update') || eventType.includes('delete')) {
+            // Refresh insights when invoices change
+            fetchInsights();
+            fetchBudgets();
+          }
         }
-      }
-    );
+      );
+    };
+
+    setupRealtime();
 
     return () => {
       if (unsubscribe && typeof unsubscribe === 'function') {
@@ -207,9 +220,9 @@ export default function InsightsPage() {
         setHasMinimumData(true);
         setInsights(data.insights || null);
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error fetching insights:', err);
-      setError(err.message || 'Failed to load insights');
+      setError(err instanceof Error ? err.message : 'Failed to load insights');
     } finally {
       setLoading(false);
     }
@@ -231,7 +244,7 @@ export default function InsightsPage() {
       const data = await response.json();
       setBudgets(data.budgets || []);
       setBudgetAlerts(data.alerts || []);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error fetching budgets:', err);
     } finally {
       setLoadingBudgets(false);
@@ -273,9 +286,9 @@ export default function InsightsPage() {
 
       // Refresh budgets
       await fetchBudgets();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error adding budget:', err);
-      alert(err.message || 'Failed to add budget');
+      alert(err instanceof Error ? err.message : 'Failed to add budget');
     }
   };
 
@@ -304,9 +317,9 @@ export default function InsightsPage() {
 
       // Refresh budgets
       await fetchBudgets();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error deleting budget:', err);
-      alert(err.message || 'Failed to delete budget');
+      alert(err instanceof Error ? err.message : 'Failed to delete budget');
     }
   };
 
@@ -349,9 +362,9 @@ export default function InsightsPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           ),
-          color: 'text-red-600',
-          bgColor: 'bg-red-50',
-          borderColor: 'border-red-200',
+          color: 'text-red-600 dark:text-red-400',
+          bgColor: 'bg-red-50 dark:bg-red-950/30',
+          borderColor: 'border-red-200 dark:border-red-800/50',
         };
       case 'medium':
         return {
@@ -360,9 +373,9 @@ export default function InsightsPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           ),
-          color: 'text-orange-600',
-          bgColor: 'bg-orange-50',
-          borderColor: 'border-orange-200',
+          color: 'text-orange-600 dark:text-orange-400',
+          bgColor: 'bg-orange-50 dark:bg-orange-950/30',
+          borderColor: 'border-orange-200 dark:border-orange-800/50',
         };
       default:
         return {
@@ -371,9 +384,9 @@ export default function InsightsPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           ),
-          color: 'text-blue-600',
-          bgColor: 'bg-blue-50',
-          borderColor: 'border-blue-200',
+          color: 'text-blue-600 dark:text-blue-400',
+          bgColor: 'bg-blue-50 dark:bg-blue-950/30',
+          borderColor: 'border-blue-200 dark:border-blue-800/50',
         };
     }
   };
@@ -530,13 +543,16 @@ export default function InsightsPage() {
   const lineChartData = insights?.monthlyTrend.map((month) => ({
     month: formatMonth(month.month),
     total: month.total,
+    monthNumber: month.monthNumber,
+    color: MONTH_COLORS[month.monthNumber] || '#3b82f6',
   })) || [];
 
   // Bar chart data for top merchants
-  const barChartData = insights?.topMerchants.slice(0, 5).map((merchant) => ({
+  const barChartData = insights?.topMerchants.slice(0, 5).map((merchant, index) => ({
     name: merchant.merchantName.length > 20 ? merchant.merchantName.substring(0, 20) + '...' : merchant.merchantName,
     totalSpent: merchant.totalSpent,
     visitCount: merchant.visitCount,
+    color: CHART_COLORS[index % CHART_COLORS.length],
   })) || [];
 
   // ============================================
@@ -808,33 +824,65 @@ export default function InsightsPage() {
         <Card className="p-6">
           <h2 className="text-xl font-medium text-on-surface mb-4">Gastos por Categoria</h2>
           {pieChartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={pieChartData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={(props: any) => `${props.name}: ${props.percent ? (props.percent * 100).toFixed(1) : 0}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
+            <div className="flex flex-col lg:flex-row gap-6 items-center">
+              <div className="flex-shrink-0">
+                <ResponsiveContainer width={300} height={300}>
+                  <PieChart>
+                    <Pie
+                      data={pieChartData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={false}
+                      outerRadius={100}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {pieChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value: number) => formatCurrency(value)}
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--surface))',
+                        color: 'hsl(var(--on-surface))',
+                        border: '1px solid hsl(var(--outline))',
+                        borderRadius: '8px',
+                      }}
+                      labelStyle={{
+                        color: 'hsl(var(--on-surface))',
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex-grow">
+                <div className="space-y-2">
                   {pieChartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    <div key={index} className="flex items-start gap-3 py-3 px-3 rounded border-2 border-transparent hover:border-primary/30 transition-colors cursor-pointer">
+                      <div
+                        className="w-4 h-4 rounded-full flex-shrink-0 mt-0.5"
+                        style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
+                      />
+                      <div className="flex-grow min-w-0">
+                        <div className="text-sm font-medium text-on-surface mb-1">
+                          {entry.name}
+                        </div>
+                        <div className="flex items-baseline gap-2">
+                          <div className="text-sm font-semibold text-on-surface">
+                            {formatCurrency(entry.value)}
+                          </div>
+                          <div className="text-xs text-on-surface-variant">
+                            {entry.percentage.toFixed(1)}%
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   ))}
-                </Pie>
-                <Tooltip
-                  formatter={(value: number) => formatCurrency(value)}
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--surface))',
-                    color: 'hsl(var(--on-surface))',
-                    border: '1px solid hsl(var(--outline))',
-                    borderRadius: '8px',
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
           ) : (
             <div className="h-64 flex items-center justify-center text-on-surface-variant">
               Sem dados disponíveis
@@ -848,17 +896,15 @@ export default function InsightsPage() {
           {lineChartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={lineChartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-outline opacity-30" />
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--outline))" opacity={0.3} />
                 <XAxis
                   dataKey="month"
-                  tick={{ fontSize: 12 }}
-                  stroke="currentColor"
-                  className="text-on-surface-variant"
+                  tick={{ fontSize: 12, fill: 'hsl(var(--on-surface))' }}
+                  stroke="hsl(var(--outline))"
                 />
                 <YAxis
-                  tick={{ fontSize: 12 }}
-                  stroke="currentColor"
-                  className="text-on-surface-variant"
+                  tick={{ fontSize: 12, fill: 'hsl(var(--on-surface))' }}
+                  stroke="hsl(var(--outline))"
                   tickFormatter={(value) => `R$ ${(value / 1000).toFixed(1)}k`}
                 />
                 <Tooltip
@@ -869,14 +915,41 @@ export default function InsightsPage() {
                     border: '1px solid hsl(var(--outline))',
                     borderRadius: '8px',
                   }}
+                  labelStyle={{
+                    color: 'hsl(var(--on-surface))',
+                  }}
                 />
                 <Line
                   type="monotone"
                   dataKey="total"
                   stroke="hsl(var(--primary))"
                   strokeWidth={2}
-                  dot={{ fill: 'hsl(var(--primary))', r: 4 }}
-                  activeDot={{ r: 6 }}
+                  dot={(props: any) => {
+                    const { cx, cy, payload } = props;
+                    return (
+                      <circle
+                        cx={cx}
+                        cy={cy}
+                        r={4}
+                        fill={payload.color || 'hsl(var(--primary))'}
+                        stroke="white"
+                        strokeWidth={2}
+                      />
+                    );
+                  }}
+                  activeDot={(props: any) => {
+                    const { cx, cy, payload } = props;
+                    return (
+                      <circle
+                        cx={cx}
+                        cy={cy}
+                        r={6}
+                        fill={payload.color || 'hsl(var(--primary))'}
+                        stroke="white"
+                        strokeWidth={2}
+                      />
+                    );
+                  }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -893,20 +966,18 @@ export default function InsightsPage() {
           {barChartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={barChartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-outline opacity-30" />
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--on-surface))" opacity={0.3} />
                 <XAxis
                   dataKey="name"
-                  tick={{ fontSize: 11 }}
-                  stroke="currentColor"
-                  className="text-on-surface-variant"
+                  tick={{ fontSize: 11, fill: 'hsl(var(--on-surface))' }}
+                  stroke="hsl(var(--on-surface))"
                   angle={-15}
                   textAnchor="end"
                   height={80}
                 />
                 <YAxis
-                  tick={{ fontSize: 12 }}
-                  stroke="currentColor"
-                  className="text-on-surface-variant"
+                  tick={{ fontSize: 12, fill: 'hsl(var(--on-surface))' }}
+                  stroke="hsl(var(--on-surface))"
                   tickFormatter={(value) => `R$ ${(value / 1000).toFixed(1)}k`}
                 />
                 <Tooltip
@@ -921,8 +992,19 @@ export default function InsightsPage() {
                     border: '1px solid hsl(var(--outline))',
                     borderRadius: '8px',
                   }}
+                  labelStyle={{
+                    color: 'hsl(var(--on-surface))',
+                  }}
                 />
-                <Bar dataKey="totalSpent" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
+                <Bar 
+                  dataKey="totalSpent" 
+                  radius={[8, 8, 0, 0]}
+                  fill="hsl(var(--primary))"
+                >
+                  {barChartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -996,13 +1078,13 @@ export default function InsightsPage() {
                 key={index}
                 className={`flex items-start gap-3 p-3 rounded-lg ${
                   alert.threshold === 100
-                    ? 'bg-red-50 border border-red-200'
-                    : 'bg-orange-50 border border-orange-200'
+                    ? 'bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50'
+                    : 'bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/50'
                 }`}
               >
                 <svg
                   className={`w-5 h-5 flex-shrink-0 ${
-                    alert.threshold === 100 ? 'text-red-600' : 'text-orange-600'
+                    alert.threshold === 100 ? 'text-red-600 dark:text-red-400' : 'text-orange-600 dark:text-orange-400'
                   }`}
                   fill="none"
                   stroke="currentColor"
@@ -1015,7 +1097,7 @@ export default function InsightsPage() {
                     d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
                   />
                 </svg>
-                <p className={`text-sm ${alert.threshold === 100 ? 'text-red-800' : 'text-orange-800'}`}>
+                <p className={`text-sm ${alert.threshold === 100 ? 'text-red-800 dark:text-red-300' : 'text-orange-800 dark:text-orange-300'}`}>
                   {alert.message}
                 </p>
               </div>

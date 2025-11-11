@@ -354,10 +354,10 @@ export default function InvoicesPage() {
                 placeholder="Buscar por número da nota, estabelecimento ou produto..."
                 value={filters.search}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
-                className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-4 py-2 pl-10 border border-outline bg-surface text-on-surface placeholder:text-on-surface-variant rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:border-outline-variant dark:bg-surface-variant/20"
               />
               <svg
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-on-surface-variant"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -395,36 +395,36 @@ export default function InvoicesPage() {
 
           {/* Advanced Filters */}
           {showFilters && (
-            <div className="pt-4 border-t border-gray-200">
+            <div className="pt-4 border-t border-outline dark:border-outline-variant">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {/* Date Range */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Data Inicial</label>
+                  <label className="block text-sm font-medium text-on-surface mb-1">Data Inicial</label>
                   <input
                     type="date"
                     value={filters.startDate}
                     onChange={(e) => handleFilterChange('startDate', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-3 py-2 border border-outline bg-surface text-on-surface rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:border-outline-variant dark:bg-surface-variant/20"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Data Final</label>
+                  <label className="block text-sm font-medium text-on-surface mb-1">Data Final</label>
                   <input
                     type="date"
                     value={filters.endDate}
                     onChange={(e) => handleFilterChange('endDate', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-3 py-2 border border-outline bg-surface text-on-surface rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:border-outline-variant dark:bg-surface-variant/20"
                   />
                 </div>
 
                 {/* Category Filter */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+                  <label className="block text-sm font-medium text-on-surface mb-1">Categoria</label>
                   <select
                     value={filters.category}
                     onChange={(e) => handleFilterChange('category', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-3 py-2 border border-outline bg-surface text-on-surface rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:border-outline-variant dark:bg-surface-variant/20"
                   >
                     <option value="">Todas as categorias</option>
                     <option value="pharmacy">Farmácia</option>
@@ -440,38 +440,38 @@ export default function InvoicesPage() {
 
                 {/* Merchant Filter */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Estabelecimento</label>
+                  <label className="block text-sm font-medium text-on-surface mb-1">Estabelecimento</label>
                   <input
                     type="text"
                     placeholder="Nome do estabelecimento"
                     value={filters.merchant}
                     onChange={(e) => handleFilterChange('merchant', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-3 py-2 border border-outline bg-surface text-on-surface placeholder:text-on-surface-variant rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:border-outline-variant dark:bg-surface-variant/20"
                   />
                 </div>
 
                 {/* Amount Range */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Valor Mínimo</label>
+                  <label className="block text-sm font-medium text-on-surface mb-1">Valor Mínimo</label>
                   <input
                     type="number"
                     placeholder="R$ 0,00"
                     value={filters.minAmount}
                     onChange={(e) => handleFilterChange('minAmount', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-3 py-2 border border-outline bg-surface text-on-surface placeholder:text-on-surface-variant rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:border-outline-variant dark:bg-surface-variant/20"
                     step="0.01"
                     min="0"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Valor Máximo</label>
+                  <label className="block text-sm font-medium text-on-surface mb-1">Valor Máximo</label>
                   <input
                     type="number"
                     placeholder="R$ 0,00"
                     value={filters.maxAmount}
                     onChange={(e) => handleFilterChange('maxAmount', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-3 py-2 border border-outline bg-surface text-on-surface placeholder:text-on-surface-variant rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:border-outline-variant dark:bg-surface-variant/20"
                     step="0.01"
                     min="0"
                   />

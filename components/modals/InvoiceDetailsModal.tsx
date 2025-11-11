@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Activity } from 'react';
 import { Button } from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -270,10 +270,11 @@ export default function InvoiceDetailsModal({ invoiceId, isOpen, onClose, onDele
               {/* Totals Breakdown */}
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Resumo dos Valores</h3>
-                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-5 space-y-3">
+                <div className={`bg-gray-50 dark:bg-gray-800/50 rounded-lg p-5 ${((invoiceData.discount_amount && invoiceData.discount_amount > 0) || (invoiceData.tax_amount && invoiceData.tax_amount > 0)) ? 'space-y-3' : ''}`}>
                   {/* Subtotal - só mostra se houver desconto ou imposto */}
-                  {((invoiceData.discount_amount && invoiceData.discount_amount > 0) || 
-                    (invoiceData.tax_amount && invoiceData.tax_amount > 0)) && (
+                  <Activity
+                    mode={((invoiceData.discount_amount && invoiceData.discount_amount > 0) || (invoiceData.tax_amount && invoiceData.tax_amount > 0)) ? 'visible' : 'hidden'}
+                  >
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600 dark:text-gray-400">Subtotal:</span>
                       <span className="text-sm text-gray-900 dark:text-gray-100">
@@ -282,21 +283,23 @@ export default function InvoiceDetailsModal({ invoiceId, isOpen, onClose, onDele
                         )}
                       </span>
                     </div>
-                  )}
+                  </Activity>
                   {/* Descontos - só mostra se for maior que 0 */}
-                  {invoiceData.discount_amount && invoiceData.discount_amount > 0 && (
+                  <Activity
+                    mode={invoiceData.discount_amount && invoiceData.discount_amount > 0 ? 'visible' : 'hidden'}
+                  >
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600 dark:text-gray-400">Descontos:</span>
-                      <span className="text-sm text-green-600 dark:text-green-400">-{formatCurrency(invoiceData.discount_amount)}</span>
+                      <span className="text-sm text-green-600 dark:text-green-400">-{formatCurrency(invoiceData?.discount_amount ?? 0)}</span>
                     </div>
-                  )}
+                  </Activity>
                   {/* Impostos - só mostra se for maior que 0 */}
-                  {invoiceData.tax_amount && invoiceData.tax_amount > 0 && (
+                  <Activity mode={invoiceData.tax_amount && invoiceData.tax_amount > 0 ? 'visible' : 'hidden'}>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600 dark:text-gray-400">Impostos:</span>
-                      <span className="text-sm text-gray-900 dark:text-gray-100">{formatCurrency(invoiceData.tax_amount)}</span>
+                      <span className="text-sm text-gray-900 dark:text-gray-100">{formatCurrency(invoiceData?.tax_amount ?? 0)}</span>
                     </div>
-                  )}
+                  </Activity>
                   {/* Total - sempre mostra */}
                   <div className={`flex justify-between items-center ${((invoiceData.discount_amount && invoiceData.discount_amount > 0) || (invoiceData.tax_amount && invoiceData.tax_amount > 0)) ? 'pt-3 mt-1 border-t border-gray-200 dark:border-gray-700' : ''}`}>
                     <span className="text-base font-semibold text-gray-900 dark:text-gray-100">Total:</span>

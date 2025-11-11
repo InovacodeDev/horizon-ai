@@ -247,7 +247,7 @@ export class AccountService {
       const { dateToUserTimezone } = await import('@/lib/utils/timezone');
       const now = dateToUserTimezone(new Date().toISOString().split('T')[0]);
 
-      await this.dbAdapter.createDocument(DATABASE_ID, COLLECTIONS.TRANSFER_LOGS, ID.unique(), {
+      const transferLog = await this.dbAdapter.createDocument(DATABASE_ID, COLLECTIONS.TRANSFER_LOGS, ID.unique(), {
         user_id: userId,
         from_account_id: data.fromAccountId,
         to_account_id: data.toAccountId,
@@ -257,19 +257,21 @@ export class AccountService {
         created_at: now,
       });
 
-      // Sync balances using BalanceSyncService
-      try {
-        const { BalanceSyncService } = await import('./balance-sync.service');
-        const balanceSyncService = new BalanceSyncService();
+      console.log('Transfer log created:', transferLog.$id);
 
-        // Sync both accounts
-        await balanceSyncService.syncAccountBalance(data.fromAccountId);
-        await balanceSyncService.syncAccountBalance(data.toAccountId);
-      } catch (syncError: any) {
-        console.error('Failed to sync account balances after transfer:', syncError);
-        // Don't fail the transfer if balance sync fails
-      }
+      // Sync balances using BalanceSyncService
+      // IMPORTANTE: Sincronizar ambas as contas para garantir que os saldos sejam atualizados corretamente
+      const { BalanceSyncService } = await import('./balance-sync.service');
+      const balanceSyncService = new BalanceSyncService();
+
+      // Sync both accounts - this will recalculate from scratch including the new transfer
+      const fromBalance = await balanceSyncService.syncAccountBalance(data.fromAccountId);
+      const toBalance = await balanceSyncService.syncAccountBalance(data.toAccountId);
+
+      console.log(`Transfer completed - From account balance: ${fromBalance}, To account balance: ${toBalance}`);
     } catch (error: any) {
+      console.error('Transfer balance error:', error);
+
       // Log failed transfer
       try {
         const { COLLECTIONS, DATABASE_ID } = await import('@/lib/appwrite/schema');

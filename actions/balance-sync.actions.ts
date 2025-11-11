@@ -47,6 +47,36 @@ export async function syncAccountBalanceAction(accountId: string): Promise<Balan
 }
 
 /**
+ * Reprocessa o saldo de uma conta específica
+ * Recalcula do zero baseado em todas as transações e transferências
+ */
+export async function reprocessAccountBalanceAction(accountId: string): Promise<BalanceSyncActionState> {
+  try {
+    // Require authentication
+    await requireAuth();
+
+    const balanceSyncService = new BalanceSyncService();
+    const balance = await balanceSyncService.syncAccountBalance(accountId);
+
+    // Não fazer revalidatePath aqui para evitar refresh desnecessário
+    // O cliente vai buscar a conta atualizada manualmente
+
+    return {
+      success: true,
+      message: 'Saldo reprocessado com sucesso',
+      balance,
+    };
+  } catch (error) {
+    console.error('Reprocess account balance action error:', error);
+
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Falha ao reprocessar saldo',
+    };
+  }
+}
+
+/**
  * Recalcula o saldo de todas as contas do usuário
  */
 export async function recalculateAllBalancesAction(): Promise<BalanceSyncActionState> {
