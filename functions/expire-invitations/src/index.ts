@@ -26,7 +26,7 @@ interface Invitation {
 
 // Configuration
 const DATABASE_ID = process.env.APPWRITE_DATABASE_ID || 'horizon_ai_db';
-const INVITATIONS_COLLECTION = 'invitations';
+const INVITATIONS_COLLECTION = 'sharing_invitations';
 
 /**
  * Initialize Appwrite client
