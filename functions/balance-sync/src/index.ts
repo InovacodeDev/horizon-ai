@@ -91,7 +91,11 @@ async function getAllTransactions(databases: TablesDB, accountId: string): Promi
 /**
  * Sincroniza o saldo de uma conta
  */
-async function syncAccountBalance(databases: TablesDB, accountId: string): Promise<number> {
+async function syncAccountBalance(
+  databases: TablesDB,
+  accountId: string,
+  deletedTransactionId?: string,
+): Promise<number> {
   console.log(`[BalanceSync] Syncing account ${accountId}`);
 
   try {
@@ -107,6 +111,7 @@ async function syncAccountBalance(databases: TablesDB, accountId: string): Promi
     console.log(`[BalanceSync] - Current date: ${now.toISOString()}`);
 
     const processedTransactions: string[] = [];
+    const transactionsToMarkCompleted: string[] = [];
 
     for (const transaction of transactions) {
       // Ignorar transações de cartão de crédito
@@ -124,6 +129,19 @@ async function syncAccountBalance(databases: TablesDB, accountId: string): Promi
         continue;
       }
 
+      // Ignorar transações já completadas (exceto se for a transação deletada)
+      if (transaction.status === 'completed' && transaction.$id !== deletedTransactionId) {
+        console.log(`[BalanceSync] - Skipping completed transaction: ${transaction.$id}`);
+        // Ainda incluir no cálculo do saldo
+        if (transaction.direction === 'in') {
+          newBalance += transaction.amount;
+        } else {
+          newBalance -= transaction.amount;
+        }
+        processedTransactions.push(transaction.$id);
+        continue;
+      }
+
       // Processar cada tipo de transação
       if (transaction.direction === 'in') {
         newBalance += transaction.amount;
@@ -136,10 +154,33 @@ async function syncAccountBalance(databases: TablesDB, accountId: string): Promi
       }
 
       processedTransactions.push(transaction.$id);
+
+      // Marcar para atualizar status para completed (se não for a transação deletada)
+      if (transaction.status !== 'completed' && transaction.$id !== deletedTransactionId) {
+        transactionsToMarkCompleted.push(transaction.$id);
+      }
     }
 
     console.log(`[BalanceSync] - Final balance: ${newBalance}`);
     console.log(`[BalanceSync] - Processed ${processedTransactions.length} transactions`);
+    console.log(`[BalanceSync] - Marking ${transactionsToMarkCompleted.length} transactions as completed`);
+
+    // Atualizar status das transações para completed
+    for (const transactionId of transactionsToMarkCompleted) {
+      try {
+        await databases.updateRow({
+          databaseId: DATABASE_ID,
+          tableId: COLLECTIONS.TRANSACTIONS,
+          rowId: transactionId,
+          data: {
+            status: 'completed',
+          },
+        });
+        console.log(`[BalanceSync] - Marked transaction ${transactionId} as completed`);
+      } catch (error) {
+        console.error(`[BalanceSync] - Error marking transaction ${transactionId} as completed:`, error);
+      }
+    }
 
     // Atualizar conta com novo balance
     await databases.updateRow({
@@ -291,7 +332,9 @@ export default async ({ req, res, log, error }: any) => {
     // Execução por evento de database
     if (executionType === 'event') {
       const eventData = req.body;
-      log(`Processing database event: ${JSON.stringify(eventData)}`);
+      const eventType = req.headers['x-appwrite-event'] || '';
+      log(`Processing database event: ${eventType}`);
+      log(`Event data: ${JSON.stringify(eventData)}`);
 
       // Extrair dados da transação do evento
       const transaction = eventData as TransactionEvent;
@@ -303,6 +346,7 @@ export default async ({ req, res, log, error }: any) => {
       log(`Amount: ${transaction.amount}`);
       log(`Direction: ${transaction.direction}`);
       log(`Date: ${transaction.date}`);
+      log(`Status: ${transaction.status}`);
 
       if (!transaction.account_id) {
         log('Transaction has no account_id, skipping');
@@ -320,9 +364,14 @@ export default async ({ req, res, log, error }: any) => {
         });
       }
 
+      // Detectar se é um evento de delete
+      const isDeleteEvent = eventType.includes('.delete');
+      const deletedTransactionId = isDeleteEvent ? transaction.$id : undefined;
+
       // Sincronizar saldo da conta
       log(`Starting balance sync for account: ${transaction.account_id}`);
-      const newBalance = await syncAccountBalance(databases, transaction.account_id);
+      log(`Is delete event: ${isDeleteEvent}`);
+      const newBalance = await syncAccountBalance(databases, transaction.account_id, deletedTransactionId);
 
       log(`Balance sync completed. New balance: ${newBalance}`);
 
@@ -332,6 +381,7 @@ export default async ({ req, res, log, error }: any) => {
         accountId: transaction.account_id,
         transactionId: transaction.$id,
         newBalance,
+        eventType,
         timestamp: new Date().toISOString(),
       });
     }

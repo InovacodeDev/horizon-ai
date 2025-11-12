@@ -331,6 +331,12 @@ export class TransactionService {
         updated_at: now,
       };
 
+      // Reset status to pending when transaction is edited (unless explicitly setting status)
+      // This ensures the balance sync function will reprocess this transaction
+      if (data.status === undefined && existing.status === 'completed') {
+        updatePayload.status = 'pending';
+      }
+
       // Core indexed fields that can be updated directly
       if (data.amount !== undefined) updatePayload.amount = data.amount;
       if (data.type !== undefined) {
