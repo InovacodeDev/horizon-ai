@@ -112,6 +112,9 @@ export class BalanceSyncService {
         }
       }
 
+      // Arredondar para 2 casas decimais
+      newBalance = Math.round(newBalance * 100) / 100;
+
       console.log(`[BalanceSync] - Final balance: ${newBalance}`);
 
       // Atualizar conta com novo balance e IDs sincronizados
