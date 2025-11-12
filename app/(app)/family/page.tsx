@@ -45,7 +45,7 @@ export default function FamilyPage() {
 
       // Set userId for the invitations hook
       if (relationshipData.relationship) {
-        setUserId(relationshipData.relationship.responsibleUser.$id);
+        setUserId(relationshipData.relationship.responsibleUser.id);
       }
 
       // If user is responsible, fetch members

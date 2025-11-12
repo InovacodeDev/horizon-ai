@@ -82,7 +82,8 @@ export function useAccountBalance(accountId: string, options: UseAccountBalanceO
     try {
       setError(null);
       const databases = getAppwriteBrowserDatabases();
-      const account = (await databases.getDocument(DATABASE_ID, ACCOUNTS_COLLECTION, accountId)) as Account;
+      const accountDoc = await databases.getDocument(DATABASE_ID, ACCOUNTS_COLLECTION, accountId);
+      const account = accountDoc as unknown as Account;
 
       setBalance(account.balance);
       setLoading(false);
