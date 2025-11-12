@@ -138,11 +138,11 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
     }
   }, [userId, initialTransactions, fetchTransactions]);
 
-  // Setup realtime subscription for transactions
+  // Setup realtime subscription for transactions with granular event handling
   useEffect(() => {
     if (!userId) return;
 
-    const databaseId = process.env.APPWRITE_DATABASE_ID;
+    const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || process.env.APPWRITE_DATABASE_ID;
     if (!databaseId) {
       console.warn('APPWRITE_DATABASE_ID not set, realtime disabled for transactions');
       return;
@@ -155,10 +155,48 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
       const channels = [`databases.${databaseId}.collections.transactions.documents`];
 
       const unsubscribe = client.subscribe(channels, (response: any) => {
-        console.log('📡 Realtime event received for transactions:', response.events);
+        const events = response.events || [];
+        const payload = response.payload as Transaction;
 
-        // Refetch transactions on any change
-        fetchTransactions(undefined, true);
+        console.log('📡 Realtime event received for transactions:', events);
+
+        // Only process events for the current user
+        if (payload.user_id !== userId) {
+          return;
+        }
+
+        // Handle create events
+        if (events.some((e: string) => e.includes('.create'))) {
+          console.log('➕ Transaction created:', payload.$id);
+          setTransactions((prev) => {
+            // Avoid duplicates
+            if (prev.some((t) => t.$id === payload.$id)) {
+              return prev;
+            }
+            return [payload, ...prev];
+          });
+          setTotal((prev) => prev + 1);
+
+          // Invalidate cache
+          invalidateCache.transactions(userId);
+        }
+        // Handle update events
+        else if (events.some((e: string) => e.includes('.update'))) {
+          console.log('✏️ Transaction updated:', payload.$id);
+          setTransactions((prev) => prev.map((t) => (t.$id === payload.$id ? payload : t)));
+
+          // Invalidate cache
+          invalidateCache.transactions(userId);
+        }
+        // Handle delete events
+        else if (events.some((e: string) => e.includes('.delete'))) {
+          console.log('🗑️ Transaction deleted:', payload.$id);
+          setTransactions((prev) => prev.filter((t) => t.$id !== payload.$id));
+          setTotal((prev) => Math.max(0, prev - 1));
+
+          // Invalidate cache
+          invalidateCache.transactions(userId);
+        }
       });
 
       console.log('✅ Subscribed to transactions realtime updates');
@@ -169,8 +207,9 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
       };
     } catch (error) {
       console.error('❌ Error setting up realtime for transactions:', error);
+      setError('Failed to setup realtime updates');
     }
-  }, [userId, fetchTransactions]);
+  }, [userId]);
 
   const createTransaction = useCallback(
     async (input: CreateTransactionDto) => {

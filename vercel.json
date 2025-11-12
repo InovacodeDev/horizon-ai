@@ -12,15 +12,5 @@
     "autoJobCancelation": true
   },
   "buildCommand": "pnpm build",
-  "installCommand": "pnpm install --frozen-lockfile",
-  "crons": [
-    {
-      "path": "/api/cron/process-recurring",
-      "schedule": "0 0 * * *"
-    },
-    {
-      "path": "/api/cron/expire-invitations",
-      "schedule": "0 0 * * *"
-    }
-  ]
+  "installCommand": "pnpm install --frozen-lockfile"
 }

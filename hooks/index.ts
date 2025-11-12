@@ -8,12 +8,14 @@
  */
 
 export { useAccounts } from './useAccounts';
+export { useAccountBalance } from './useAccountBalance';
 export { useCreditCards } from './useCreditCards';
 export { useCreditCardBills } from './useCreditCardBills';
 export { useTransactions } from './useTransactions';
 export { useFinancialInsights } from './useFinancialInsights';
 export { useTotalBalance } from './useTotalBalance';
 export { useFormSubmit, SubmitButton } from './useFormSubmit';
+export { useInvitations } from './useInvitations';
 
 // Re-export types for convenience
 export type {

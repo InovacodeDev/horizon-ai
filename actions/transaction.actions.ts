@@ -349,59 +349,63 @@ export async function getTransactionStatsAction(startDate?: string, endDate?: st
 /**
  * Process due transactions action
  * Processa transações futuras que chegaram na data de hoje
+ *
+ * @deprecated This action is deprecated as of the serverless architecture refactor.
+ * Processing of due transactions is now handled automatically by the Appwrite Balance Sync Function,
+ * which runs daily at 20:00 (8 PM) via a scheduled trigger.
+ *
+ * **Migration Guide:**
+ * - Remove any manual calls to this action from your code
+ * - The Balance Sync Function automatically processes due transactions on schedule
+ * - To manually trigger processing, use the Appwrite Console to execute the Balance Sync Function
+ * - Function location: `functions/balance-sync/`
+ * - Schedule: Daily at 20:00 (configured in Appwrite Console)
+ *
+ * @see https://appwrite.io/docs/functions
+ * @see functions/balance-sync/README.md
  */
 export async function processDueTransactionsAction(): Promise<{ processed: number }> {
-  try {
-    // Require authentication
-    const user = await requireAuth();
+  console.warn(
+    'processDueTransactionsAction is deprecated. Due transactions are now processed automatically by the Appwrite Balance Sync Function.',
+  );
 
-    // Process due transactions
-    const { BalanceSyncService } = await import('@/lib/services/balance-sync.service');
-    const balanceSyncService = new BalanceSyncService();
-    const processed = await balanceSyncService.processDueTransactions(user.sub);
-
-    // Revalidate paths if any transactions were processed
-    if (processed > 0) {
-      revalidatePath('/transactions');
-      revalidatePath('/overview');
-      revalidatePath('/accounts');
-    }
-
-    return { processed };
-  } catch (error) {
-    console.error('Process due transactions action error:', error);
-    throw new Error(error instanceof Error ? error.message : 'Failed to process due transactions');
-  }
+  return {
+    processed: 0,
+  };
 }
 
 /**
  * Reprocess all account balances action
  * Recalcula todos os saldos das contas do zero
+ *
+ * @deprecated This action is deprecated as of the serverless architecture refactor.
+ * Balance synchronization is now handled automatically by the Appwrite Balance Sync Function,
+ * which triggers on every transaction create/update/delete event and runs daily at 20:00.
+ *
+ * **Migration Guide:**
+ * - Remove any manual calls to this action from your code
+ * - Account balances are automatically updated when transactions change
+ * - The Balance Sync Function handles all balance calculations asynchronously
+ * - For emergency manual recalculation, use the Appwrite Console to execute the Balance Sync Function
+ * - Function location: `functions/balance-sync/`
+ * - Event triggers: transaction create/update/delete
+ * - Schedule trigger: Daily at 20:00
+ *
+ * **How it works:**
+ * 1. User creates/updates/deletes a transaction via Next.js API
+ * 2. Appwrite database event triggers the Balance Sync Function
+ * 3. Function recalculates affected account balance
+ * 4. UI updates automatically via Appwrite Realtime subscription
+ *
+ * @see https://appwrite.io/docs/functions
+ * @see functions/balance-sync/README.md
  */
 export async function reprocessAllBalancesAction(): Promise<{ success: boolean; message: string }> {
-  try {
-    // Require authentication
-    const user = await requireAuth();
+  console.warn('reprocessAllBalancesAction is deprecated. Balance sync is now automatic via Appwrite Functions.');
 
-    // Reprocess all balances
-    const { BalanceSyncService } = await import('@/lib/services/balance-sync.service');
-    const balanceSyncService = new BalanceSyncService();
-    await balanceSyncService.recalculateAllBalances(user.sub);
-
-    // Revalidate paths
-    revalidatePath('/transactions');
-    revalidatePath('/overview');
-    revalidatePath('/accounts');
-
-    return {
-      success: true,
-      message: 'Saldos recalculados com sucesso!',
-    };
-  } catch (error) {
-    console.error('Reprocess balances action error:', error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : 'Falha ao recalcular saldos',
-    };
-  }
+  return {
+    success: false,
+    message:
+      'Balance synchronization is now automatic via Appwrite Functions. Changes will reflect within seconds. For manual recalculation, use the Appwrite Console to trigger the Balance Sync Function.',
+  };
 }

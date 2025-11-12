@@ -4,9 +4,9 @@ import React, { useState, useEffect } from 'react';
 import Button from '@/components/ui/Button';
 import { CreateInvitationModal } from '@/components/modals/CreateInvitationModal';
 import { TerminateRelationshipModal } from '@/components/modals/TerminateRelationshipModal';
+import { useInvitations } from '@/hooks/useInvitations';
 import type { 
   SharingRelationshipDetails, 
-  SharingInvitation,
   GetRelationshipResponse,
   GetMembersResponse 
 } from '@/lib/types/sharing.types';
@@ -16,10 +16,15 @@ export default function FamilyPage() {
   const [relationship, setRelationship] = useState<SharingRelationshipDetails | null>(null);
   const [role, setRole] = useState<'responsible' | 'member' | null>(null);
   const [members, setMembers] = useState<SharingRelationshipDetails[]>([]);
-  const [invitations, setInvitations] = useState<SharingInvitation[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
   const [isInvitationModalOpen, setIsInvitationModalOpen] = useState(false);
   const [isTerminateModalOpen, setIsTerminateModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Use the realtime invitations hook
+  const { invitations, loading: invitationsLoading, refetch: refetchInvitations } = useInvitations({
+    userId: role === 'responsible' ? userId : null,
+  });
 
   useEffect(() => {
     loadData();
@@ -38,21 +43,18 @@ export default function FamilyPage() {
       setRelationship(relationshipData.relationship);
       setRole(relationshipData.role);
 
-      // If user is responsible, fetch members and invitations
+      // Set userId for the invitations hook
+      if (relationshipData.relationship) {
+        setUserId(relationshipData.relationship.responsibleUser.$id);
+      }
+
+      // If user is responsible, fetch members
       if (relationshipData.role === 'responsible') {
-        const [membersRes, invitationsRes] = await Promise.all([
-          fetch('/api/family/members'),
-          fetch('/api/family/invitations'),
-        ]);
+        const membersRes = await fetch('/api/family/members');
 
         if (membersRes.ok) {
           const membersData: GetMembersResponse = await membersRes.json();
           setMembers(membersData.members);
-        }
-
-        if (invitationsRes.ok) {
-          const invitationsData = await invitationsRes.json();
-          setInvitations(invitationsData.invitations || []);
         }
       }
     } catch (err: any) {
@@ -64,7 +66,7 @@ export default function FamilyPage() {
 
   const handleInvitationCreated = () => {
     setIsInvitationModalOpen(false);
-    loadData();
+    refetchInvitations();
   };
 
   const handleRelationshipTerminated = () => {
@@ -80,7 +82,9 @@ export default function FamilyPage() {
 
       if (!res.ok) throw new Error('Failed to cancel invitation');
       
-      loadData();
+      // Invitations will update automatically via realtime
+      // But we can refetch to ensure consistency
+      refetchInvitations();
     } catch (err: any) {
       alert(err.message || 'Failed to cancel invitation');
     }

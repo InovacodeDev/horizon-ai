@@ -1,0 +1,24 @@
+{
+  "projectId": "your-project-id-here",
+  "projectName": "Horizon AI",
+  "functions": [
+    {
+      "$id": "expire-invitations",
+      "name": "Expire Invitations",
+      "runtime": "node-20.0",
+      "execute": ["any"],
+      "events": [],
+      "schedule": "0 0 * * *",
+      "timeout": 900,
+      "enabled": true,
+      "logging": true,
+      "entrypoint": "index.js",
+      "commands": "npm install && npm run build",
+      "path": ".",
+      "vars": {
+        "APPWRITE_ENDPOINT": "https://cloud.appwrite.io/v1",
+        "APPWRITE_DATABASE_ID": "your-database-id-here"
+      }
+    }
+  ]
+}

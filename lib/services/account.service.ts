@@ -1,6 +1,7 @@
 import { getAppwriteDatabases } from '@/lib/appwrite/client';
 import { Account, COLLECTIONS, DATABASE_ID } from '@/lib/appwrite/schema';
 import { ID, Query } from 'node-appwrite';
+
 import AppwriteDBAdapter from '../appwrite/adapter';
 
 /**
@@ -59,7 +60,7 @@ export class AccountService {
       const account = this.deserializeAccount(document);
 
       // Create initial transaction if there's an initial balance
-      // This will automatically sync the balance via BalanceSyncService
+      // Balance will be automatically synced by Appwrite Function via database event trigger
       if (data.initial_balance && data.initial_balance > 0) {
         try {
           const { TransactionService } = await import('./transaction.service');
@@ -104,7 +105,7 @@ export class AccountService {
         const documents = result.documents || [];
         const accounts = documents.map((doc: any) => this.deserializeAccount(doc));
 
-        // Balance is now automatically synced via BalanceSyncService
+        // Balance is automatically synced by Appwrite Function via database event triggers
         // No need to recalculate here
         return accounts;
       }
@@ -217,7 +218,7 @@ export class AccountService {
 
   /**
    * Get account balance
-   * Balance is automatically synced via BalanceSyncService when transactions change
+   * Balance is automatically synced by Appwrite Function when transactions change
    */
   async getAccountBalance(accountId: string): Promise<number> {
     try {
@@ -230,15 +231,35 @@ export class AccountService {
 
   /**
    * Manually trigger balance sync for an account
-   * Useful for debugging or manual corrections
+   *
+   * @deprecated This method is deprecated as of the serverless architecture refactor.
+   * Balance synchronization is now handled automatically by the Appwrite Balance Sync Function.
+   *
+   * The Balance Sync Function:
+   * - Automatically recalculates balances when transactions change (via event triggers)
+   * - Runs daily at 20:00 to process due transactions (via schedule trigger)
+   *
+   * For emergency manual recalculation:
+   * 1. Go to Appwrite Console
+   * 2. Navigate to Functions > balance-sync
+   * 3. Click "Execute" with payload: { "accountId": "your-account-id" }
+   *
+   * @param accountId - The account ID to sync
+   * @returns Promise with the current balance (fetched from database, not recalculated)
    */
   async syncAccountBalance(accountId: string): Promise<number> {
+    console.warn(
+      '[DEPRECATED] AccountService.syncAccountBalance() is deprecated. ' +
+        'Balance sync is now automatic via Appwrite Functions.',
+    );
+
     try {
-      const { BalanceSyncService } = await import('./balance-sync.service');
-      const balanceSyncService = new BalanceSyncService();
-      return await balanceSyncService.syncAccountBalance(accountId);
+      // Just return the current balance from the database
+      // The Appwrite Function handles actual synchronization
+      const document = await this.dbAdapter.getDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, accountId);
+      return document.balance;
     } catch (error: any) {
-      throw new Error(`Failed to sync account balance: ${error.message}`);
+      throw new Error(`Failed to get account balance: ${error.message}`);
     }
   }
 
@@ -300,15 +321,11 @@ export class AccountService {
 
       console.log('Transfer transactions created');
 
-      // Sync balances using BalanceSyncService
-      const { BalanceSyncService } = await import('./balance-sync.service');
-      const balanceSyncService = new BalanceSyncService();
+      // Balance sync removed - now handled automatically by Appwrite Function via database event triggers
+      // The Balance Sync Function will detect the new transfer transactions and update both account balances
+      // UI will update automatically via Appwrite Realtime subscriptions
 
-      // Sync both accounts - this will recalculate from scratch including the new transfer
-      const fromBalance = await balanceSyncService.syncAccountBalance(data.fromAccountId);
-      const toBalance = await balanceSyncService.syncAccountBalance(data.toAccountId);
-
-      console.log(`Transfer completed - From account balance: ${fromBalance}, To account balance: ${toBalance}`);
+      console.log('Transfer completed - balances will be updated automatically by Appwrite Function');
     } catch (error: any) {
       console.error('Transfer balance error:', error);
       throw new Error(`Falha ao transferir saldo: ${error.message}`);

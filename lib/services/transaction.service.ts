@@ -229,45 +229,15 @@ export class TransactionService {
           linked_transaction_id: taxId,
         });
 
-        // Sync account balance for tax transaction if needed
-        if (data.accountId) {
-          try {
-            const { BalanceSyncService } = await import('./balance-sync.service');
-            const balanceSyncService = new BalanceSyncService();
-            await balanceSyncService.syncAfterCreate(data.accountId, taxId);
-          } catch (error: any) {
-            console.error('Failed to sync account balance after tax transaction creation:', error);
-          }
-        }
+        // Balance sync removed - now handled by Appwrite Function via database event trigger
       } catch (error: any) {
         console.error('Failed to create tax transaction for salary:', error);
         // Don't fail the salary creation if tax transaction fails
       }
     }
 
-    // Sync account balance if transaction is linked to an account (but not a credit card)
-    if (data.accountId && !data.creditCardId) {
-      try {
-        const { BalanceSyncService } = await import('./balance-sync.service');
-        const balanceSyncService = new BalanceSyncService();
-        await balanceSyncService.syncAfterCreate(data.accountId, id);
-      } catch (error: any) {
-        console.error('Failed to sync account balance after transaction creation:', error);
-        // Don't fail the transaction creation if balance sync fails
-      }
-    }
-
-    // Sync credit card used limit if transaction is linked to a credit card
-    if (data.creditCardId) {
-      try {
-        const { CreditCardService } = await import('./credit-card.service');
-        const creditCardService = new CreditCardService();
-        await creditCardService.syncUsedLimit(data.creditCardId);
-      } catch (error: any) {
-        console.error('Failed to sync credit card used limit after transaction creation:', error);
-        // Don't fail the transaction creation if sync fails
-      }
-    }
+    // Balance sync removed - now handled automatically by Appwrite Function via database event trigger
+    // Credit card sync removed - now handled automatically by Appwrite Function via database event trigger
 
     return this.formatTransaction(document);
   }
@@ -315,17 +285,7 @@ export class TransactionService {
 
     const document = await this.dbAdapter.createDocument(DATABASE_ID, COLLECTIONS.TRANSACTIONS, id, payload);
 
-    // Sync account balance if transaction is linked to an account
-    if (data.accountId && !data.creditCardId) {
-      try {
-        const { BalanceSyncService } = await import('./balance-sync.service');
-        const balanceSyncService = new BalanceSyncService();
-        await balanceSyncService.syncAfterCreate(data.accountId, id);
-      } catch (error: any) {
-        console.error('Failed to sync account balance after transaction creation:', error);
-        // Don't fail the transaction creation if balance sync fails
-      }
-    }
+    // Balance sync removed - now handled automatically by Appwrite Function via database event trigger
 
     return this.formatTransaction(document);
   }
@@ -426,17 +386,7 @@ export class TransactionService {
               updated_at: now,
             });
 
-            // Sync account balance for updated tax transaction
-            const accountId = data.accountId !== undefined ? data.accountId : oldAccountId;
-            if (accountId) {
-              try {
-                const { BalanceSyncService } = await import('./balance-sync.service');
-                const balanceSyncService = new BalanceSyncService();
-                await balanceSyncService.syncAfterUpdate(accountId, linkedTaxId);
-              } catch (error: any) {
-                console.error('Failed to sync account balance after tax transaction update:', error);
-              }
-            }
+            // Balance sync removed - now handled automatically by Appwrite Function via database event trigger
           } catch (error: any) {
             console.error('Failed to update linked tax transaction:', error);
           }
@@ -481,16 +431,7 @@ export class TransactionService {
             // Link the tax transaction to the salary
             updatePayload.linked_transaction_id = taxId;
 
-            // Sync account balance for new tax transaction
-            if (accountId) {
-              try {
-                const { BalanceSyncService } = await import('./balance-sync.service');
-                const balanceSyncService = new BalanceSyncService();
-                await balanceSyncService.syncAfterCreate(accountId, taxId);
-              } catch (error: any) {
-                console.error('Failed to sync account balance after tax transaction creation:', error);
-              }
-            }
+            // Balance sync removed - now handled automatically by Appwrite Function via database event trigger
           } catch (error: any) {
             console.error('Failed to create tax transaction for salary:', error);
           }
@@ -504,30 +445,7 @@ export class TransactionService {
         updatePayload,
       );
 
-      // Sync account balance if transaction is linked to an account
-      const newAccountId = data.accountId !== undefined ? data.accountId : oldAccountId;
-
-      // Check if it's not a credit card transaction
-      const isCreditCardTransaction = existing.credit_card_id;
-
-      if (!isCreditCardTransaction) {
-        try {
-          const { BalanceSyncService } = await import('./balance-sync.service');
-          const balanceSyncService = new BalanceSyncService();
-
-          // If account changed, sync both old and new accounts
-          if (oldAccountId && newAccountId && oldAccountId !== newAccountId) {
-            await balanceSyncService.syncAfterUpdate(oldAccountId, transactionId);
-            await balanceSyncService.syncAfterUpdate(newAccountId, transactionId);
-          } else if (newAccountId) {
-            // Same account or only one account, sync it
-            await balanceSyncService.syncAfterUpdate(newAccountId, transactionId);
-          }
-        } catch (error: any) {
-          console.error('Failed to sync account balance after transaction update:', error);
-          // Don't fail the transaction update if balance sync fails
-        }
-      }
+      // Balance sync removed - now handled automatically by Appwrite Function via database event trigger
 
       return this.formatTransaction(document);
     } catch (error: any) {
@@ -562,16 +480,7 @@ export class TransactionService {
           try {
             await this.dbAdapter.deleteDocument(DATABASE_ID, COLLECTIONS.TRANSACTIONS, linkedTaxId);
 
-            // Sync account balance for deleted tax transaction
-            if (accountId) {
-              try {
-                const { BalanceSyncService } = await import('./balance-sync.service');
-                const balanceSyncService = new BalanceSyncService();
-                await balanceSyncService.syncAfterDelete(accountId, linkedTaxId);
-              } catch (error: any) {
-                console.error('Failed to sync account balance after tax transaction deletion:', error);
-              }
-            }
+            // Balance sync removed - now handled automatically by Appwrite Function via database event trigger
           } catch (error: any) {
             console.error('Failed to delete linked tax transaction:', error);
             // Continue with salary deletion even if tax deletion fails
@@ -581,22 +490,7 @@ export class TransactionService {
 
       await this.dbAdapter.deleteDocument(DATABASE_ID, COLLECTIONS.TRANSACTIONS, transactionId);
 
-      // Sync account balance if transaction was linked to an account
-      if (accountId && existing) {
-        // Check if it's not a credit card transaction
-        const isCreditCardTransaction = existing.credit_card_id;
-
-        if (!isCreditCardTransaction) {
-          try {
-            const { BalanceSyncService } = await import('./balance-sync.service');
-            const balanceSyncService = new BalanceSyncService();
-            await balanceSyncService.syncAfterDelete(accountId, transactionId);
-          } catch (error: any) {
-            console.error('Failed to sync account balance after transaction deletion:', error);
-            // Don't fail the transaction deletion if balance sync fails
-          }
-        }
-      }
+      // Balance sync removed - now handled automatically by Appwrite Function via database event trigger
     } catch (error: any) {
       if (error.code === 404) {
         throw new Error(`Transaction with id ${transactionId} not found`);
