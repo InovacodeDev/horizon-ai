@@ -226,8 +226,18 @@ export default async ({ req, res, log, error }) => {
         log('Running manual balance sync');
         log(`Request body: ${JSON.stringify(req.body)}`);
         log(`Request body type: ${typeof req.body}`);
-        log(`Request bodyRaw: ${req.bodyRaw}`);
-        const userId = req.body?.userId;
+        // Parse do body se vier como string
+        let bodyData = req.body;
+        if (typeof req.body === 'string') {
+            try {
+                bodyData = JSON.parse(req.body);
+                log(`Body parsed successfully: ${JSON.stringify(bodyData)}`);
+            }
+            catch (e) {
+                log(`Failed to parse body: ${e}`);
+            }
+        }
+        const userId = bodyData?.userId;
         log(`Extracted userId: ${userId}`);
         log(`userId type: ${typeof userId}`);
         if (!userId) {
@@ -237,7 +247,7 @@ export default async ({ req, res, log, error }) => {
                 error: 'userId is required for manual execution',
                 debug: {
                     body: req.body,
-                    bodyRaw: req.bodyRaw,
+                    bodyData: bodyData,
                     bodyType: typeof req.body,
                 },
             }, 400);
