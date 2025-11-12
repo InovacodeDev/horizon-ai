@@ -1290,7 +1290,8 @@ export default function TransactionsPage() {
                         </dl>
                         <div className="mt-6 flex justify-between gap-3">
                             <div className="flex gap-3">
-                                {selectedTransaction.source === 'manual' && (
+                                {/* Only show edit/delete for manual transactions owned by current user */}
+                                {selectedTransaction.source === 'manual' && selectedTransaction.user_id === userId && (
                                     <>
                                         <Button 
                                             variant="outline" 
@@ -1309,6 +1310,12 @@ export default function TransactionsPage() {
                                             Excluir
                                         </Button>
                                     </>
+                                )}
+                                {/* Show read-only indicator for shared transactions */}
+                                {selectedTransaction.user_id !== userId && (
+                                    <span className="text-sm text-gray-500 px-3 py-2 bg-gray-100 rounded-md">
+                                        Somente Leitura - Transação compartilhada
+                                    </span>
                                 )}
                             </div>
                             <Button variant="outline" onClick={() => setSelectedTransaction(null)}>

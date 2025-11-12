@@ -1,6 +1,7 @@
 import { getAppwriteDatabases } from '@/lib/appwrite/client';
 import { COLLECTIONS, CreditCard, DATABASE_ID } from '@/lib/appwrite/schema';
 import { Query } from 'node-appwrite';
+
 import AppwriteDBAdapter from '../appwrite/adapter';
 
 /**
@@ -47,11 +48,15 @@ export class CreditCardService {
       }
 
       // Get all transactions for this credit card
-      const transactionsResponse = await this.dbAdapter.listDocuments(DATABASE_ID, COLLECTIONS.CREDIT_CARD_TRANSACTIONS, [
-        Query.equal('credit_card_id', creditCardId),
-        Query.equal('status', 'completed'),
-        Query.limit(10000), // Get all transactions
-      ]);
+      const transactionsResponse = await this.dbAdapter.listDocuments(
+        DATABASE_ID,
+        COLLECTIONS.CREDIT_CARD_TRANSACTIONS,
+        [
+          Query.equal('credit_card_id', creditCardId),
+          Query.equal('status', 'completed'),
+          Query.limit(10000), // Get all transactions
+        ],
+      );
 
       // Calculate used limit (sum of all transaction amounts)
       const usedLimit = transactionsResponse.documents.reduce((sum: number, doc: any) => {
@@ -131,7 +136,23 @@ export class CreditCardService {
   }
 
   /**
+   * Get all credit cards with sharing information
+   * Returns credit cards with ownership metadata (ownerId, ownerName, isOwn)
+   * This method uses DataAccessService to fetch both own and shared credit cards
+   */
+  async getCreditCardsWithSharing(userId: string) {
+    try {
+      const { DataAccessService } = await import('./data-access.service');
+      const dataAccessService = new DataAccessService();
+      return await dataAccessService.getAccessibleCreditCards(userId);
+    } catch (error: any) {
+      throw new Error(`Failed to fetch credit cards with sharing: ${error.message}`);
+    }
+  }
+
+  /**
    * Create a new credit card
+   * Always assigns credit card to the current user's account
    */
   async createCreditCard(data: {
     account_id: string;
@@ -149,11 +170,8 @@ export class CreditCardService {
       const now = new Date().toISOString();
       const { ID } = await import('node-appwrite');
 
-      // Build data object for brand, network, color
-      const cardData: any = {};
-      if (data.brand) cardData.brand = data.brand;
-      if (data.network) cardData.network = data.network;
-      if (data.color) cardData.color = data.color;
+      // Note: Credit card is always created for the account specified in account_id
+      // The account ownership validation should be done at the API layer
 
       const payload: any = {
         account_id: data.account_id,
@@ -163,7 +181,9 @@ export class CreditCardService {
         used_limit: data.used_limit || 0,
         closing_day: data.closing_day,
         due_day: data.due_day,
-        data: Object.keys(cardData).length > 0 ? JSON.stringify(cardData) : undefined,
+        brand: data.brand,
+        network: data.network,
+        color: data.color,
         created_at: now,
         updated_at: now,
       };
@@ -178,6 +198,8 @@ export class CreditCardService {
 
   /**
    * Update a credit card
+   * Validates that the credit card belongs to the user's account before allowing updates
+   * Prevents modification of shared credit cards
    */
   async updateCreditCard(
     creditCardId: string,
@@ -192,6 +214,7 @@ export class CreditCardService {
       network?: string;
       color?: string;
     },
+    userId?: string,
   ): Promise<CreditCard> {
     try {
       const now = new Date().toISOString();
@@ -202,14 +225,14 @@ export class CreditCardService {
         throw new Error('Credit card not found');
       }
 
-      // Parse existing data
-      const existingData = existing.data ? JSON.parse(existing.data) : {};
-
-      // Build updated data object
-      const updatedData: any = { ...existingData };
-      if (data.brand !== undefined) updatedData.brand = data.brand;
-      if (data.network !== undefined) updatedData.network = data.network;
-      if (data.color !== undefined) updatedData.color = data.color;
+      // Validate ownership if userId is provided
+      if (userId) {
+        // Get the account to check ownership
+        const account = await this.dbAdapter.getDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, existing.account_id);
+        if (account.user_id !== userId) {
+          throw new Error('You cannot modify credit cards that belong to another user');
+        }
+      }
 
       const updatePayload: any = {
         updated_at: now,
@@ -221,10 +244,9 @@ export class CreditCardService {
       if (data.used_limit !== undefined) updatePayload.used_limit = data.used_limit;
       if (data.closing_day !== undefined) updatePayload.closing_day = data.closing_day;
       if (data.due_day !== undefined) updatePayload.due_day = data.due_day;
-
-      if (Object.keys(updatedData).length > 0) {
-        updatePayload.data = JSON.stringify(updatedData);
-      }
+      if (data.brand !== undefined) updatePayload.brand = data.brand;
+      if (data.network !== undefined) updatePayload.network = data.network;
+      if (data.color !== undefined) updatePayload.color = data.color;
 
       const document = await this.dbAdapter.updateDocument(
         DATABASE_ID,
@@ -241,9 +263,25 @@ export class CreditCardService {
 
   /**
    * Delete a credit card
+   * Validates that the credit card belongs to the user's account before allowing deletion
+   * Prevents deletion of shared credit cards
    */
-  async deleteCreditCard(creditCardId: string): Promise<void> {
+  async deleteCreditCard(creditCardId: string, userId?: string): Promise<void> {
     try {
+      // Validate ownership if userId is provided
+      if (userId) {
+        const existing = await this.getCreditCardById(creditCardId);
+        if (!existing) {
+          throw new Error('Credit card not found');
+        }
+
+        // Get the account to check ownership
+        const account = await this.dbAdapter.getDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, existing.account_id);
+        if (account.user_id !== userId) {
+          throw new Error('You cannot delete credit cards that belong to another user');
+        }
+      }
+
       await this.dbAdapter.deleteDocument(DATABASE_ID, COLLECTIONS.CREDIT_CARDS, creditCardId);
     } catch (error: any) {
       if (error.code === 404) {
@@ -268,7 +306,9 @@ export class CreditCardService {
       used_limit: document.used_limit,
       closing_day: document.closing_day,
       due_day: document.due_day,
-      data: document.data,
+      brand: document.brand,
+      network: document.network,
+      color: document.color,
       created_at: document.created_at,
       updated_at: document.updated_at,
     };

@@ -1,6 +1,7 @@
 import { getAppwriteDatabases } from '@/lib/appwrite/client';
-import { Account, AccountData, COLLECTIONS, DATABASE_ID } from '@/lib/appwrite/schema';
+import { Account, COLLECTIONS, DATABASE_ID } from '@/lib/appwrite/schema';
 import { ID, Query } from 'node-appwrite';
+import AppwriteDBAdapter from '../appwrite/adapter';
 
 /**
  * Account Service
@@ -28,7 +29,7 @@ export interface UpdateAccountData {
 }
 
 export class AccountService {
-  private dbAdapter: any;
+  private dbAdapter: AppwriteDBAdapter;
 
   constructor() {
     this.dbAdapter = getAppwriteDatabases();
@@ -39,14 +40,6 @@ export class AccountService {
    */
   async createAccount(userId: string, data: CreateAccountData): Promise<Account> {
     try {
-      const accountData: AccountData = {
-        status: data.status || 'Manual',
-        bank_id: data.bank_id,
-        last_digits: data.last_digits,
-        integration_id: data.integration_id,
-        integration_data: data.integration_data,
-      };
-
       const { dateToUserTimezone } = await import('@/lib/utils/timezone');
       const now = dateToUserTimezone(new Date().toISOString().split('T')[0]);
 
@@ -56,7 +49,9 @@ export class AccountService {
         account_type: data.account_type,
         balance: 0, // Balance sempre começa em 0 e é calculado pelas transações
         is_manual: data.is_manual ?? true,
-        data: JSON.stringify(accountData),
+        bank_id: data.bank_id,
+        last_digits: data.last_digits,
+        status: data.status || 'Manual',
         created_at: now,
         updated_at: now,
       });
@@ -94,22 +89,53 @@ export class AccountService {
 
   /**
    * Get all accounts for a user
+   * @param userId - User ID to fetch accounts for
+   * @param includeShared - Whether to include shared accounts from linked users (default: false)
    */
-  async getAccountsByUserId(userId: string): Promise<Account[]> {
+  async getAccountsByUserId(userId: string, includeShared: boolean = false): Promise<Account[]> {
     try {
-      const result = await this.dbAdapter.listDocuments(DATABASE_ID, COLLECTIONS.ACCOUNTS, [
-        Query.equal('user_id', userId),
-        Query.orderDesc('created_at'),
-      ]);
+      // If includeShared is false, return only user's own accounts
+      if (!includeShared) {
+        const result = await this.dbAdapter.listDocuments(DATABASE_ID, COLLECTIONS.ACCOUNTS, [
+          Query.equal('user_id', userId),
+          Query.orderDesc('created_at'),
+        ]);
 
-      const documents = result.documents || [];
-      const accounts = documents.map((doc: any) => this.deserializeAccount(doc));
+        const documents = result.documents || [];
+        const accounts = documents.map((doc: any) => this.deserializeAccount(doc));
 
-      // Balance is now automatically synced via BalanceSyncService
-      // No need to recalculate here
-      return accounts;
+        // Balance is now automatically synced via BalanceSyncService
+        // No need to recalculate here
+        return accounts;
+      }
+
+      // If includeShared is true, use DataAccessService to get all accessible accounts
+      const { DataAccessService } = await import('./data-access.service');
+      const dataAccessService = new DataAccessService();
+      const accountsWithOwnership = await dataAccessService.getAccessibleAccounts(userId);
+
+      // Strip ownership metadata to return plain Account objects
+      return accountsWithOwnership.map((account) => {
+        const { ownerId, ownerName, isOwn, ...plainAccount } = account;
+        return plainAccount;
+      });
     } catch (error: any) {
       throw new Error(`Failed to fetch accounts: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get all accounts with sharing information
+   * Returns accounts with ownership metadata (ownerId, ownerName, isOwn)
+   * This method uses DataAccessService to fetch both own and shared accounts
+   */
+  async getAccountsWithSharing(userId: string) {
+    try {
+      const { DataAccessService } = await import('./data-access.service');
+      const dataAccessService = new DataAccessService();
+      return await dataAccessService.getAccessibleAccounts(userId);
+    } catch (error: any) {
+      throw new Error(`Failed to fetch accounts with sharing: ${error.message}`);
     }
   }
 
@@ -154,21 +180,17 @@ export class AccountService {
         updateData.account_type = data.account_type;
       }
 
-      // Update data JSON field if any data fields changed
-      if (data.bank_id !== undefined || data.last_digits !== undefined || data.status !== undefined) {
-        const currentData = existingAccount.data
-          ? typeof existingAccount.data === 'string'
-            ? JSON.parse(existingAccount.data)
-            : existingAccount.data
-          : {};
+      // Update individual columns if any data fields changed
+      if (data.bank_id !== undefined) {
+        updateData.bank_id = data.bank_id;
+      }
 
-        const newData: AccountData = {
-          ...currentData,
-          ...(data.bank_id && { bank_id: data.bank_id }),
-          ...(data.last_digits && { last_digits: data.last_digits }),
-          ...(data.status && { status: data.status }),
-        };
-        updateData.data = JSON.stringify(newData);
+      if (data.last_digits !== undefined) {
+        updateData.last_digits = data.last_digits;
+      }
+
+      if (data.status !== undefined) {
+        updateData.status = data.status;
       }
 
       const document = await this.dbAdapter.updateDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, accountId, updateData);
@@ -242,25 +264,43 @@ export class AccountService {
         throw new Error('Saldo insuficiente na conta de origem');
       }
 
-      // Create transfer log
-      const { COLLECTIONS, DATABASE_ID } = await import('@/lib/appwrite/schema');
       const { dateToUserTimezone } = await import('@/lib/utils/timezone');
       const now = dateToUserTimezone(new Date().toISOString().split('T')[0]);
 
-      const transferLog = await this.dbAdapter.createDocument(DATABASE_ID, COLLECTIONS.TRANSFER_LOGS, ID.unique(), {
+      // Criar duas transações tipo "transfer" (uma para cada conta)
+      // Essas transações não aparecem na UI, apenas afetam o saldo
+
+      // Transação de saída (diminui saldo da conta origem)
+      await this.dbAdapter.createDocument(DATABASE_ID, COLLECTIONS.TRANSACTIONS, ID.unique(), {
         user_id: userId,
-        from_account_id: data.fromAccountId,
-        to_account_id: data.toAccountId,
+        account_id: data.fromAccountId,
         amount: data.amount,
-        description: data.description || `Transferência de ${fromAccount.name} para ${toAccount.name}`,
+        direction: 'out',
+        type: 'transfer',
+        date: now,
         status: 'completed',
+        description: data.description || `Transferência para ${toAccount.name}`,
         created_at: now,
+        updated_at: now,
       });
 
-      console.log('Transfer log created:', transferLog.$id);
+      // Transação de entrada (aumenta saldo da conta destino)
+      await this.dbAdapter.createDocument(DATABASE_ID, COLLECTIONS.TRANSACTIONS, ID.unique(), {
+        user_id: userId,
+        account_id: data.toAccountId,
+        amount: data.amount,
+        direction: 'in',
+        type: 'transfer',
+        date: now,
+        status: 'completed',
+        description: data.description || `Transferência de ${fromAccount.name}`,
+        created_at: now,
+        updated_at: now,
+      });
+
+      console.log('Transfer transactions created');
 
       // Sync balances using BalanceSyncService
-      // IMPORTANTE: Sincronizar ambas as contas para garantir que os saldos sejam atualizados corretamente
       const { BalanceSyncService } = await import('./balance-sync.service');
       const balanceSyncService = new BalanceSyncService();
 
@@ -271,26 +311,6 @@ export class AccountService {
       console.log(`Transfer completed - From account balance: ${fromBalance}, To account balance: ${toBalance}`);
     } catch (error: any) {
       console.error('Transfer balance error:', error);
-
-      // Log failed transfer
-      try {
-        const { COLLECTIONS, DATABASE_ID } = await import('@/lib/appwrite/schema');
-        const { dateToUserTimezone } = await import('@/lib/utils/timezone');
-        const now = dateToUserTimezone(new Date().toISOString().split('T')[0]);
-
-        await this.dbAdapter.createDocument(DATABASE_ID, COLLECTIONS.TRANSFER_LOGS, ID.unique(), {
-          user_id: userId,
-          from_account_id: data.fromAccountId,
-          to_account_id: data.toAccountId,
-          amount: data.amount,
-          description: data.description || 'Transferência',
-          status: 'failed',
-          created_at: now,
-        });
-      } catch (logError) {
-        console.error('Failed to log transfer error:', logError);
-      }
-
       throw new Error(`Falha ao transferir saldo: ${error.message}`);
     }
   }
@@ -299,16 +319,6 @@ export class AccountService {
    * Deserialize Appwrite document to Account type
    */
   private deserializeAccount(document: any): Account {
-    let data: AccountData | undefined;
-
-    if (document.data) {
-      try {
-        data = typeof document.data === 'string' ? JSON.parse(document.data) : document.data;
-      } catch {
-        data = undefined;
-      }
-    }
-
     return {
       $id: document.$id,
       $createdAt: document.$createdAt,
@@ -319,7 +329,6 @@ export class AccountService {
       balance: document.balance,
       is_manual: document.is_manual,
       synced_transaction_ids: document.synced_transaction_ids,
-      data: data ? JSON.stringify(data) : undefined,
       created_at: document.created_at,
       updated_at: document.updated_at,
     };

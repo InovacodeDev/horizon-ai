@@ -40,6 +40,7 @@ export default function SettingsPage() {
           <TabsList>
             <TabsTrigger value="account">Conta</TabsTrigger>
             <TabsTrigger value="security">Segurança</TabsTrigger>
+            <TabsTrigger value="joint-account">Conta Conjunta</TabsTrigger>
             <TabsTrigger value="notifications">Notificações</TabsTrigger>
             <TabsTrigger value="preferences">Preferências</TabsTrigger>
           </TabsList>
@@ -80,6 +81,46 @@ export default function SettingsPage() {
                 Excluir permanentemente sua conta e todos os dados associados.
               </p>
               <Button className="bg-error hover:bg-error/90">Excluir Conta</Button>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="joint-account">
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold text-on-surface mb-2">Compartilhamento de Dados</h3>
+                <p className="text-sm text-on-surface-variant mb-4">
+                  Gerencie o compartilhamento de seus dados financeiros com membros da família ou parceiros.
+                </p>
+                <Button
+                  onClick={() => window.location.href = '/settings/joint-account'}
+                >
+                  Gerenciar Conta Conjunta
+                </Button>
+              </div>
+              <hr className="my-6 border-outline" />
+              <div className="bg-blue-50 rounded-lg p-4">
+                <h4 className="font-semibold text-on-surface mb-2">Como funciona?</h4>
+                <ul className="space-y-2 text-sm text-on-surface-variant">
+                  <li className="flex items-start gap-2">
+                    <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Compartilhe seus dados financeiros com membros da família</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Membros podem visualizar mas não modificar seus dados</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Você pode remover membros a qualquer momento</span>
+                  </li>
+                </ul>
+              </div>
             </div>
           </TabsContent>
 
@@ -154,6 +195,65 @@ export default function SettingsPage() {
                       <option value="transactions">Transações</option>
                       <option value="accounts">Contas</option>
                     </select>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-on-surface">Preferências de Compartilhamento</h3>
+                <p className="text-sm text-on-surface-variant mt-1 mb-4">
+                  Configure como os dados compartilhados são exibidos e calculados
+                </p>
+                <div className="space-y-4 mt-4">
+                  <div className="flex items-center justify-between p-3 bg-surface-variant/20 rounded-m">
+                    <div>
+                      <label htmlFor="showSharedData" className="font-medium block">
+                        Exibir Dados Compartilhados
+                      </label>
+                      <p className="text-xs text-on-surface-variant mt-1">
+                        Mostrar contas, transações e cartões compartilhados por padrão
+                      </p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      id="showSharedData"
+                      name="showSharedData"
+                      className="toggle"
+                      defaultChecked
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-surface-variant/20 rounded-m">
+                    <div>
+                      <label htmlFor="includeSharedInCalculations" className="font-medium block">
+                        Incluir em Cálculos
+                      </label>
+                      <p className="text-xs text-on-surface-variant mt-1">
+                        Incluir dados compartilhados em saldos totais e projeções
+                      </p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      id="includeSharedInCalculations"
+                      name="includeSharedInCalculations"
+                      className="toggle"
+                      defaultChecked
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-surface-variant/20 rounded-m">
+                    <div>
+                      <label htmlFor="showOwnershipIndicators" className="font-medium block">
+                        Mostrar Indicadores de Propriedade
+                      </label>
+                      <p className="text-xs text-on-surface-variant mt-1">
+                        Exibir badges indicando quem é o dono de cada item
+                      </p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      id="showOwnershipIndicators"
+                      name="showOwnershipIndicators"
+                      className="toggle"
+                      defaultChecked
+                    />
                   </div>
                 </div>
               </div>

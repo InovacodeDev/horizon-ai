@@ -7,8 +7,10 @@ import { DotsVerticalIcon, PlusIcon, WalletIcon, CreditCardIcon } from "@/compon
 import Skeleton from "@/components/ui/Skeleton";
 import { DropdownMenu, DropdownMenuItem } from "@/components/ui/DropdownMenu";
 import { useAccounts } from "@/hooks/useAccounts";
+import { useAccountsWithSharing } from "@/hooks/useAccountsWithSharing";
 import { useTotalBalance } from "@/hooks/useTotalBalance";
 import { useCreditCardsWithCache } from "@/hooks/useCreditCardsWithCache";
+import { OwnershipBadge } from "@/components/ui/OwnershipBadge";
 import { AddAccountModal } from "@/components/modals/AddAccountModal";
 import { AddCreditCardModal } from "@/components/modals/AddCreditCardModal";
 import { EditCreditCardModal } from "@/components/modals/EditCreditCardModal";
@@ -67,6 +69,9 @@ const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, onDelete, onViewS
     const usagePercentage = (card.used_limit / card.credit_limit) * 100;
     const data = card.data ? (typeof card.data === 'string' ? JSON.parse(card.data) : card.data) : {};
     
+    // Check if this is a shared credit card (read-only)
+    const isShared = 'isOwn' in card && !card.isOwn;
+    
     return (
         <div className="bg-gray-50 rounded-lg p-3 flex flex-col h-full">
             <div className="flex items-start justify-between mb-2">
@@ -75,6 +80,12 @@ const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, onDelete, onViewS
                     <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm text-on-surface truncate">{card.name}</p>
                         <p className="text-xs text-on-surface-variant">**** {card.last_digits}</p>
+                        {/* Show read-only indicator for shared cards */}
+                        {isShared && (
+                            <span className="text-xs px-1.5 py-0.5 bg-gray-200 text-gray-600 rounded mt-1 inline-block">
+                                Somente Leitura
+                            </span>
+                        )}
                     </div>
                 </div>
                 {data.brand && (
@@ -116,26 +127,43 @@ const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, onDelete, onViewS
                 >
                     Ver Fatura
                 </button>
-                <button
-                    onClick={onEdit}
-                    className="text-gray-400 hover:text-blue-600 hover:bg-blue-50 p-1.5 rounded"
-                    aria-label="Edit card"
-                    title="Editar cartão"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                </button>
-                <button
-                    onClick={onDelete}
-                    className="text-gray-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded"
-                    aria-label="Delete card"
-                    title="Excluir cartão"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                </button>
+                {/* Only show edit/delete buttons for own credit cards */}
+                {!isShared ? (
+                    <>
+                        <button
+                            onClick={onEdit}
+                            className="text-gray-400 hover:text-blue-600 hover:bg-blue-50 p-1.5 rounded"
+                            aria-label="Edit card"
+                            title="Editar cartão"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                        </button>
+                        <button
+                            onClick={onDelete}
+                            className="text-gray-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded"
+                            aria-label="Delete card"
+                            title="Excluir cartão"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    </>
+                ) : (
+                    <button
+                        onClick={() => alert('Você não pode modificar cartões compartilhados')}
+                        className="text-gray-300 cursor-not-allowed p-1.5 rounded"
+                        aria-label="Read-only card"
+                        title="Somente leitura"
+                        disabled
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                    </button>
+                )}
             </div>
         </div>
     );
@@ -196,6 +224,15 @@ const AccountCard: React.FC<AccountCardProps> = ({
                         <div className={`w-2 h-2 rounded-full ${statusColor[account.status || 'Manual']}`}></div>
                         {account.is_manual && (
                             <span className="text-xs px-2 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md font-medium">Manual</span>
+                        )}
+                        {/* Ownership Badge */}
+                        {'isOwn' in account && (
+                            <OwnershipBadge
+                                isOwn={account.isOwn}
+                                ownerName={account.ownerName}
+                                ownerId={account.ownerId}
+                                size="sm"
+                            />
                         )}
                     </div>
                     <p className="text-sm text-on-surface-variant mt-1">{accountTypeLabel[account.account_type]}</p>
@@ -266,17 +303,33 @@ const AccountCard: React.FC<AccountCardProps> = ({
                             Aguardar cooldown (15min)
                         </DropdownMenuItem>
                     )}
-                    <DropdownMenuItem
-                        onClick={() => onConfirmDelete(account.$id, account.name)}
-                        icon={
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                        }
-                        variant="danger"
-                    >
-                        Excluir conta
-                    </DropdownMenuItem>
+                    {/* Only show delete option for own accounts */}
+                    {(!('isOwn' in account) || account.isOwn) && (
+                        <DropdownMenuItem
+                            onClick={() => onConfirmDelete(account.$id, account.name)}
+                            icon={
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            }
+                            variant="danger"
+                        >
+                            Excluir conta
+                        </DropdownMenuItem>
+                    )}
+                    {/* Show read-only indicator for shared accounts */}
+                    {('isOwn' in account && !account.isOwn) && (
+                        <DropdownMenuItem
+                            onClick={() => alert('Você não pode excluir contas compartilhadas')}
+                            icon={
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                </svg>
+                            }
+                        >
+                            Somente Leitura
+                        </DropdownMenuItem>
+                    )}
                 </DropdownMenu>
             </div>
             
@@ -319,6 +372,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
 export default function AccountsPage() {
     const router = useRouter();
     const { accounts, loading, createAccount, deleteAccount } = useAccounts();
+    const { accounts: accountsWithSharing, loading: loadingSharing } = useAccountsWithSharing();
     const { loading: loadingBalance } = useTotalBalance();
     
     // Local state for accounts to allow manual updates
@@ -478,15 +532,20 @@ export default function AccountsPage() {
         setLocalAccounts(accounts);
     }, [accounts]);
     
-    // Calculate total balance from local accounts
-    const calculatedTotalBalance = localAccounts.reduce((sum, account) => sum + (account.balance || 0), 0);
+    // Use accounts with sharing for display (includes ownership metadata)
+    const displayAccounts = accountsWithSharing.length > 0 ? accountsWithSharing : localAccounts;
+    
+    // Calculate total balance from accounts with sharing (includes shared accounts)
+    const calculatedTotalBalance = accountsWithSharing.length > 0
+        ? accountsWithSharing.reduce((sum, account) => sum + (account.balance || 0), 0)
+        : localAccounts.reduce((sum, account) => sum + (account.balance || 0), 0);
     
     const formattedBalance = calculatedTotalBalance.toLocaleString("pt-BR", {
         style: "currency",
         currency: "BRL",
     });
 
-    if (loading || loadingBalance) {
+    if (loading || loadingBalance || loadingSharing) {
         return <AccountsScreenSkeleton />;
     }
 
@@ -529,8 +588,8 @@ export default function AccountsPage() {
             </header>
             
             <main className="space-y-4">
-                {localAccounts.length > 0 ? (
-                    localAccounts.map((account, index) => (
+                {displayAccounts.length > 0 ? (
+                    displayAccounts.map((account, index) => (
                         <AccountCard
                             key={account.$id || `account-${index}`}
                             account={account}

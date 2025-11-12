@@ -7,6 +7,7 @@ import fs from 'fs';
 import { Client, ID, Query, TablesDB } from 'node-appwrite';
 import path from 'path';
 
+import localAppliedMigrations from './applied-migrations.json';
 import { migrations } from './index';
 import { Migration, MigrationContext, MigrationRecord } from './migration.interface';
 
@@ -30,7 +31,7 @@ export class MigrationRunner {
       const response = await this.databases.listRows({
         databaseId: this.databaseId,
         tableId: 'migrations',
-        queries: [Query.orderAsc('appliedAt')],
+        queries: [Query.orderAsc('appliedAt'), Query.limit(1000)],
       });
 
       return response.rows.map((doc: any) => (doc as unknown as MigrationRecord).migrationId);

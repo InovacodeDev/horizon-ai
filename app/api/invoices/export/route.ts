@@ -4,6 +4,7 @@
  * GET /api/invoices/export
  * Exports invoice data in CSV or PDF format with filtering support
  */
+import { getCurrentUserId } from '@/lib/auth/session';
 import { getExportService } from '@/lib/services/export.service';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -21,8 +22,8 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   try {
-    // Get user from session (you'll need to implement this based on your auth system)
-    const userId = await getUserIdFromSession(request);
+    // Get user from session
+    const userId = await getCurrentUserId();
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized', message: 'User not authenticated' }, { status: 401 });
@@ -140,48 +141,5 @@ export async function GET(request: NextRequest) {
       },
       { status: 500 },
     );
-  }
-}
-
-/**
- * Get user ID from session
- * This is a placeholder - implement based on your auth system
- */
-async function getUserIdFromSession(request: NextRequest): Promise<string | null> {
-  try {
-    // Check for session cookie or authorization header
-    const authHeader = request.headers.get('authorization');
-    const sessionCookie = request.cookies.get('session');
-
-    // If using JWT in Authorization header
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.substring(7);
-      // Verify and decode JWT to get userId
-      // This is a placeholder - implement your JWT verification
-      // const decoded = await verifyJWT(token);
-      // return decoded.userId;
-    }
-
-    // If using session cookie
-    if (sessionCookie) {
-      // Verify session and get userId
-      // This is a placeholder - implement your session verification
-      // const session = await verifySession(sessionCookie.value);
-      // return session.userId;
-    }
-
-    // For development/testing, you might want to allow a test user
-    // Remove this in production!
-    if (process.env.NODE_ENV === 'development') {
-      const testUserId = request.headers.get('x-test-user-id');
-      if (testUserId) {
-        return testUserId;
-      }
-    }
-
-    return null;
-  } catch (error) {
-    console.error('Auth error:', error);
-    return null;
   }
 }

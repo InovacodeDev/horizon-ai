@@ -1,4 +1,5 @@
 import { getCurrentUserId } from '@/lib/auth/session';
+import { canAccessResource } from '@/lib/auth/sharing-permissions';
 import { InvoiceServiceError, getInvoiceService } from '@/lib/services/invoice.service';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -20,6 +21,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     // Fetch invoice with items
     const invoiceService = getInvoiceService();
     const invoice = await invoiceService.getInvoiceById(invoiceId, userId);
+
+    // Verify user has access to this invoice (own or shared)
+    const accessCheck = await canAccessResource(userId, invoice.user_id);
+    if (!accessCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: accessCheck.reason || 'Forbidden',
+          code: 'FORBIDDEN',
+        },
+        { status: 403 },
+      );
+    }
 
     return NextResponse.json({
       success: true,
@@ -75,8 +88,24 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     const { id: invoiceId } = await params;
 
-    // Delete invoice
+    // Fetch invoice to verify ownership
     const invoiceService = getInvoiceService();
+    const invoice = await invoiceService.getInvoiceById(invoiceId, userId);
+
+    // Verify user owns this invoice (cannot delete shared invoices)
+    const { canDeleteResource } = await import('@/lib/auth/sharing-permissions');
+    const deleteCheck = await canDeleteResource(userId, invoice.user_id, 'invoice');
+    if (!deleteCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: deleteCheck.reason || 'Forbidden',
+          code: 'FORBIDDEN',
+        },
+        { status: 403 },
+      );
+    }
+
+    // Delete invoice
     await invoiceService.deleteInvoice(invoiceId, userId);
 
     return NextResponse.json({

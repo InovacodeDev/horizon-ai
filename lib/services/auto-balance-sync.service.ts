@@ -1,107 +1,37 @@
 /**
  * Auto Balance Sync Service
  *
- * Serviço que sincroniza automaticamente o saldo de todas as contas a cada 5 minutos.
- * Utiliza setInterval para executar a sincronização em background.
+ * DEPRECATED: Balance sync is now manual only via the "Reprocessar Saldo" button.
+ * This service is kept for backward compatibility but does nothing.
  */
-import { getAppwriteDatabases } from '@/lib/appwrite/client';
-import { COLLECTIONS, DATABASE_ID } from '@/lib/appwrite/schema';
-import { Query } from 'node-appwrite';
-
-import { BalanceSyncService } from './balance-sync.service';
 
 export class AutoBalanceSyncService {
-  private intervalId: NodeJS.Timeout | null = null;
-  private isRunning: boolean = false;
-  private syncIntervalMs: number = 5 * 60 * 1000; // 5 minutos em milissegundos
-
   /**
-   * Inicia a sincronização automática
+   * @deprecated Balance sync is now manual only
    */
   start(): void {
-    if (this.isRunning) {
-      return;
-    }
-
-    this.isRunning = true;
-
-    // Executa imediatamente na primeira vez
-    this.syncAllAccounts().catch((error) => {
-      console.error('[AutoBalanceSync] Erro na sincronização inicial:', error);
-    });
-
-    // Configura o intervalo de 5 minutos
-    this.intervalId = setInterval(() => {
-      this.syncAllAccounts().catch((error) => {
-        console.error('[AutoBalanceSync] Erro na sincronização automática:', error);
-      });
-    }, this.syncIntervalMs);
+    console.log('[AutoBalanceSync] Service is deprecated. Balance sync is now manual only.');
   }
 
   /**
-   * Para a sincronização automática
+   * @deprecated Balance sync is now manual only
    */
   stop(): void {
-    if (!this.isRunning) {
-      return;
-    }
-
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
-    }
-
-    this.isRunning = false;
+    // No-op
   }
 
   /**
-   * Verifica se o serviço está em execução
+   * @deprecated Balance sync is now manual only
    */
   isActive(): boolean {
-    return this.isRunning;
+    return false;
   }
 
   /**
-   * Sincroniza todas as contas do sistema
-   */
-  private async syncAllAccounts(): Promise<void> {
-    const startTime = Date.now();
-
-    try {
-      const dbAdapter = getAppwriteDatabases();
-      const balanceSyncService = new BalanceSyncService();
-
-      // Buscar todas as contas do sistema
-      const accountsResult = await dbAdapter.listDocuments(DATABASE_ID, COLLECTIONS.ACCOUNTS, [
-        Query.limit(10000), // Limite alto para pegar todas as contas
-      ]);
-
-      const accounts = accountsResult.documents || [];
-
-      let successCount = 0;
-      let errorCount = 0;
-
-      // Sincronizar cada conta
-      for (const account of accounts) {
-        try {
-          await balanceSyncService.syncAccountBalance(account.$id);
-          successCount++;
-        } catch (error: any) {
-          errorCount++;
-          console.error(`[AutoBalanceSync] Erro ao sincronizar conta ${account.$id}:`, error.message);
-        }
-      }
-    } catch (error: any) {
-      console.error('[AutoBalanceSync] Erro ao buscar contas:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Força uma sincronização imediata (útil para testes ou triggers manuais)
+   * @deprecated Balance sync is now manual only
    */
   async syncNow(): Promise<void> {
-    await this.syncAllAccounts();
+    console.log('[AutoBalanceSync] Service is deprecated. Use manual reprocess button instead.');
   }
 }
 
@@ -109,7 +39,7 @@ export class AutoBalanceSyncService {
 let autoBalanceSyncInstance: AutoBalanceSyncService | null = null;
 
 /**
- * Obtém a instância singleton do serviço de sincronização automática
+ * @deprecated Balance sync is now manual only
  */
 export function getAutoBalanceSyncService(): AutoBalanceSyncService {
   if (!autoBalanceSyncInstance) {
@@ -119,17 +49,15 @@ export function getAutoBalanceSyncService(): AutoBalanceSyncService {
 }
 
 /**
- * Inicia o serviço de sincronização automática (deve ser chamado na inicialização da aplicação)
+ * @deprecated Balance sync is now manual only
  */
 export function startAutoBalanceSync(): void {
-  const service = getAutoBalanceSyncService();
-  service.start();
+  console.log('[AutoBalanceSync] Service is deprecated. Balance sync is now manual only.');
 }
 
 /**
- * Para o serviço de sincronização automática
+ * @deprecated Balance sync is now manual only
  */
 export function stopAutoBalanceSync(): void {
-  const service = getAutoBalanceSyncService();
-  service.stop();
+  // No-op
 }

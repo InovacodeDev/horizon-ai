@@ -4,6 +4,8 @@ export { AddInvoiceModal } from './AddInvoiceModal';
 export { AddTransactionModal } from './AddTransactionModal';
 export { ConfirmModal } from './ConfirmModal';
 export { TransferBalanceModal } from './TransferBalanceModal';
+export { CreateInvitationModal } from './CreateInvitationModal';
+export { TerminateRelationshipModal } from './TerminateRelationshipModal';
 export type { CreateAccountInput } from './AddAccountModal';
 export type { CreateCreditCardInput } from './AddCreditCardModal';
 export type { CreateInvoiceInput } from './AddInvoiceModal';

@@ -279,9 +279,16 @@ export class UserService {
     const updateData: any = { ...data };
 
     // Handle JSON fields
+    const existingNotifications = this.parseJSON(preferences.notifications, {});
+
     if (data.dashboard_widgets) {
-      const existingNotifications = this.parseJSON(preferences.notifications, {});
       existingNotifications.dashboard_widgets = data.dashboard_widgets;
+      updateData.notifications = this.stringifyJSON(existingNotifications);
+    }
+
+    // Handle sharing preferences
+    if (data.sharing_preferences) {
+      existingNotifications.sharing = data.sharing_preferences;
       updateData.notifications = this.stringifyJSON(existingNotifications);
     }
 
@@ -316,6 +323,52 @@ export class UserService {
     if (preferences) {
       await this.dbAdapter.deleteDocument(DATABASE_ID, COLLECTIONS.USER_PREFERENCES, preferences.$id);
     }
+  }
+
+  /**
+   * Get sharing preferences for a user
+   * Returns default values if not set
+   */
+  async getSharingPreferences(userId: string): Promise<{
+    show_shared_data: boolean;
+    include_shared_in_calculations: boolean;
+    show_ownership_indicators: boolean;
+  }> {
+    const preferences = await this.getPreferences(userId);
+
+    if (!preferences) {
+      // Return defaults if preferences don't exist
+      return {
+        show_shared_data: true,
+        include_shared_in_calculations: true,
+        show_ownership_indicators: true,
+      };
+    }
+
+    const notificationsData = this.parseJSON(preferences.notifications, {});
+    const sharingPrefs = notificationsData.sharing || {};
+
+    return {
+      show_shared_data: sharingPrefs.show_shared_data ?? true,
+      include_shared_in_calculations: sharingPrefs.include_shared_in_calculations ?? true,
+      show_ownership_indicators: sharingPrefs.show_ownership_indicators ?? true,
+    };
+  }
+
+  /**
+   * Update sharing preferences for a user
+   */
+  async updateSharingPreferences(
+    userId: string,
+    sharingPreferences: {
+      show_shared_data?: boolean;
+      include_shared_in_calculations?: boolean;
+      show_ownership_indicators?: boolean;
+    },
+  ): Promise<void> {
+    await this.updatePreferences(userId, {
+      sharing_preferences: sharingPreferences,
+    });
   }
 
   // ============================================

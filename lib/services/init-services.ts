@@ -3,8 +3,9 @@
  *
  * Este arquivo inicializa todos os serviços em background da aplicação.
  * Deve ser importado e executado na inicialização da aplicação (ex: layout.tsx ou middleware.ts)
+ *
+ * NOTA: Balance sync automático foi removido. Use o botão "Reprocessar Saldo" manualmente.
  */
-import { startAutoBalanceSync } from './auto-balance-sync.service';
 
 let servicesInitialized = false;
 
@@ -20,8 +21,8 @@ export function initializeServices(): void {
   console.log('[Services] Inicializando serviços em background...');
 
   try {
-    // Iniciar sincronização automática de saldo a cada 5 minutos
-    startAutoBalanceSync();
+    // Balance sync automático foi removido
+    // Use o botão "Reprocessar Saldo" em cada conta para sincronização manual
 
     servicesInitialized = true;
     console.log('[Services] Todos os serviços foram inicializados com sucesso');

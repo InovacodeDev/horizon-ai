@@ -11,7 +11,7 @@ const COLLECTIONS = {
 };
 
 export const migration: Migration = {
-  id: '20251106_000020',
+  id: '20251106_000025',
   description: 'Add vale account type for vale alimentação/flexível',
 
   async up(context: MigrationContext): Promise<void> {

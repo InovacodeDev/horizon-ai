@@ -8,9 +8,10 @@ import type { Invoice } from '@/lib/appwrite/schema';
 import InvoiceDetailsModal from '@/components/modals/InvoiceDetailsModal';
 
 interface InvoiceCardProps {
-  invoice: Invoice;
+  invoice: Invoice & { isOwn?: boolean; ownerName?: string; ownerId?: string };
   onDelete: (invoiceId: string) => Promise<void>;
   onCreateTransaction?: (invoice: any) => void;
+  currentUserId?: string;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -35,10 +36,14 @@ const CATEGORY_COLORS: Record<string, 'success' | 'warning' | 'error' | 'info' |
   other: 'neutral',
 };
 
-export default function InvoiceCard({ invoice, onDelete, onCreateTransaction }: InvoiceCardProps) {
+export default function InvoiceCard({ invoice, onDelete, onCreateTransaction, currentUserId }: InvoiceCardProps) {
   const [showDetails, setShowDetails] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // Check if this is a shared invoice (read-only)
+  const isShared = 'isOwn' in invoice ? !invoice.isOwn : (currentUserId && invoice.user_id !== currentUserId);
+  const canDelete = !isShared;
 
   // Format date
   const formatDate = (dateString: string) => {
@@ -70,6 +75,10 @@ export default function InvoiceCard({ invoice, onDelete, onCreateTransaction }: 
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!canDelete) {
+      alert('Você não pode excluir notas fiscais compartilhadas');
+      return;
+    }
     setShowDeleteConfirm(true);
   };
 
@@ -190,26 +199,52 @@ export default function InvoiceCard({ invoice, onDelete, onCreateTransaction }: 
                 />
               </svg>
             </button>
-            <button
-              onClick={handleDeleteClick}
-              disabled={deleting}
-              className="p-2 text-on-surface-variant hover:text-error hover:bg-error/5 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Excluir"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+            {canDelete ? (
+              <button
+                onClick={handleDeleteClick}
+                disabled={deleting}
+                className="p-2 text-on-surface-variant hover:text-error hover:bg-error/5 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Excluir"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                />
-              </svg>
-            </button>
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+              </button>
+            ) : (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  alert('Você não pode excluir notas fiscais compartilhadas');
+                }}
+                className="p-2 text-gray-300 cursor-not-allowed rounded-full"
+                title="Somente leitura"
+                disabled
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                  />
+                </svg>
+              </button>
+            )}
           </div>
         </div>
 
@@ -252,15 +287,21 @@ export default function InvoiceCard({ invoice, onDelete, onCreateTransaction }: 
               </svg>
               Ver detalhes
             </button>
-            <button
-              onClick={handleDeleteClick}
-              disabled={deleting}
-              className="py-2 px-3 text-sm text-error hover:bg-error/5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
+            {canDelete ? (
+              <button
+                onClick={handleDeleteClick}
+                disabled={deleting}
+                className="py-2 px-3 text-sm text-error hover:bg-error/5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            ) : (
+              <span className="py-2 px-3 text-xs text-gray-400 bg-gray-100 rounded-lg">
+                Somente Leitura
+              </span>
+            )}
           </div>
         </div>
       </Card>

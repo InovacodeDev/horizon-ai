@@ -34,8 +34,10 @@ export interface Migration {
 }
 
 export interface MigrationRecord {
-  id: string;
+  $id: string;
   migrationId: string;
   appliedAt: string;
   description: string;
+  $createdAt: number;
+  $updatedAt: number;
 }

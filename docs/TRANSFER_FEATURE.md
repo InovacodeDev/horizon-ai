@@ -4,29 +4,37 @@
 
 A funcionalidade de transferência permite que usuários transfiram saldo entre suas contas de forma simples e segura.
 
-## Componentes Criados
+## Implementação
 
-### 1. Tabela `transfer_logs`
+### 1. Transações Tipo "Transfer"
 
-Criada para registrar todas as transferências realizadas:
+As transferências são implementadas como transações com `type='transfer'`:
 
-- `user_id`: ID do usuário
-- `from_account_id`: Conta de origem
-- `to_account_id`: Conta de destino
-- `amount`: Valor transferido
-- `description`: Descrição opcional
-- `status`: Status da transferência (completed/failed)
-- `created_at`: Data da transferência
+- **Invisíveis**: Não aparecem em listagens de transações para o usuário
+- **Automáticas**: Afetam o saldo das contas automaticamente via BalanceSyncService
+- **Em Pares**: Cada transferência cria duas transações:
+  - Uma com `transfer_direction: 'out'` (diminui saldo da origem)
+  - Uma com `transfer_direction: 'in'` (aumenta saldo do destino)
 
-### 2. Migration
+### 2. Campos no JSON `data`
 
-- **Arquivo**: `lib/database/migrations/20251031_000020_create_transfer_logs_table.ts`
-- **Status**: ✅ Executada com sucesso
+Cada transação tipo "transfer" contém no campo `data`:
 
-### 3. Schema Atualizado
+```typescript
+{
+  transfer_direction: 'out' | 'in',
+  transfer_to_account_id?: string,    // Para transações 'out'
+  transfer_to_account_name?: string,  // Para transações 'out'
+  transfer_from_account_id?: string,  // Para transações 'in'
+  transfer_from_account_name?: string, // Para transações 'in'
+  description?: string
+}
+```
 
-- Adicionado `TRANSFER_LOGS` ao `COLLECTIONS`
-- Adicionado interface `TransferLog` em `lib/appwrite/schema.ts`
+### 3. Migration
+
+- **Arquivo**: `lib/database/migrations/20251111_000029_drop_transfer_logs_table.ts`
+- **Status**: Remove a tabela `transfer_logs` (não mais necessária)
 
 ### 4. Ação de Transferência
 
@@ -34,14 +42,14 @@ Criada para registrar todas as transferências realizadas:
 - **Função**: `transferBalanceAction`
 - Valida contas de origem e destino
 - Verifica saldo suficiente
-- Registra a transferência no log
+- Cria transações tipo "transfer"
 
 ### 5. Serviço de Conta
 
 - **Arquivo**: `lib/services/account.service.ts`
 - **Método**: `transferBalance`
-- Atualiza saldos das contas
-- Registra log de transferência (sucesso ou falha)
+- Cria duas transações tipo "transfer" (saída + entrada)
+- Sincroniza saldos via BalanceSyncService
 
 ### 6. Modal de Transferência
 
@@ -75,14 +83,15 @@ Criada para registrar todas as transferências realizadas:
 
 ## Logs
 
-Todas as transferências são registradas na tabela `transfer_logs`, incluindo:
+Todas as transferências são registradas como transações tipo "transfer":
 
-- Transferências bem-sucedidas (status: completed)
-- Transferências que falharam (status: failed)
+- Duas transações são criadas (uma de saída, uma de entrada)
+- Transações tipo "transfer" não aparecem na UI
+- Afetam o saldo das contas automaticamente
 
 ## Observações
 
-- A transferência apenas move o saldo entre contas
-- Não cria transações adicionais
-- Os saldos são atualizados imediatamente
+- A transferência cria transações invisíveis que afetam o saldo
+- Os saldos são recalculados automaticamente pelo BalanceSyncService
 - A interface é atualizada automaticamente via realtime
+- Transações tipo "transfer" são filtradas em todas as listagens

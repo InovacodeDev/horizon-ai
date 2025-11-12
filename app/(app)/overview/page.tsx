@@ -20,6 +20,8 @@ import { useAccounts } from "@/hooks/useAccounts";
 import { useCreditCardTransactions } from "@/hooks/useCreditCardTransactions";
 import { useCreditCardsWithCache } from "@/hooks/useCreditCardsWithCache";
 import { useCreditCardBills } from "@/hooks/useCreditCardBills";
+import { useAccountsWithSharing } from "@/hooks/useAccountsWithSharing";
+import { useTransactionsWithSharing } from "@/hooks/useTransactionsWithSharing";
 import { AVAILABLE_CATEGORY_ICONS } from "@/lib/constants";
 import { getCategoryById } from "@/lib/constants/categories";
 import type { Transaction, FinancialInsight, InsightType } from "@/lib/types";
@@ -391,12 +393,35 @@ export default function OverviewPage() {
     const router = useRouter();
 
     const { user } = useUser();
+    
+    // State for toggling between own data and combined data
+    const [showSharedData, setShowSharedData] = React.useState(true);
+    
+    // Fetch own data
     const { 
-        transactions: apiTransactions, 
-        loading: isLoadingTransactions,
-        refetch 
+        transactions: ownTransactions, 
+        loading: isLoadingOwnTransactions,
+        refetch: refetchOwnTransactions
     } = useTransactions({ userId: user.$id ?? 'default-user' });
-    const { accounts, loading: loadingAccounts } = useAccounts();
+    const { accounts: ownAccounts, loading: loadingOwnAccounts } = useAccounts();
+    
+    // Fetch shared data
+    const { 
+        accounts: sharedAccounts, 
+        loading: loadingSharedAccounts 
+    } = useAccountsWithSharing({ enableRealtime: true });
+    const { 
+        transactions: sharedTransactions, 
+        loading: loadingSharedTransactions 
+    } = useTransactionsWithSharing({ enableRealtime: true });
+    
+    // Use appropriate data based on toggle
+    const accounts = showSharedData ? sharedAccounts : ownAccounts;
+    const apiTransactions = showSharedData ? sharedTransactions : ownTransactions;
+    const isLoadingTransactions = showSharedData ? loadingSharedTransactions : isLoadingOwnTransactions;
+    const loadingAccounts = showSharedData ? loadingSharedAccounts : loadingOwnAccounts;
+    const refetch = showSharedData ? () => {} : refetchOwnTransactions;
+    
     const { creditCards } = useCreditCardsWithCache();
     
     // Get current month date range for credit card transactions
@@ -479,11 +504,14 @@ export default function OverviewPage() {
 
         const userAccountIds = new Set(accounts.map(acc => acc.$id));
 
-        const userTransactions = apiTransactions.filter(tx => 
-            tx.account_id && userAccountIds.has(tx.account_id)
-        );
+        // Filter transactions based on whether we're showing shared data
+        const relevantTransactions = showSharedData 
+            ? apiTransactions // Use all shared transactions
+            : apiTransactions.filter(tx => 
+                tx.account_id && userAccountIds.has(tx.account_id)
+              );
 
-        const transactionsByMonth = userTransactions.reduce((acc, tx) => {
+        const transactionsByMonth = relevantTransactions.reduce((acc, tx) => {
             const txDate = new Date(tx.date);
             const monthKey = getMonthKey(txDate);
             
@@ -568,7 +596,7 @@ export default function OverviewPage() {
             transactionsByMonth,
             creditCardBillsByMonth,
         };
-    }, [apiTransactions, creditCardTransactions, accounts, creditCards, openBills]);
+    }, [apiTransactions, creditCardTransactions, accounts, creditCards, openBills, showSharedData]);
 
     const chartData = useMemo(() => {
         const lastSixMonths = getLastSixMonths();
@@ -597,14 +625,44 @@ export default function OverviewPage() {
     return (
         <>
             <ProcessDueTransactions />
-            <header className="mb-8 flex justify-between items-end">
-                <div>
-                    <h1 className="text-4xl font-light text-on-surface">Olá, {user.name}!</h1>
-                    <p className="text-base text-on-surface-variant mt-1">Bem-vindo ao seu painel financeiro.</p>
+            <header className="mb-8">
+                <div className="flex justify-between items-start mb-4">
+                    <div>
+                        <h1 className="text-4xl font-light text-on-surface">Olá, {user.name}!</h1>
+                        <p className="text-base text-on-surface-variant mt-1">Bem-vindo ao seu painel financeiro.</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-sm font-medium text-on-surface-variant uppercase tracking-wider">Saldo Total</p>
+                        <h2 className="text-3xl font-normal text-primary">{formattedBalance}</h2>
+                    </div>
                 </div>
-                <div className="text-right">
-                    <p className="text-sm font-medium text-on-surface-variant uppercase tracking-wider">Saldo Total</p>
-                    <h2 className="text-3xl font-normal text-primary">{formattedBalance}</h2>
+                
+                {/* Toggle for shared data */}
+                <div className="flex items-center gap-3 p-3 bg-surface-variant/30 rounded-lg">
+                    <span className="text-sm text-on-surface-variant">Visualização:</span>
+                    <div className="flex gap-2">
+                        <Button
+                            variant={!showSharedData ? "primary" : "ghost"}
+                            size="sm"
+                            onClick={() => setShowSharedData(false)}
+                            className="!h-8 !px-3 !text-sm"
+                        >
+                            Apenas Meus Dados
+                        </Button>
+                        <Button
+                            variant={showSharedData ? "primary" : "ghost"}
+                            size="sm"
+                            onClick={() => setShowSharedData(true)}
+                            className="!h-8 !px-3 !text-sm"
+                        >
+                            Dados Combinados
+                        </Button>
+                    </div>
+                    {showSharedData && (
+                        <span className="text-xs text-on-surface-variant ml-2">
+                            (Incluindo dados compartilhados)
+                        </span>
+                    )}
                 </div>
             </header>
 
@@ -668,6 +726,8 @@ export default function OverviewPage() {
                     <CashFlowProjection
                         currentBalance={totalBalance}
                         projectedTransactions={projectedTransactions}
+                        includeSharedData={showSharedData}
+                        onToggleSharedData={setShowSharedData}
                     />
                 )}
 

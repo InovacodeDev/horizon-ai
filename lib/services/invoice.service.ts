@@ -80,12 +80,47 @@ export class InvoiceService {
   // ============================================
 
   /**
+   * Get all invoices with sharing information
+   * Returns invoices with ownership metadata (ownerId, ownerName, isOwn)
+   * This method uses DataAccessService to fetch both own and shared invoices
+   */
+  async getInvoicesWithSharing(userId: string, filters?: InvoiceFilter) {
+    try {
+      const { DataAccessService } = await import('./data-access.service');
+      const dataAccessService = new DataAccessService();
+
+      // Build filters for DataAccessService
+      const dataAccessFilters = filters
+        ? {
+            category: filters.category as any,
+            merchant: filters.merchant,
+            startDate: filters.startDate,
+            endDate: filters.endDate,
+            minAmount: filters.minAmount,
+            maxAmount: filters.maxAmount,
+            search: filters.search,
+          }
+        : undefined;
+
+      return await dataAccessService.getAccessibleInvoices(userId, dataAccessFilters);
+    } catch (error: any) {
+      throw new InvoiceServiceError('Failed to fetch invoices with sharing', 'INVOICE_FETCH_ERROR', {
+        error: error.message,
+      });
+    }
+  }
+
+  /**
    * Create a new invoice from parsed data
    * Includes duplicate detection and batch creation of invoice items
+   * Always assigns invoice to the current user (data.userId)
    */
   async createInvoice(data: CreateInvoiceData): Promise<InvoiceWithItems> {
     try {
       const { userId, parsedInvoice, customCategory, transactionId, accountId } = data;
+
+      // Ensure invoice is always assigned to the current user
+      // This prevents creating invoices for other users, even in shared relationships
 
       // Check for duplicate invoice using invoice key
       const duplicate = await this.checkDuplicate(userId, parsedInvoice.invoiceKey);
@@ -100,24 +135,7 @@ export class InvoiceService {
       const now = new Date().toISOString();
       const invoiceId = ID.unique();
 
-      // Prepare invoice data JSON field
-      // Note: xml_data is excluded because the full HTML from NFe portals can be 100KB+
-      // and the 'data' field has a 4000 character limit in Appwrite.
-      // The parsed structured data (items, totals, merchant info) is stored separately
-      // and is sufficient for all application needs.
-      // Future: Consider storing raw HTML in Appwrite Storage if needed for auditing.
-      const invoiceData: InvoiceData = {
-        series: parsedInvoice.series,
-        merchant_address: `${parsedInvoice.merchant.address}, ${parsedInvoice.merchant.city} - ${parsedInvoice.merchant.state}`,
-        discount_amount: parsedInvoice.totals.discount,
-        tax_amount: parsedInvoice.totals.tax,
-        custom_category: customCategory,
-        xml_data: '', // Excluded - see comment above
-        transaction_id: transactionId,
-        account_id: accountId,
-      };
-
-      // Create invoice document
+      // Create invoice document with individual columns
       const invoicePayload = {
         user_id: userId,
         invoice_key: parsedInvoice.invoiceKey,
@@ -127,7 +145,13 @@ export class InvoiceService {
         merchant_name: parsedInvoice.merchant.name,
         total_amount: parsedInvoice.totals.total,
         category: customCategory || parsedInvoice.category || 'other',
-        data: JSON.stringify(invoiceData),
+        series: parsedInvoice.series,
+        merchant_address: `${parsedInvoice.merchant.address}, ${parsedInvoice.merchant.city} - ${parsedInvoice.merchant.state}`,
+        discount_amount: parsedInvoice.totals.discount,
+        tax_amount: parsedInvoice.totals.tax,
+        custom_category: customCategory,
+        transaction_id: transactionId,
+        account_id: accountId,
         created_at: now,
         updated_at: now,
       };
@@ -298,20 +322,15 @@ export class InvoiceService {
         updatePayload.category = updates.category;
       }
 
-      // Update data JSON field if needed
-      if (
-        updates.customCategory !== undefined ||
-        updates.transactionId !== undefined ||
-        updates.accountId !== undefined
-      ) {
-        const existingData = this.parseInvoiceData(existing.data);
-        const updatedData: InvoiceData = {
-          ...existingData,
-          ...(updates.customCategory !== undefined && { custom_category: updates.customCategory }),
-          ...(updates.transactionId !== undefined && { transaction_id: updates.transactionId }),
-          ...(updates.accountId !== undefined && { account_id: updates.accountId }),
-        };
-        updatePayload.data = JSON.stringify(updatedData);
+      // Update individual columns if needed
+      if (updates.customCategory !== undefined) {
+        updatePayload.custom_category = updates.customCategory;
+      }
+      if (updates.transactionId !== undefined) {
+        updatePayload.transaction_id = updates.transactionId;
+      }
+      if (updates.accountId !== undefined) {
+        updatePayload.account_id = updates.accountId;
       }
 
       const invoiceDoc = await this.dbAdapter.updateDocument(
@@ -338,11 +357,22 @@ export class InvoiceService {
 
   /**
    * Delete invoice and cascade to invoice items
+   * Validates that the invoice belongs to the user before allowing deletion
+   * Prevents deletion of shared invoices
    */
   async deleteInvoice(invoiceId: string, userId: string): Promise<void> {
     try {
       // Verify ownership and get invoice with items
       const invoice = await this.getInvoiceById(invoiceId, userId);
+
+      // Additional validation: ensure the invoice belongs to the user
+      if (invoice.user_id !== userId) {
+        throw new InvoiceServiceError(
+          'You cannot delete invoices that belong to another user',
+          'INVOICE_PERMISSION_DENIED',
+          { invoiceId },
+        );
+      }
 
       // Delete all invoice items
       for (const item of invoice.items) {
@@ -704,7 +734,16 @@ export class InvoiceService {
       merchant_name: document.merchant_name,
       total_amount: document.total_amount,
       category: document.category,
-      data: document.data,
+      series: document.series,
+      merchant_address: document.merchant_address,
+      discount_amount: document.discount_amount,
+      tax_amount: document.tax_amount,
+      custom_category: document.custom_category,
+      source_url: document.source_url,
+      qr_code_data: document.qr_code_data,
+      xml_data: document.xml_data,
+      transaction_id: document.transaction_id,
+      account_id: document.account_id,
       created_at: document.created_at,
       updated_at: document.updated_at,
     };
@@ -753,19 +792,6 @@ export class InvoiceService {
       created_at: document.created_at,
       updated_at: document.updated_at,
     };
-  }
-
-  /**
-   * Parse invoice data JSON field
-   */
-  private parseInvoiceData(dataString?: string): InvoiceData {
-    if (!dataString) return {};
-
-    try {
-      return JSON.parse(dataString) as InvoiceData;
-    } catch {
-      return {};
-    }
   }
 }
 

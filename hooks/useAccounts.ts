@@ -274,48 +274,6 @@ export function useAccounts(options: UseAccountsOptions = {}) {
     },
   });
 
-  // Setup realtime subscription for transfer_logs
-  useAppwriteRealtime({
-    channels: [`databases.${process.env.APPWRITE_DATABASE_ID}.collections.transfer_logs.documents`],
-    enabled: enableRealtime && initialized,
-    onCreate: async (payload: any) => {
-      console.log('📡 Realtime: transfer detected', payload);
-
-      // When a transfer is created, refresh the affected accounts
-      if (payload.from_account_id || payload.to_account_id) {
-        try {
-          // Fetch updated accounts
-          const accountIds = [payload.from_account_id, payload.to_account_id].filter(Boolean);
-
-          for (const accountId of accountIds) {
-            const response = await fetch(`/api/accounts/${accountId}`, {
-              credentials: 'include',
-            });
-
-            if (response.ok) {
-              const updatedAccount = await response.json();
-
-              // Update the account in the list
-              setAccounts((prev) => {
-                const index = prev.findIndex((a) => a.$id === accountId);
-                if (index !== -1) {
-                  const updated = [...prev];
-                  updated[index] = updatedAccount;
-                  return updated;
-                }
-                return prev;
-              });
-            }
-          }
-
-          console.log('✅ Account balances updated after transfer');
-        } catch (err) {
-          console.error('❌ Error updating accounts after transfer:', err);
-        }
-      }
-    },
-  });
-
   return {
     accounts,
     loading: loading || isPending,

@@ -16,11 +16,13 @@ export const COLLECTIONS = {
   CREDIT_CARDS: 'credit_cards',
   CREDIT_CARD_TRANSACTIONS: 'credit_card_transactions',
   CREDIT_CARD_BILLS: 'credit_card_bills',
-  TRANSFER_LOGS: 'transfer_logs',
   INVOICES: 'invoices',
   INVOICE_ITEMS: 'invoice_items',
   PRODUCTS: 'products',
   PRICE_HISTORY: 'price_history',
+  SHARING_RELATIONSHIPS: 'sharing_relationships',
+  SHARING_INVITATIONS: 'sharing_invitations',
+  SHARING_AUDIT_LOGS: 'sharing_audit_logs',
 } as const;
 
 // Database ID - Configure no Appwrite Console
@@ -333,6 +335,30 @@ export interface UserPreferences {
   updated_at: string;
 }
 
+/**
+ * Sharing preferences stored in the notifications JSON field
+ */
+export interface SharingPreferences {
+  show_shared_data: boolean;
+  include_shared_in_calculations: boolean;
+  show_ownership_indicators: boolean;
+}
+
+/**
+ * Extended notifications structure with sharing preferences
+ */
+export interface NotificationsData {
+  email_notifications?: boolean;
+  push_notifications?: boolean;
+  sms_notifications?: boolean;
+  notification_frequency?: string;
+  dashboard_widgets?: {
+    enabled: string[];
+    order: string[];
+  };
+  sharing?: SharingPreferences;
+}
+
 export interface UserSettings {
   $id: string;
   $createdAt: string;
@@ -379,6 +405,7 @@ export const transactionsSchema = {
     { key: 'installment', type: 'integer', required: false, min: 1 },
     { key: 'installments', type: 'integer', required: false, min: 1 },
     { key: 'credit_card_transaction_created_at', type: 'datetime', required: false },
+    { key: 'direction', type: 'enum', elements: ['in', 'out'], required: true, array: false },
     { key: 'data', type: 'string', size: 16000, required: false, array: false }, // JSON field for remaining data
     { key: 'created_at', type: 'datetime', required: true },
     { key: 'updated_at', type: 'datetime', required: true },
@@ -418,6 +445,7 @@ export interface Transaction {
   installment?: number; // Current installment number (1, 2, 3...)
   installments?: number; // Total number of installments (12 for 12x)
   credit_card_transaction_created_at?: string; // Original purchase date on credit card
+  direction: 'in' | 'out'; // Transaction direction: 'in' for income/salary/transfer, 'out' for expense
   data?: string; // JSON string for remaining data (location, receipt_url, recurring_pattern, etc.)
   created_at: string;
   updated_at: string;
@@ -602,44 +630,6 @@ export interface CreditCardTransaction {
   status: 'pending' | 'completed' | 'cancelled';
   created_at: string;
   updated_at: string;
-}
-
-// ============================================
-// Collection: transfer_logs
-// ============================================
-export const transferLogsSchema = {
-  collectionId: COLLECTIONS.TRANSFER_LOGS,
-  name: 'Transfer Logs',
-  permissions: ['read("any")', 'write("any")'],
-  rowSecurity: true,
-  attributes: [
-    { key: 'user_id', type: 'string', size: 255, required: true, array: false },
-    { key: 'from_account_id', type: 'string', size: 255, required: true, array: false },
-    { key: 'to_account_id', type: 'string', size: 255, required: true, array: false },
-    { key: 'amount', type: 'float', required: true },
-    { key: 'description', type: 'string', size: 500, required: false, array: false },
-    { key: 'status', type: 'enum', elements: ['completed', 'failed'], required: true, array: false },
-    { key: 'created_at', type: 'datetime', required: true },
-  ],
-  indexes: [
-    { key: 'idx_user_id', type: 'key', attributes: ['user_id'], orders: ['ASC'] },
-    { key: 'idx_from_account_id', type: 'key', attributes: ['from_account_id'], orders: ['ASC'] },
-    { key: 'idx_to_account_id', type: 'key', attributes: ['to_account_id'], orders: ['ASC'] },
-    { key: 'idx_created_at', type: 'key', attributes: ['created_at'], orders: ['DESC'] },
-  ],
-};
-
-export interface TransferLog {
-  $id: string;
-  $createdAt: string;
-  $updatedAt: string;
-  user_id: string;
-  from_account_id: string;
-  to_account_id: string;
-  amount: number;
-  description?: string;
-  status: 'completed' | 'failed';
-  created_at: string;
 }
 
 // ============================================
@@ -860,5 +850,308 @@ export interface PriceHistory {
   purchase_date: string;
   unit_price: number;
   quantity: number;
+  created_at: string;
+}
+
+// ============================================
+// Collection: sharing_relationships
+// ============================================
+export const sharingRelationshipsSchema = {
+  collectionId: COLLECTIONS.SHARING_RELATIONSHIPS,
+  name: 'Sharing Relationships',
+  permissions: ['read("any")', 'write("any")'],
+  rowSecurity: true,
+  attributes: [
+    {
+      key: 'responsible_user_id',
+      type: 'string',
+      size: 255,
+      required: true,
+      array: false,
+    },
+    {
+      key: 'member_user_id',
+      type: 'string',
+      size: 255,
+      required: true,
+      array: false,
+    },
+    {
+      key: 'status',
+      type: 'enum',
+      elements: ['active', 'terminated'],
+      required: true,
+      array: false,
+    },
+    {
+      key: 'started_at',
+      type: 'datetime',
+      required: true,
+    },
+    {
+      key: 'terminated_at',
+      type: 'datetime',
+      required: false,
+    },
+    {
+      key: 'terminated_by',
+      type: 'string',
+      size: 255,
+      required: false,
+      array: false,
+    },
+    {
+      key: 'created_at',
+      type: 'datetime',
+      required: true,
+    },
+    {
+      key: 'updated_at',
+      type: 'datetime',
+      required: true,
+    },
+  ],
+  indexes: [
+    {
+      key: 'idx_responsible_user',
+      type: 'key',
+      attributes: ['responsible_user_id'],
+      orders: ['ASC'],
+    },
+    {
+      key: 'idx_member_user_status',
+      type: 'unique',
+      attributes: ['member_user_id', 'status'],
+    },
+    {
+      key: 'idx_status',
+      type: 'key',
+      attributes: ['status'],
+    },
+  ],
+};
+
+export interface SharingRelationship {
+  $id: string;
+  $createdAt: string;
+  $updatedAt: string;
+  responsible_user_id: string;
+  member_user_id: string;
+  status: 'active' | 'terminated';
+  started_at: string;
+  terminated_at?: string;
+  terminated_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================
+// Collection: sharing_invitations
+// ============================================
+export const sharingInvitationsSchema = {
+  collectionId: COLLECTIONS.SHARING_INVITATIONS,
+  name: 'Sharing Invitations',
+  permissions: ['read("any")', 'write("any")'],
+  rowSecurity: true,
+  attributes: [
+    {
+      key: 'responsible_user_id',
+      type: 'string',
+      size: 255,
+      required: true,
+      array: false,
+    },
+    {
+      key: 'invited_email',
+      type: 'string',
+      size: 255,
+      required: true,
+      array: false,
+    },
+    {
+      key: 'invited_user_id',
+      type: 'string',
+      size: 255,
+      required: false,
+      array: false,
+    },
+    {
+      key: 'token',
+      type: 'string',
+      size: 255,
+      required: true,
+      array: false,
+    },
+    {
+      key: 'status',
+      type: 'enum',
+      elements: ['pending', 'accepted', 'rejected', 'cancelled', 'expired'],
+      required: true,
+      array: false,
+    },
+    {
+      key: 'expires_at',
+      type: 'datetime',
+      required: true,
+    },
+    {
+      key: 'accepted_at',
+      type: 'datetime',
+      required: false,
+    },
+    {
+      key: 'created_at',
+      type: 'datetime',
+      required: true,
+    },
+    {
+      key: 'updated_at',
+      type: 'datetime',
+      required: true,
+    },
+  ],
+  indexes: [
+    {
+      key: 'idx_token',
+      type: 'unique',
+      attributes: ['token'],
+    },
+    {
+      key: 'idx_responsible_user',
+      type: 'key',
+      attributes: ['responsible_user_id'],
+      orders: ['ASC'],
+    },
+    {
+      key: 'idx_invited_email',
+      type: 'key',
+      attributes: ['invited_email'],
+    },
+    {
+      key: 'idx_status',
+      type: 'key',
+      attributes: ['status'],
+    },
+    {
+      key: 'idx_expires_at',
+      type: 'key',
+      attributes: ['expires_at'],
+      orders: ['ASC'],
+    },
+  ],
+};
+
+export interface SharingInvitation {
+  $id: string;
+  $createdAt: string;
+  $updatedAt: string;
+  responsible_user_id: string;
+  invited_email: string;
+  invited_user_id?: string;
+  token: string;
+  status: 'pending' | 'accepted' | 'rejected' | 'cancelled' | 'expired';
+  expires_at: string;
+  accepted_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================
+// Collection: sharing_audit_logs
+// ============================================
+export const sharingAuditLogsSchema = {
+  collectionId: COLLECTIONS.SHARING_AUDIT_LOGS,
+  name: 'Sharing Audit Logs',
+  permissions: ['read("any")', 'write("any")'],
+  rowSecurity: true,
+  attributes: [
+    {
+      key: 'user_id',
+      type: 'string',
+      size: 255,
+      required: true,
+      array: false,
+    },
+    {
+      key: 'action',
+      type: 'enum',
+      elements: [
+        'invitation_created',
+        'invitation_accepted',
+        'invitation_rejected',
+        'invitation_cancelled',
+        'relationship_terminated',
+      ],
+      required: true,
+      array: false,
+    },
+    {
+      key: 'resource_type',
+      type: 'enum',
+      elements: ['invitation', 'relationship'],
+      required: true,
+      array: false,
+    },
+    {
+      key: 'resource_id',
+      type: 'string',
+      size: 255,
+      required: true,
+      array: false,
+    },
+    {
+      key: 'details',
+      type: 'string',
+      size: 4000,
+      required: false,
+      array: false,
+    },
+    {
+      key: 'created_at',
+      type: 'datetime',
+      required: true,
+    },
+  ],
+  indexes: [
+    {
+      key: 'idx_user_id',
+      type: 'key',
+      attributes: ['user_id'],
+      orders: ['ASC'],
+    },
+    {
+      key: 'idx_created_at',
+      type: 'key',
+      attributes: ['created_at'],
+      orders: ['DESC'],
+    },
+    {
+      key: 'idx_action',
+      type: 'key',
+      attributes: ['action'],
+    },
+    {
+      key: 'idx_resource',
+      type: 'key',
+      attributes: ['resource_type', 'resource_id'],
+      orders: ['ASC', 'ASC'],
+    },
+  ],
+};
+
+export interface SharingAuditLog {
+  $id: string;
+  $createdAt: string;
+  $updatedAt: string;
+  user_id: string;
+  action:
+    | 'invitation_created'
+    | 'invitation_accepted'
+    | 'invitation_rejected'
+    | 'invitation_cancelled'
+    | 'relationship_terminated';
+  resource_type: 'invitation' | 'relationship';
+  resource_id: string;
+  details?: string;
   created_at: string;
 }

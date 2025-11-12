@@ -1,0 +1,286 @@
+# Implementation Plan - Joint Accounts Sharing System
+
+- [x] 1. Set up database schema and types
+  - Create `sharing_relationships` collection in Appwrite with all required attributes and indexes
+  - Create `sharing_invitations` collection in Appwrite with all required attributes and indexes
+  - Add collection IDs to `lib/appwrite/schema.ts` COLLECTIONS constant
+  - Define TypeScript interfaces in `lib/types/sharing.types.ts` for SharingRelationship, SharingInvitation, and related DTOs
+  - Export sharing types from `lib/types/index.ts`
+  - _Requirements: 1.1, 1.3, 2.1, 2.4_
+
+- [x] 2. Implement InvitationService
+  - [x] 2.1 Create `lib/services/invitation.service.ts` with InvitationService class
+    - Implement `createInvitation()` method to create invitations with validation
+    - Implement `generateInvitationToken()` private method using crypto for secure token generation
+    - Implement `getInvitationByToken()` method to retrieve invitations
+    - Implement `acceptInvitation()` method to process invitation acceptance and create relationship
+    - Implement `rejectInvitation()` method to mark invitations as rejected
+    - Implement `cancelInvitation()` method for responsible users to cancel pending invitations
+    - Implement `getInvitationsByResponsible()` method to list all invitations for a responsible user
+    - Implement `getPendingInvitationsByEmail()` method to find pending invitations for an email
+    - Implement `resendInvitation()` method to resend invitation emails
+    - Implement `expireOldInvitations()` method to mark expired invitations (for cron job)
+    - _Requirements: 1.1, 1.2, 1.3, 2.1, 2.2, 2.3, 5.3, 5.4_
+  - [x] 2.2 Implement email sending functionality
+    - Create email template for invitation in `lib/services/invitation.service.ts`
+    - Implement `sendInvitationEmail()` private method using existing email service or Appwrite messaging
+    - Include invitation link with token in email body
+    - _Requirements: 1.2_
+
+- [x] 3. Implement SharingService
+  - [x] 3.1 Create `lib/services/sharing.service.ts` with SharingService class
+    - Implement `getActiveRelationship()` method to fetch active relationship for a user
+    - Implement `getActiveMembers()` method to list all active members for a responsible user
+    - Implement `hasActiveRelationship()` method to check if user has active relationship
+    - Implement `getSharedDataContext()` method to return SharedDataContext with linked user info
+    - Implement `terminateRelationship()` method to end sharing relationship
+    - Implement `getRelationshipDetails()` method to fetch complete relationship information with user details
+    - _Requirements: 3.1, 3.2, 3.3, 4.1, 4.2, 4.3, 4.4, 5.1, 5.2, 6.1, 6.2, 6.3_
+  - [x] 3.2 Add notification logic for relationship events
+    - Send email notification when relationship is terminated
+    - Include termination details and timestamp in notification
+    - _Requirements: 4.5_
+
+- [x] 4. Implement DataAccessService
+  - [x] 4.1 Create `lib/services/data-access.service.ts` with DataAccessService class
+    - Implement `getAccessibleAccounts()` method to fetch own and shared accounts
+    - Implement `getAccessibleTransactions()` method to fetch own and shared transactions with filters
+    - Implement `getAccessibleCreditCards()` method to fetch own and shared credit cards
+    - Implement `getAccessibleInvoices()` method to fetch own and shared invoices with filters
+    - Implement `getTotalAccessibleBalance()` method to calculate total balance across all accessible accounts
+    - Implement `canAccessResource()` method to verify if user can access a specific resource
+    - Add ownership metadata (ownerId, ownerName, isOwn) to all returned data
+    - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 7.4, 7.5_
+  - [x] 4.2 Add helper methods for data merging
+    - Create private method to merge user's own data with linked user's data
+    - Create private method to add ownership labels to data items
+    - Create private method to fetch user names for ownership display
+    - _Requirements: 3.2, 7.4_
+
+- [x] 5. Create API endpoints for invitations
+  - [x] 5.1 Create `app/api/family/invitations/route.ts`
+    - Implement POST handler to create new invitation
+    - Implement GET handler to list invitations for current user
+    - Add authentication middleware to verify user is logged in
+    - Add validation for invitation creation (email format, user exists, no active relationship)
+    - _Requirements: 1.1, 1.2, 1.3, 1.4, 5.1, 5.2_
+  - [x] 5.2 Create `app/api/family/invitations/[id]/cancel/route.ts`
+    - Implement POST handler to cancel pending invitation
+    - Verify user is the responsible user who created the invitation
+    - _Requirements: 5.3_
+  - [x] 5.3 Create `app/api/family/invitations/[id]/resend/route.ts`
+    - Implement POST handler to resend invitation email
+    - Verify invitation is still pending and not expired
+    - _Requirements: 5.4_
+  - [x] 5.4 Create `app/api/family/invitations/validate/route.ts`
+    - Implement GET handler to validate invitation token
+    - Return invitation details and responsible user information
+    - Check if current user can accept the invitation
+    - _Requirements: 2.1, 2.4_
+  - [x] 5.5 Create `app/api/family/invitations/accept/route.ts`
+    - Implement POST handler to accept invitation
+    - Verify user doesn't have existing active relationship
+    - Create sharing relationship on successful acceptance
+    - _Requirements: 2.2, 2.4, 2.5_
+  - [x] 5.6 Create `app/api/family/invitations/reject/route.ts`
+    - Implement POST handler to reject invitation
+    - Mark invitation as rejected
+    - _Requirements: 2.3_
+
+- [x] 6. Create API endpoints for relationships
+  - [x] 6.1 Create `app/api/family/relationships/route.ts`
+    - Implement GET handler to fetch current user's active relationship
+    - Return relationship details with role (responsible or member)
+    - _Requirements: 5.1, 5.2, 6.1, 6.2, 6.3_
+  - [x] 6.2 Create `app/api/family/members/route.ts`
+    - Implement GET handler to list all active members for responsible user
+    - Return member details with relationship start dates
+    - _Requirements: 5.1, 5.2_
+  - [x] 6.3 Create `app/api/family/relationships/[id]/terminate/route.ts`
+    - Implement POST handler to terminate relationship
+    - Verify user is either responsible or member in the relationship
+    - Send notifications to both users
+    - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 6.4_
+  - [x] 6.4 Create `app/api/sharing/context/route.ts`
+    - Implement GET handler to return shared data context for current user
+    - Include linked user ID and relationship type
+    - _Requirements: 3.1, 3.2, 3.3, 3.4_
+
+- [x] 7. Enhance existing services for shared data access
+  - [x] 7.1 Update AccountService to support shared data
+    - Modify `getAccountsByUserId()` to optionally include shared accounts
+    - Add method `getAccountsWithSharing()` that uses DataAccessService
+    - Ensure balance calculations include only user's own accounts by default
+    - _Requirements: 3.1, 3.5, 7.5_
+  - [x] 7.2 Update TransactionService to support shared data
+    - Add method `getTransactionsWithSharing()` that uses DataAccessService
+    - Ensure transaction creation always assigns to current user
+    - Add validation to prevent modification of shared transactions
+    - _Requirements: 3.2, 7.1, 7.2, 7.3_
+  - [x] 7.3 Update CreditCardService to support shared data
+    - Add method `getCreditCardsWithSharing()` that uses DataAccessService
+    - Ensure credit card creation always assigns to current user's account
+    - Add validation to prevent modification of shared credit cards
+    - _Requirements: 3.3, 7.1, 7.2, 7.3_
+  - [x] 7.4 Update InvoiceService to support shared data
+    - Add method `getInvoicesWithSharing()` that uses DataAccessService
+    - Ensure invoice upload always assigns to current user
+    - Add validation to prevent deletion of shared invoices
+    - _Requirements: 3.4, 7.1, 7.2, 7.3_
+
+- [x] 8. Create UI components for family management
+  - [x] 8.1 Create `app/(app)/family/page.tsx` for family management
+    - Display current relationship status (active or none)
+    - Show responsible user info if user is a member
+    - Show list of active members if user is responsible
+    - Show list of pending invitations if user is responsible
+    - Add button to create new invitation
+    - Add button to terminate relationship
+    - _Requirements: 5.1, 5.2, 5.5, 6.1, 6.2, 6.3, 6.4_
+  - [x] 8.2 Create invitation modal component
+    - Create `components/modals/CreateInvitationModal.tsx`
+    - Add email input field with validation
+    - Add submit button to create invitation
+    - Display success/error messages
+    - _Requirements: 1.1, 1.2, 1.3, 1.4_
+  - [x] 8.3 Create invitation acceptance page
+    - Create `app/(app)/family/invitations/[token]/page.tsx`
+    - Display invitation details (responsible user name and email)
+    - Show accept and reject buttons
+    - Handle expired/invalid invitations with error messages
+    - Redirect to family page after acceptance
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
+  - [x] 8.4 Create relationship termination confirmation modal
+    - Create `components/modals/TerminateRelationshipModal.tsx`
+    - Display warning about data access loss
+    - Add confirm and cancel buttons
+    - Show loading state during termination
+    - _Requirements: 4.1, 4.2, 4.3, 4.4, 6.4_
+
+- [x] 9. Add ownership indicators to existing pages
+  - [x] 9.1 Update accounts page to show ownership
+    - Modify `app/(app)/accounts/page.tsx` to fetch accounts with sharing
+    - Add ownership badge to each account card showing "Sua" or owner name
+    - Add visual distinction (color/icon) for shared accounts
+    - Update total balance calculation to include shared accounts
+    - _Requirements: 3.1, 3.5, 7.4, 7.5_
+  - [x] 9.2 Update transactions page to show ownership
+    - Modify `app/(app)/transactions/page.tsx` to fetch transactions with sharing
+    - Add ownership column to transaction table
+    - Add filter to show only own transactions or all transactions
+    - Disable edit/delete buttons for shared transactions
+    - _Requirements: 3.2, 7.2, 7.3, 7.4_
+  - [x] 9.3 Update credit cards page to show ownership
+    - Modify `app/(app)/credit-card-bills/page.tsx` to fetch credit cards with sharing
+    - Add ownership badge to each credit card
+    - Disable edit/delete buttons for shared credit cards
+    - _Requirements: 3.3, 7.2, 7.3, 7.4_
+  - [x] 9.4 Update invoices page to show ownership
+    - Modify `app/(app)/invoices/page.tsx` to fetch invoices with sharing
+    - Add ownership indicator to invoice list
+    - Disable delete button for shared invoices
+    - _Requirements: 3.4, 7.2, 7.3, 7.4_
+  - [x] 9.5 Create reusable OwnershipBadge component
+    - Create `components/ui/OwnershipBadge.tsx`
+    - Display "Sua" for own data or owner name for shared data
+    - Add tooltip with full owner information
+    - Support different sizes and color schemes
+    - _Requirements: 7.4_
+
+- [x] 10. Add permission checks and validation
+  - [x] 10.1 Create permission middleware
+    - Create `lib/auth/sharing-permissions.ts` with permission check functions
+    - Implement `canModifyResource()` to verify user owns the resource
+    - Implement `canAccessResource()` to verify user has access via relationship
+    - Implement `canDeleteResource()` to verify user owns the resource
+    - _Requirements: 7.2, 7.3, 8.1, 8.2, 8.3, 8.4, 8.5_
+  - [x] 10.2 Add validation to API endpoints
+    - Add permission checks to all PUT/PATCH endpoints for accounts, transactions, credit cards
+    - Add permission checks to all DELETE endpoints
+    - Return 403 Forbidden with descriptive error message when permission denied
+    - _Requirements: 7.2, 7.3, 8.1, 8.2, 8.3_
+  - [x] 10.3 Add client-side permission checks
+    - Disable edit buttons for shared resources in UI
+    - Disable delete buttons for shared resources in UI
+    - Show read-only indicators for shared data
+    - _Requirements: 7.2, 7.3_
+
+- [x] 11. Implement cron job for invitation expiration
+  - [x] 11.1 Create cron endpoint
+    - Create `app/api/cron/expire-invitations/route.ts`
+    - Implement GET handler that calls InvitationService.expireOldInvitations()
+    - Add authentication check for cron secret
+    - Return count of expired invitations
+    - _Requirements: 2.5_
+  - [x] 11.2 Configure Vercel cron job
+    - Add cron configuration to `vercel.json`
+    - Set schedule to run daily at midnight
+    - Add CRON_SECRET environment variable
+    - _Requirements: 2.5_
+
+- [x] 12. Add audit logging
+  - [x] 12.1 Create audit log collection
+    - Create `sharing_audit_logs` collection in Appwrite
+    - Add attributes: user_id, action, resource_type, resource_id, details, created_at
+    - Add indexes for user_id and created_at
+    - _Requirements: 8.3, 8.4_
+  - [x] 12.2 Implement audit logging service
+    - Create `lib/services/audit-log.service.ts`
+    - Implement `logInvitationCreated()` method
+    - Implement `logInvitationAccepted()` method
+    - Implement `logInvitationRejected()` method
+    - Implement `logRelationshipTerminated()` method
+    - _Requirements: 8.3, 8.4_
+  - [x] 12.3 Add audit logging to services
+    - Add audit log calls to InvitationService methods
+    - Add audit log calls to SharingService methods
+    - _Requirements: 8.3, 8.4_
+
+- [x] 13. Add integration with existing features
+  - [x] 13.1 Update dashboard overview to include shared data
+    - Modify `app/(app)/overview/page.tsx` to show combined statistics
+    - Add toggle to view own data only or combined data
+    - Update charts to include shared transactions
+    - _Requirements: 3.1, 3.2, 3.5, 7.5_
+  - [x] 13.2 Update cash flow projection to include shared data
+    - Modify `components/CashFlowProjection.tsx` to include shared accounts and transactions
+    - Add option to calculate projections with or without shared data
+    - _Requirements: 3.1, 3.2, 7.5_
+  - [x] 13.3 Update analytics page to include shared data
+    - Modify `app/(app)/analytics/page.tsx` to analyze combined data
+    - Add filters to separate own vs shared spending
+    - Update category breakdowns to include shared transactions
+    - _Requirements: 3.2, 7.5_
+
+- [x] 14. Add settings and preferences
+  - [x] 14.1 Add sharing preferences to user settings
+    - Modify `app/(app)/settings/page.tsx` to include sharing section
+    - Add toggle to show/hide shared data by default
+    - Add toggle to include shared data in calculations
+    - Add toggle to show ownership indicators
+    - _Requirements: 3.1, 3.2, 3.3, 3.4_
+  - [x] 14.2 Store sharing preferences in user preferences
+    - Update UserPreferences schema to include sharing preferences
+    - Update UserService to handle sharing preferences
+    - Apply preferences in DataAccessService methods
+    - _Requirements: 3.1, 3.2, 3.3, 3.4_
+
+- [x] 15. Documentation and testing
+  - [x] 15.1 Create user documentation
+    - Create `docs/JOINT_ACCOUNTS_SHARING.md` with feature overview
+    - Document invitation flow with screenshots
+    - Document relationship management
+    - Document data ownership and permissions
+    - Add FAQ section
+    - _Requirements: All_
+  - [x] 15.2 Create API documentation
+    - Document all new API endpoints in `docs/API_IMPLEMENTATION.md`
+    - Include request/response examples
+    - Document error codes and messages
+    - _Requirements: All_
+  - [x] 15.3 Write integration tests
+    - Create `tests/sharing-invitation-flow.test.ts` to test complete invitation flow
+    - Create `tests/sharing-data-access.test.ts` to test shared data access
+    - Create `tests/sharing-permissions.test.ts` to test permission enforcement
+    - Create `tests/sharing-termination.test.ts` to test relationship termination
+    - _Requirements: All_

@@ -166,10 +166,10 @@ export default function InsightsPage() {
       const { Client } = await import('appwrite');
       
       const client = new Client()
-        .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || '')
-        .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID || '');
+        .setEndpoint(process.env.APPWRITE_ENDPOINT || '')
+        .setProject(process.env.APPWRITE_PROJECT_ID || '');
 
-      const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || 'horizon_ai_db';
+      const databaseId = process.env.APPWRITE_DATABASE_ID || 'horizon_ai_db';
       const collectionId = 'invoices';
 
       // Subscribe to invoice changes
@@ -925,9 +925,10 @@ export default function InsightsPage() {
                   stroke="hsl(var(--primary))"
                   strokeWidth={2}
                   dot={(props: any) => {
-                    const { cx, cy, payload } = props;
+                    const { cx, cy, payload, index } = props;
                     return (
                       <circle
+                        key={`dot-${index}`}
                         cx={cx}
                         cy={cy}
                         r={4}
@@ -938,9 +939,10 @@ export default function InsightsPage() {
                     );
                   }}
                   activeDot={(props: any) => {
-                    const { cx, cy, payload } = props;
+                    const { cx, cy, payload, index } = props;
                     return (
                       <circle
+                        key={`active-dot-${index}`}
                         cx={cx}
                         cy={cy}
                         r={6}

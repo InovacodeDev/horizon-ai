@@ -16,11 +16,15 @@ interface ProjectedTransaction {
 interface CashFlowProjectionProps {
   currentBalance: number;
   projectedTransactions: ProjectedTransaction[];
+  includeSharedData?: boolean;
+  onToggleSharedData?: (include: boolean) => void;
 }
 
 const CashFlowProjection: React.FC<CashFlowProjectionProps> = ({
   currentBalance,
   projectedTransactions,
+  includeSharedData = true,
+  onToggleSharedData,
 }) => {
   const nextMonth = useMemo(() => {
     const date = new Date();
@@ -57,6 +61,22 @@ const CashFlowProjection: React.FC<CashFlowProjectionProps> = ({
             Projeção para {nextMonth}
           </h3>
         </div>
+        
+        {onToggleSharedData && (
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={includeSharedData}
+                onChange={(e) => onToggleSharedData(e.target.checked)}
+                className="w-4 h-4 rounded border-outline text-primary focus:ring-2 focus:ring-primary"
+              />
+              <span className="text-sm text-on-surface-variant">
+                Incluir dados compartilhados
+              </span>
+            </label>
+          </div>
+        )}
       </div>
 
       {/* Summary Cards */}

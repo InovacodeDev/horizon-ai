@@ -1,10 +1,16 @@
 'use client';
 
-import React, { Activity } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTheme } from '@/lib/contexts/ThemeContext';
 
 export function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  // Prevent hydration mismatch by only rendering after mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -12,6 +18,29 @@ export function ThemeToggle() {
       toggleTheme();
     }
   };
+
+  // Render a placeholder during SSR to avoid hydration mismatch
+  if (!mounted) {
+    return (
+      <button
+        className="relative inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 transition-all duration-200 hover:bg-gray-50 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+        aria-label="Toggle theme"
+        type="button"
+        disabled
+      >
+        <svg
+          className="h-5 w-5 opacity-0"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+          aria-hidden="true"
+        >
+          <circle cx="12" cy="12" r="4" />
+        </svg>
+      </button>
+    );
+  }
 
   return (
     <button

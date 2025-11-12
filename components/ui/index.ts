@@ -12,3 +12,4 @@ export { DropdownMenu, DropdownMenuItem } from './DropdownMenu';
 export { default as Tooltip } from './Tooltip';
 export { ErrorBoundary, withErrorBoundary } from './ErrorBoundary';
 export { RetryError, EmptyState } from './RetryError';
+export { OwnershipBadge } from './OwnershipBadge';

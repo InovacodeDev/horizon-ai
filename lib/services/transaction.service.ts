@@ -121,17 +121,16 @@ export class TransactionService {
 
   /**
    * Create a manual transaction (from frontend)
+   * Always assigns transaction to the current user (data.userId)
    */
   async createManualTransaction(data: CreateTransactionData): Promise<Transaction> {
     const id = ID.unique();
     const now = dateToUserTimezone(new Date().toISOString().split('T')[0]);
 
-    // Build data object only for fields that don't have dedicated columns
-    const transactionData: any = {};
-    if (data.location) transactionData.location = data.location;
-    if (data.receiptUrl) transactionData.receipt_url = data.receiptUrl;
-    if (data.recurringPattern) transactionData.recurring_pattern = data.recurringPattern;
-    if (data.linkedTransactionId) transactionData.linked_transaction_id = data.linkedTransactionId;
+    // Ensure transaction is always assigned to the current user
+    // This prevents creating transactions for other users, even in shared relationships
+
+    // All fields now have dedicated columns, no need for data JSON
 
     // Convert date to user's timezone (ensures consistency)
     const dateInUserTimezone = data.date.includes('T') ? data.date : dateToUserTimezone(data.date);
@@ -147,8 +146,10 @@ export class TransactionService {
         interval: 1,
         // No endDate - salary is indefinite
       };
-      transactionData.recurring_pattern = recurringPattern;
     }
+
+    // Determine direction based on type
+    const direction = data.type === 'expense' ? 'out' : 'in';
 
     const payload: any = {
       user_id: data.userId,
@@ -161,9 +162,12 @@ export class TransactionService {
       currency: data.currency,
       source: 'manual',
       merchant: data.merchant,
-      tags: data.tags ? data.tags.join(',') : undefined,
+      tags: data.tags ? this.stringifyJSON(data.tags) : undefined,
+      location: data.location ? this.stringifyJSON(data.location) : undefined,
+      receipt_url: data.receiptUrl,
       is_recurring: isRecurring,
-      data: Object.keys(transactionData).length > 0 ? this.stringifyJSON(transactionData) : undefined,
+      recurring_pattern: recurringPattern ? this.stringifyJSON(recurringPattern) : undefined,
+      direction: direction,
       created_at: now,
       updated_at: now,
     };
@@ -197,9 +201,6 @@ export class TransactionService {
     if (data.type === 'salary' && data.taxAmount && data.taxAmount > 0) {
       try {
         const taxId = ID.unique();
-        const taxTransactionData: any = {
-          linked_transaction_id: id, // Link back to salary
-        };
 
         const taxPayload: any = {
           user_id: data.userId,
@@ -212,7 +213,7 @@ export class TransactionService {
           currency: data.currency,
           source: 'manual',
           is_recurring: true, // Tax is also recurring
-          data: this.stringifyJSON(taxTransactionData),
+          direction: 'out', // Tax is an expense, so direction is 'out'
           created_at: now,
           updated_at: now,
         };
@@ -224,10 +225,8 @@ export class TransactionService {
         await this.dbAdapter.createDocument(DATABASE_ID, COLLECTIONS.TRANSACTIONS, taxId, taxPayload);
 
         // Update the salary transaction to link to the tax transaction
-        const updatedSalaryData = this.parseJSON(document.data, {});
-        updatedSalaryData.linked_transaction_id = taxId;
         await this.dbAdapter.updateDocument(DATABASE_ID, COLLECTIONS.TRANSACTIONS, id, {
-          data: this.stringifyJSON(updatedSalaryData),
+          linked_transaction_id: taxId,
         });
 
         // Sync account balance for tax transaction if needed
@@ -280,18 +279,11 @@ export class TransactionService {
     const id = ID.unique();
     const now = dateToUserTimezone(new Date().toISOString().split('T')[0]);
 
-    // Build data object with ALL fields except core indexed ones
-    const transactionData: any = {};
-
-    if (data.integrationId) transactionData.integration_id = data.integrationId;
-    if (data.integrationData) transactionData.integration_data = data.integrationData;
-    if (data.tags) transactionData.tags = data.tags;
-    if (data.location) transactionData.location = data.location;
-    if (data.receiptUrl) transactionData.receipt_url = data.receiptUrl;
-    if (data.recurringPattern) transactionData.recurring_pattern = data.recurringPattern;
-
     // Convert date to user's timezone
     const dateInUserTimezone = data.date.includes('T') ? data.date : dateToUserTimezone(data.date);
+
+    // Determine direction based on type
+    const direction = data.type === 'expense' ? 'out' : 'in';
 
     const payload: any = {
       user_id: data.userId,
@@ -299,21 +291,21 @@ export class TransactionService {
       type: data.type,
       date: dateInUserTimezone,
       status: data.status || 'completed',
-      data: this.stringifyJSON(transactionData),
-      created_at: now,
-      updated_at: now,
       category: data.category,
       description: data.description,
       currency: data.currency,
       source: 'integration',
-      accountId: data.accountId,
-      creditCardId: data.creditCardId,
       merchant: data.merchant,
-      tags: data.tags,
-      location: data.location,
-      receiptUrl: data.receiptUrl,
-      isRecurring: data.isRecurring,
-      recurringPattern: data.recurringPattern,
+      tags: data.tags ? this.stringifyJSON(data.tags) : undefined,
+      location: data.location ? this.stringifyJSON(data.location) : undefined,
+      receipt_url: data.receiptUrl,
+      is_recurring: data.isRecurring,
+      recurring_pattern: data.recurringPattern ? this.stringifyJSON(data.recurringPattern) : undefined,
+      integration_id: data.integrationId,
+      integration_data: data.integrationData ? this.stringifyJSON(data.integrationData) : undefined,
+      direction: direction,
+      created_at: now,
+      updated_at: now,
     };
 
     // Add account_id as a dedicated column
@@ -355,8 +347,10 @@ export class TransactionService {
 
   /**
    * Update transaction
+   * Validates that the transaction belongs to the user before allowing updates
+   * Prevents modification of shared transactions
    */
-  async updateTransaction(transactionId: string, data: UpdateTransactionData): Promise<Transaction> {
+  async updateTransaction(transactionId: string, data: UpdateTransactionData, userId?: string): Promise<Transaction> {
     try {
       const now = dateToUserTimezone(new Date().toISOString().split('T')[0]);
 
@@ -366,26 +360,12 @@ export class TransactionService {
         throw new Error(`Transaction ${transactionId} not found`);
       }
 
+      // Validate ownership if userId is provided
+      if (userId && existing.user_id !== userId) {
+        throw new Error('You cannot modify transactions that belong to another user');
+      }
+
       const oldAccountId = existing.account_id;
-
-      // Parse existing data
-      const existingData = this.parseJSON(existing.data, {});
-
-      // Build updated data object
-      const updatedData: any = { ...existingData };
-
-      // Core fields that can be updated
-      if (data.category !== undefined) updatedData.category = data.category;
-      if (data.description !== undefined) updatedData.description = data.description;
-      if (data.currency !== undefined) updatedData.currency = data.currency;
-
-      // Optional fields (except account_id which is now a column)
-      if (data.merchant !== undefined) updatedData.merchant = data.merchant;
-      if (data.tags !== undefined) updatedData.tags = data.tags;
-      if (data.location !== undefined) updatedData.location = data.location;
-      if (data.receiptUrl !== undefined) updatedData.receipt_url = data.receiptUrl;
-      if (data.isRecurring !== undefined) updatedData.is_recurring = data.isRecurring;
-      if (data.recurringPattern !== undefined) updatedData.recurring_pattern = data.recurringPattern;
 
       const updatePayload: any = {
         updated_at: now,
@@ -393,12 +373,26 @@ export class TransactionService {
 
       // Core indexed fields that can be updated directly
       if (data.amount !== undefined) updatePayload.amount = data.amount;
-      if (data.type !== undefined) updatePayload.type = data.type;
+      if (data.type !== undefined) {
+        updatePayload.type = data.type;
+        // Update direction based on new type
+        updatePayload.direction = data.type === 'expense' ? 'out' : 'in';
+      }
       if (data.date !== undefined) {
         // Convert date to user's timezone
         updatePayload.date = data.date.includes('T') ? data.date : dateToUserTimezone(data.date);
       }
       if (data.status !== undefined) updatePayload.status = data.status;
+      if (data.category !== undefined) updatePayload.category = data.category;
+      if (data.description !== undefined) updatePayload.description = data.description;
+      if (data.currency !== undefined) updatePayload.currency = data.currency;
+      if (data.merchant !== undefined) updatePayload.merchant = data.merchant;
+      if (data.tags !== undefined) updatePayload.tags = this.stringifyJSON(data.tags);
+      if (data.location !== undefined) updatePayload.location = this.stringifyJSON(data.location);
+      if (data.receiptUrl !== undefined) updatePayload.receipt_url = data.receiptUrl;
+      if (data.isRecurring !== undefined) updatePayload.is_recurring = data.isRecurring;
+      if (data.recurringPattern !== undefined)
+        updatePayload.recurring_pattern = this.stringifyJSON(data.recurringPattern);
 
       // Update account_id if changed
       if (data.accountId !== undefined) {
@@ -422,7 +416,7 @@ export class TransactionService {
 
       // Handle tax amount update for salary transactions
       if (existing.type === 'salary' && data.taxAmount !== undefined) {
-        const linkedTaxId = existingData.linked_transaction_id;
+        const linkedTaxId = existing.linked_transaction_id;
 
         if (linkedTaxId) {
           // Update existing tax transaction
@@ -471,6 +465,7 @@ export class TransactionService {
               currency: data.currency || existing.currency || 'BRL',
               source: 'manual',
               is_recurring: true,
+              direction: 'out', // Tax is an expense, so direction is 'out'
               data: this.stringifyJSON(taxTransactionData),
               created_at: now,
               updated_at: now,
@@ -484,7 +479,7 @@ export class TransactionService {
             await this.dbAdapter.createDocument(DATABASE_ID, COLLECTIONS.TRANSACTIONS, taxId, taxPayload);
 
             // Link the tax transaction to the salary
-            updatedData.linked_transaction_id = taxId;
+            updatePayload.linked_transaction_id = taxId;
 
             // Sync account balance for new tax transaction
             if (accountId) {
@@ -502,9 +497,6 @@ export class TransactionService {
         }
       }
 
-      // Update data JSON field
-      updatePayload.data = this.stringifyJSON(updatedData);
-
       const document = await this.dbAdapter.updateDocument(
         DATABASE_ID,
         COLLECTIONS.TRANSACTIONS,
@@ -516,7 +508,7 @@ export class TransactionService {
       const newAccountId = data.accountId !== undefined ? data.accountId : oldAccountId;
 
       // Check if it's not a credit card transaction
-      const isCreditCardTransaction = updatedData.credit_card_id || existingData.credit_card_id;
+      const isCreditCardTransaction = existing.credit_card_id;
 
       if (!isCreditCardTransaction) {
         try {
@@ -548,17 +540,23 @@ export class TransactionService {
 
   /**
    * Delete transaction
+   * Validates that the transaction belongs to the user before allowing deletion
+   * Prevents deletion of shared transactions
    */
-  async deleteTransaction(transactionId: string): Promise<void> {
+  async deleteTransaction(transactionId: string, userId?: string): Promise<void> {
     try {
       // Get transaction before deleting to sync account balance
       const existing = await this.getTransactionById(transactionId);
       const accountId = existing?.account_id;
 
+      // Validate ownership if userId is provided
+      if (userId && existing && existing.user_id !== userId) {
+        throw new Error('You cannot delete transactions that belong to another user');
+      }
+
       // If this is a salary transaction, also delete the linked tax transaction
       if (existing && existing.type === 'salary') {
-        const existingData = this.parseJSON(existing.data, {});
-        const linkedTaxId = existingData.linked_transaction_id;
+        const linkedTaxId = existing.linked_transaction_id;
 
         if (linkedTaxId) {
           try {
@@ -586,8 +584,7 @@ export class TransactionService {
       // Sync account balance if transaction was linked to an account
       if (accountId && existing) {
         // Check if it's not a credit card transaction
-        const existingData = this.parseJSON(existing.data, {});
-        const isCreditCardTransaction = existingData.credit_card_id;
+        const isCreditCardTransaction = existing.credit_card_id;
 
         if (!isCreditCardTransaction) {
           try {
@@ -609,6 +606,38 @@ export class TransactionService {
   }
 
   /**
+   * Get all transactions with sharing information
+   * Returns transactions with ownership metadata (ownerId, ownerName, isOwn)
+   * This method uses DataAccessService to fetch both own and shared transactions
+   */
+  async getTransactionsWithSharing(userId: string, filters?: TransactionFilter) {
+    try {
+      const { DataAccessService } = await import('./data-access.service');
+      const dataAccessService = new DataAccessService();
+
+      // Build filters for DataAccessService
+      const dataAccessFilters = filters
+        ? {
+            type: filters.type,
+            category: filters.category,
+            status: filters.status,
+            startDate: filters.startDate,
+            endDate: filters.endDate,
+            minAmount: filters.minAmount,
+            maxAmount: filters.maxAmount,
+            search: filters.search,
+            creditCardId: filters.creditCardId,
+            accountId: undefined, // DataAccessService doesn't support accountId filter yet
+          }
+        : undefined;
+
+      return await dataAccessService.getAccessibleTransactions(userId, dataAccessFilters);
+    } catch (error: any) {
+      throw new Error(`Failed to fetch transactions with sharing: ${error.message}`);
+    }
+  }
+
+  /**
    * List transactions with filters
    */
   async listTransactions(filters: TransactionFilter): Promise<{
@@ -622,6 +651,9 @@ export class TransactionService {
       if (filters.userId) {
         queries.push(Query.equal('user_id', filters.userId));
       }
+
+      // Sempre excluir transações tipo "transfer" (são invisíveis para o usuário)
+      queries.push(Query.notEqual('type', 'transfer'));
 
       if (filters.type) {
         queries.push(Query.equal('type', filters.type));
@@ -780,11 +812,17 @@ export class TransactionService {
       source: document.source,
       merchant: document.merchant,
       tags: document.tags,
+      location: document.location,
+      receipt_url: document.receipt_url,
       is_recurring: document.is_recurring,
+      recurring_pattern: document.recurring_pattern,
       installment: document.installment,
       installments: document.installments,
       credit_card_transaction_created_at: document.credit_card_transaction_created_at,
-      data: document.data,
+      direction: document.direction,
+      integration_id: document.integration_id,
+      integration_data: document.integration_data,
+      linked_transaction_id: document.linked_transaction_id,
       created_at: document.created_at,
       updated_at: document.updated_at,
     };

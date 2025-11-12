@@ -1,4 +1,5 @@
 import { getCurrentUserId } from '@/lib/auth/session';
+import { canAccessResource } from '@/lib/auth/sharing-permissions';
 import { AccountService } from '@/lib/services/account.service';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -24,6 +25,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     // Fetch account (service validates ownership)
     const accountService = new AccountService();
     const account = await accountService.getAccountById(accountId, userId);
+
+    // Verify user has access to this account (own or shared)
+    const accessCheck = await canAccessResource(userId, account.user_id);
+    if (!accessCheck.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: accessCheck.reason || 'Forbidden',
+        },
+        { status: 403 },
+      );
+    }
 
     return NextResponse.json({
       success: true,
@@ -72,6 +85,23 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ message: 'Account ID is required' }, { status: 400 });
     }
 
+    // Fetch account to verify ownership
+    const accountService = new AccountService();
+    const account = await accountService.getAccountById(accountId, userId);
+
+    // Verify user owns this account (cannot modify shared accounts)
+    const { canModifyResource } = await import('@/lib/auth/sharing-permissions');
+    const modifyCheck = await canModifyResource(userId, account.user_id, 'account');
+    if (!modifyCheck.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: modifyCheck.reason || 'Forbidden',
+        },
+        { status: 403 },
+      );
+    }
+
     // Parse request body
     const body = await request.json();
 
@@ -105,8 +135,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
 
     // Update account (service validates ownership)
-    const accountService = new AccountService();
-    const account = await accountService.updateAccount(accountId, userId, {
+    const updatedAccount = await accountService.updateAccount(accountId, userId, {
       name: body.name,
       account_type: body.account_type,
       bank_id: body.bank_id,
@@ -116,7 +145,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     return NextResponse.json({
       success: true,
-      data: account,
+      data: updatedAccount,
     });
   } catch (error: any) {
     console.error('PATCH /api/accounts/[id] error:', error);
@@ -161,8 +190,24 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       return NextResponse.json({ message: 'Account ID is required' }, { status: 400 });
     }
 
-    // Delete account (service validates ownership)
+    // Fetch account to verify ownership
     const accountService = new AccountService();
+    const account = await accountService.getAccountById(accountId, userId);
+
+    // Verify user owns this account (cannot delete shared accounts)
+    const { canDeleteResource } = await import('@/lib/auth/sharing-permissions');
+    const deleteCheck = await canDeleteResource(userId, account.user_id, 'account');
+    if (!deleteCheck.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: deleteCheck.reason || 'Forbidden',
+        },
+        { status: 403 },
+      );
+    }
+
+    // Delete account (service validates ownership)
     await accountService.deleteAccount(accountId, userId);
 
     return NextResponse.json({

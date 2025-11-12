@@ -1,4 +1,5 @@
 import { getCurrentUserId } from '@/lib/auth/session';
+import { canAccessResource } from '@/lib/auth/sharing-permissions';
 import { TransactionService } from '@/lib/services/transaction.service';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -29,9 +30,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ message: 'Transaction not found' }, { status: 404 });
     }
 
-    // Verify ownership
-    if (transaction.user_id !== userId) {
-      return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+    // Verify user has access to this transaction (own or shared)
+    const accessCheck = await canAccessResource(userId, transaction.user_id);
+    if (!accessCheck.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: accessCheck.reason || 'Forbidden',
+        },
+        { status: 403 },
+      );
     }
 
     return NextResponse.json({
@@ -77,8 +85,17 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ message: 'Transaction not found' }, { status: 404 });
     }
 
-    if (existingTransaction.user_id !== userId) {
-      return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+    // Verify user owns this transaction (cannot modify shared transactions)
+    const { canModifyResource } = await import('@/lib/auth/sharing-permissions');
+    const modifyCheck = await canModifyResource(userId, existingTransaction.user_id, 'transaction');
+    if (!modifyCheck.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: modifyCheck.reason || 'Forbidden',
+        },
+        { status: 403 },
+      );
     }
 
     // Parse request body
@@ -276,8 +293,17 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       return NextResponse.json({ message: 'Transaction not found' }, { status: 404 });
     }
 
-    if (existingTransaction.user_id !== userId) {
-      return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+    // Verify user owns this transaction (cannot delete shared transactions)
+    const { canDeleteResource } = await import('@/lib/auth/sharing-permissions');
+    const deleteCheck = await canDeleteResource(userId, existingTransaction.user_id, 'transaction');
+    if (!deleteCheck.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: deleteCheck.reason || 'Forbidden',
+        },
+        { status: 403 },
+      );
     }
 
     // Check if we should delete future installments

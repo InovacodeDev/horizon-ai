@@ -5,7 +5,6 @@
  * Permite controle manual da sincronização de saldo
  */
 import { requireAuth } from '@/lib/auth/session';
-import { getAutoBalanceSyncService } from '@/lib/services/auto-balance-sync.service';
 import { BalanceSyncService } from '@/lib/services/balance-sync.service';
 import { revalidatePath } from 'next/cache';
 
@@ -106,61 +105,25 @@ export async function recalculateAllBalancesAction(): Promise<BalanceSyncActionS
 }
 
 /**
- * Força uma sincronização imediata de todas as contas do sistema
- * (Apenas para administradores ou debugging)
+ * @deprecated Balance sync is now manual only via the "Reprocessar Saldo" button
  */
 export async function forceGlobalSyncAction(): Promise<BalanceSyncActionState> {
-  try {
-    // Require authentication
-    await requireAuth();
-
-    const autoSyncService = getAutoBalanceSyncService();
-    await autoSyncService.syncNow();
-
-    // Revalidate paths that display accounts
-    revalidatePath('/accounts');
-    revalidatePath('/overview');
-
-    return {
-      success: true,
-      message: 'Sincronização global executada com sucesso',
-    };
-  } catch (error) {
-    console.error('Force global sync action error:', error);
-
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Falha ao executar sincronização global',
-    };
-  }
+  return {
+    success: false,
+    error: 'Sincronização automática foi removida. Use o botão "Reprocessar Saldo" em cada conta.',
+  };
 }
 
 /**
- * Verifica o status do serviço de sincronização automática
+ * @deprecated Balance sync is now manual only
  */
 export async function getAutoSyncStatusAction(): Promise<{
   success: boolean;
   isActive: boolean;
   error?: string;
 }> {
-  try {
-    // Require authentication
-    await requireAuth();
-
-    const autoSyncService = getAutoBalanceSyncService();
-    const isActive = autoSyncService.isActive();
-
-    return {
-      success: true,
-      isActive,
-    };
-  } catch (error) {
-    console.error('Get auto sync status action error:', error);
-
-    return {
-      success: false,
-      isActive: false,
-      error: error instanceof Error ? error.message : 'Falha ao verificar status',
-    };
-  }
+  return {
+    success: true,
+    isActive: false,
+  };
 }

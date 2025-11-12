@@ -53,6 +53,15 @@ export interface UserPreferences {
 }
 
 /**
+ * Sharing preferences for joint accounts
+ */
+export interface SharingPreferences {
+  show_shared_data: boolean;
+  include_shared_in_calculations: boolean;
+  show_ownership_indicators: boolean;
+}
+
+/**
  * User security and privacy settings
  */
 export interface UserSettings {
@@ -744,3 +753,29 @@ export {
   isParseNFeResponse,
   isGenerateInsightsResponse,
 } from './shopping-list-api.types';
+
+// ============================================
+// Sharing Types
+// ============================================
+
+// Re-export sharing types for joint accounts feature
+export type {
+  SharingRelationship,
+  SharingRelationshipStatus,
+  SharingRelationshipDetails,
+  SharingInvitation,
+  InvitationStatus,
+  CreateInvitationDto,
+  AcceptInvitationDto,
+  RejectInvitationDto,
+  TerminateRelationshipDto,
+  SharedDataContext,
+  WithOwnership,
+  AccountWithOwnership,
+  TransactionWithOwnership,
+  CreditCardWithOwnership,
+  InvoiceWithOwnership,
+  ValidateInvitationResponse,
+  GetRelationshipResponse,
+  GetMembersResponse,
+} from './sharing.types';
