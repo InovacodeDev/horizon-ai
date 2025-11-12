@@ -405,7 +405,7 @@ export default function OverviewPage() {
     } = useTransactions({ userId: user.$id ?? 'default-user' });
     const { accounts: ownAccounts, loading: loadingOwnAccounts } = useAccounts();
     
-    // Fetch shared data
+    // Fetch shared data (includes own + shared)
     const { 
         accounts: sharedAccounts, 
         loading: loadingSharedAccounts 
@@ -416,6 +416,7 @@ export default function OverviewPage() {
     } = useTransactionsWithSharing({ enableRealtime: true });
     
     // Use appropriate data based on toggle
+    // When showSharedData is true, use the shared data which already includes own + shared
     const accounts = showSharedData ? sharedAccounts : ownAccounts;
     const apiTransactions = showSharedData ? sharedTransactions : ownTransactions;
     const isLoadingTransactions = showSharedData ? loadingSharedTransactions : isLoadingOwnTransactions;
@@ -502,16 +503,17 @@ export default function OverviewPage() {
         const currentMonthKey = getCurrentMonthKey();
         const previousMonthKey = getPreviousMonthKey();
 
-        const userAccountIds = new Set(accounts.map(acc => acc.$id));
-
-        // Filter transactions based on whether we're showing shared data
-        const relevantTransactions = showSharedData 
-            ? apiTransactions // Use all shared transactions
-            : apiTransactions.filter(tx => 
-                tx.account_id && userAccountIds.has(tx.account_id)
-              );
+        // Use all transactions - they're already filtered by the toggle
+        // When showSharedData is true, apiTransactions contains own + shared
+        // When showSharedData is false, apiTransactions contains only own
+        const relevantTransactions = apiTransactions;
 
         const transactionsByMonth = relevantTransactions.reduce((acc, tx) => {
+            // Exclude transfer transactions from insights calculations
+            if (tx.type === 'transfer') {
+                return acc;
+            }
+            
             const txDate = new Date(tx.date);
             const monthKey = getMonthKey(txDate);
             
@@ -526,7 +528,7 @@ export default function OverviewPage() {
             }
             
             return acc;
-        }, {} as Record<string, { income: number; expenses: number }>);
+        }, {} as Record<string, { income: number; expenses: 0 }>);
 
         // Calculate credit card bills by month (including open bills)
         const creditCardBillsByMonth = useMemo(() => {
@@ -655,12 +657,12 @@ export default function OverviewPage() {
                             onClick={() => setShowSharedData(true)}
                             className="!h-8 !px-3 !text-sm"
                         >
-                            Dados Combinados
+                            Conta Conjunta
                         </Button>
                     </div>
                     {showSharedData && (
                         <span className="text-xs text-on-surface-variant ml-2">
-                            (Incluindo dados compartilhados)
+                            (Meus dados + dados compartilhados)
                         </span>
                     )}
                 </div>

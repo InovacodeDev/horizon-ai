@@ -82,7 +82,7 @@ export function useTransactionsWithSharing(options: UseTransactionsWithSharingOp
 
   // Setup realtime subscription for transactions
   useAppwriteRealtime({
-    channels: [`databases.${process.env.APPWRITE_DATABASE_ID}.collections.transactions.documents`],
+    channels: [`databases.${process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID}.collections.transactions.documents`],
     enabled: enableRealtime && initialized,
     onUpdate: () => {
       fetchTransactions();
@@ -97,7 +97,7 @@ export function useTransactionsWithSharing(options: UseTransactionsWithSharingOp
 
   // Setup realtime subscription for sharing relationships
   useAppwriteRealtime({
-    channels: [`databases.${process.env.APPWRITE_DATABASE_ID}.collections.sharing_relationships.documents`],
+    channels: [`databases.${process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID}.collections.sharing_relationships.documents`],
     enabled: enableRealtime && initialized,
     onUpdate: () => {
       fetchTransactions();

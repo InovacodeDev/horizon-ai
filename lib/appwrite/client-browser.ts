@@ -11,11 +11,13 @@ export function initializeAppwriteBrowser() {
     return { client, databases };
   }
 
-  const endpoint = process.env.APPWRITE_ENDPOINT;
-  const projectId = process.env.APPWRITE_PROJECT_ID;
+  const endpoint = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT;
+  const projectId = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID;
 
   if (!endpoint || !projectId) {
-    throw new Error('Appwrite configuration missing. Required: APPWRITE_ENDPOINT, APPWRITE_PROJECT_ID');
+    throw new Error(
+      'Appwrite configuration missing. Required: NEXT_PUBLIC_APPWRITE_ENDPOINT, NEXT_PUBLIC_APPWRITE_PROJECT_ID',
+    );
   }
 
   client = new Client();

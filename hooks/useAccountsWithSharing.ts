@@ -25,16 +25,16 @@ export function useAccountsWithSharing(options: UseAccountsWithSharingOptions = 
       setLoading(true);
       setError(null);
 
-      // const response = await fetch('/api/sharing/accounts', {
-      //   credentials: 'include',
-      // });
+      const response = await fetch('/api/sharing/accounts', {
+        credentials: 'include',
+      });
 
-      // if (!response.ok) {
-      //   throw new Error('Failed to fetch accounts with sharing');
-      // }
+      if (!response.ok) {
+        throw new Error('Failed to fetch accounts with sharing');
+      }
 
-      // const data = await response.json();
-      // setAccounts(data.data || []);
+      const data = await response.json();
+      setAccounts(data.data || []);
       setInitialized(true);
     } catch (err: any) {
       console.error('Error fetching accounts with sharing:', err);
@@ -53,7 +53,7 @@ export function useAccountsWithSharing(options: UseAccountsWithSharingOptions = 
 
   // Setup realtime subscription for accounts
   useAppwriteRealtime({
-    channels: [`databases.${process.env.APPWRITE_DATABASE_ID}.collections.accounts.documents`],
+    channels: [`databases.${process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID}.collections.accounts.documents`],
     enabled: enableRealtime && initialized,
     onUpdate: () => {
       // Refresh all accounts when any account is updated
@@ -71,7 +71,7 @@ export function useAccountsWithSharing(options: UseAccountsWithSharingOptions = 
 
   // Setup realtime subscription for sharing relationships
   useAppwriteRealtime({
-    channels: [`databases.${process.env.APPWRITE_DATABASE_ID}.collections.sharing_relationships.documents`],
+    channels: [`databases.${process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID}.collections.sharing_relationships.documents`],
     enabled: enableRealtime && initialized,
     onUpdate: () => {
       // Refresh accounts when sharing relationship changes
