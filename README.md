@@ -181,6 +181,21 @@ horizon-ai/
 │   ├── account.actions.ts
 │   └── transaction.actions.ts
 │
+├── functions/                    # Appwrite Functions
+│   ├── balance-sync/             # Balance sync function
+│   │   ├── src/
+│   │   │   └── main.ts          # Function code
+│   │   ├── package.json
+│   │   ├── deploy.sh            # Deploy script
+│   │   ├── DEPLOYMENT.md        # Deploy guide
+│   │   └── README.md
+│   └── README.md                 # Functions overview
+│
+├── docs/                         # Documentation
+│   ├── APPWRITE_FUNCTIONS.md    # Functions guide
+│   ├── MIGRATION-GUIDE.md
+│   └── ...
+│
 ├── middleware.ts                 # Next.js middleware (auth)
 ├── next.config.js                # Next.js configuration
 ├── tailwind.config.js            # Tailwind CSS configuration
@@ -364,8 +379,25 @@ Ensure all required environment variables are set in your deployment platform:
 - `NODE_ENV=production`
 - `CORS_ORIGIN` (your production domain)
 
+## 🤖 Appwrite Functions
+
+The project uses Appwrite Functions for automated background tasks:
+
+### Balance Sync Function
+
+Automatically manages account balances based on transactions:
+
+- **Real-time Sync**: Updates balance when transactions are created/edited/deleted
+- **Daily Processing**: Runs at 20:00 to process transactions that reached their date
+- **Smart Logic**: Ignores future transactions and credit card transactions
+
+**Setup**: See [functions/balance-sync/DEPLOYMENT.md](functions/balance-sync/DEPLOYMENT.md)
+
+**Documentation**: See [docs/APPWRITE_FUNCTIONS.md](docs/APPWRITE_FUNCTIONS.md)
+
 ## 📚 Documentation
 
+- [Appwrite Functions Guide](docs/APPWRITE_FUNCTIONS.md) - Complete guide to Appwrite Functions
 - [Migration Guide](docs/MIGRATION-GUIDE.md) - Turborepo to Next.js migration details
 - [Development Guide](docs/DEVELOPMENT-GUIDE.md) - How to add features and extend the app
 - [Appwrite Setup](docs/APPWRITE-QUICKSTART.md) - Appwrite configuration guide

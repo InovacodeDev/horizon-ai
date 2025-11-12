@@ -1,0 +1,28 @@
+{
+  "projectId": "seu-project-id-aqui",
+  "projectName": "Horizon AI",
+  "functions": [
+    {
+      "$id": "balance-sync",
+      "name": "Balance Sync",
+      "runtime": "node-20.0",
+      "execute": ["any"],
+      "events": [
+        "databases.*.collections.transactions.documents.*.create",
+        "databases.*.collections.transactions.documents.*.update",
+        "databases.*.collections.transactions.documents.*.delete"
+      ],
+      "schedule": "0 20 * * *",
+      "timeout": 900,
+      "enabled": true,
+      "logging": true,
+      "entrypoint": "src/main.ts",
+      "commands": "npm install && npm run build",
+      "path": ".",
+      "vars": {
+        "APPWRITE_ENDPOINT": "https://cloud.appwrite.io/v1",
+        "APPWRITE_DATABASE_ID": "seu-database-id-aqui"
+      }
+    }
+  ]
+}
