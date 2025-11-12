@@ -37,29 +37,29 @@ export function ConfirmModal({
   const variantStyles = {
     danger: {
       icon: (
-        <svg className="w-6 h-6 text-red-text" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-6 h-6 text-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
         </svg>
       ),
-      bgColor: 'bg-red-bg',
+      bgColor: 'bg-error-container',
       buttonVariant: 'danger' as const,
     },
     warning: {
       icon: (
-        <svg className="w-6 h-6 text-orange-text" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-6 h-6 text-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
         </svg>
       ),
-      bgColor: 'bg-orange-bg',
+      bgColor: 'bg-warning-container',
       buttonVariant: 'primary' as const,
     },
     info: {
       icon: (
-        <svg className="w-6 h-6 text-blue-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       ),
-      bgColor: 'bg-blue-light',
+      bgColor: 'bg-primary-container',
       buttonVariant: 'primary' as const,
     },
   };
@@ -69,14 +69,14 @@ export function ConfirmModal({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
       <div className="p-6">
-        <div className="flex items-start gap-4 mb-6">
-          <div className={`flex-shrink-0 p-2 rounded-full ${style.bgColor}`}>
+        <div className="flex items-start gap-5 mb-8">
+          <div className={`flex-shrink-0 p-3 rounded-full ${style.bgColor}`}>
             {style.icon}
           </div>
-          <p className="text-text-primary flex-1 pt-1">{message}</p>
+          <p className="text-on-surface flex-1 pt-2 leading-relaxed">{message}</p>
         </div>
 
-        <div className="flex justify-end gap-3 pt-4 border-t border-border-primary">
+        <div className="flex justify-end gap-4 pt-6 border-t border-outline-variant">
           <Button
             variant="secondary"
             onClick={onClose}

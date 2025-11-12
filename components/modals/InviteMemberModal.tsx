@@ -52,9 +52,9 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Convidar Membro">
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-6 p-6">
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-on-surface mb-2">
+          <label htmlFor="email" className="block text-sm font-medium text-on-surface mb-3">
             Email do Membro
           </label>
           <Input
@@ -67,18 +67,18 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
             required
           />
           {error && (
-            <p className="text-sm text-red-600 mt-2">{error}</p>
+            <p className="text-sm text-error mt-3">{error}</p>
           )}
         </div>
 
-        <div className="bg-blue-50 rounded-lg p-4">
-          <p className="text-sm text-on-surface-variant">
-            <strong>Importante:</strong> O membro convidado terá acesso de leitura aos seus dados financeiros, 
+        <div className="bg-primary-container/20 border border-primary/20 rounded-lg p-5">
+          <p className="text-sm text-on-surface-variant leading-relaxed">
+            <strong className="text-on-surface">Importante:</strong> O membro convidado terá acesso de leitura aos seus dados financeiros, 
             incluindo contas, transações e cartões de crédito. Ele não poderá modificar ou excluir seus dados.
           </p>
         </div>
 
-        <div className="flex gap-3 justify-end pt-4">
+        <div className="flex gap-4 justify-end pt-2">
           <Button
             type="button"
             variant="outline"

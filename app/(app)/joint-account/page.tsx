@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
-import { PlusIcon, TrashIcon } from '@/components/assets/Icons';
+import { PlusIcon, Trash2Icon } from '@/components/assets/Icons';
 import Skeleton from '@/components/ui/Skeleton';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { InviteMemberModal } from '@/components/modals/InviteMemberModal';
@@ -37,10 +37,10 @@ const MemberCard: React.FC<MemberCardProps> = ({ member, onRemove }) => {
   });
 
   return (
-    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+    <div className="flex items-center justify-between p-4 bg-surface-container rounded-lg border border-outline-variant">
       <div className="flex items-center gap-4">
-        <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
-          <span className="text-blue-600 font-semibold text-lg">
+        <div className="h-12 w-12 rounded-full bg-primary-container flex items-center justify-center">
+          <span className="text-on-primary-container font-semibold text-lg">
             {member.memberUser.name.charAt(0).toUpperCase()}
           </span>
         </div>
@@ -55,7 +55,7 @@ const MemberCard: React.FC<MemberCardProps> = ({ member, onRemove }) => {
       <Button
         variant="ghost"
         onClick={() => onRemove(member.relationship.$id, member.memberUser.name)}
-        leftIcon={<TrashIcon className="w-4 h-4" />}
+        leftIcon={<Trash2Icon className="w-4 h-4" />}
       >
         Remover
       </Button>
@@ -248,10 +248,10 @@ export default function JointAccountPage() {
         {role === 'member' && relationship && (
           <Card className="p-6">
             <h2 className="text-xl font-semibold text-on-surface mb-4">Conta Conjunta Ativa</h2>
-            <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
+            <div className="flex items-center justify-between p-4 bg-surface-container rounded-lg border border-outline-variant">
               <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
-                  <span className="text-blue-600 font-semibold text-lg">
+                <div className="h-12 w-12 rounded-full bg-primary-container flex items-center justify-center">
+                  <span className="text-on-primary-container font-semibold text-lg">
                     {relationship.responsibleUser.name.charAt(0).toUpperCase()}
                   </span>
                 </div>
@@ -285,8 +285,8 @@ export default function JointAccountPage() {
         {!role && (
           <Card className="p-6">
             <div className="text-center py-8">
-              <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="h-16 w-16 rounded-full bg-primary-container flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-on-primary-container" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
               </div>
@@ -305,29 +305,29 @@ export default function JointAccountPage() {
         )}
 
         {/* Info Card */}
-        <Card className="p-6 bg-blue-50">
+        <Card className="p-6 bg-primary-container/20 border border-primary/20">
           <h3 className="text-lg font-semibold text-on-surface mb-3">Como funciona a Conta Conjunta?</h3>
           <ul className="space-y-2 text-sm text-on-surface-variant">
             <li className="flex items-start gap-2">
-              <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <span>Compartilhe seus dados financeiros com membros da família ou parceiros</span>
             </li>
             <li className="flex items-start gap-2">
-              <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <span>Membros podem visualizar suas contas, transações e cartões de crédito</span>
             </li>
             <li className="flex items-start gap-2">
-              <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <span>Membros NÃO podem modificar ou excluir seus dados (somente leitura)</span>
             </li>
             <li className="flex items-start gap-2">
-              <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <span>Você pode remover membros ou sair da conta conjunta a qualquer momento</span>

@@ -18,6 +18,7 @@ import {
   ShoppingCartIcon,
   CreditCardIcon,
   TrendingUpIcon,
+  UsersIcon,
 } from '@/components/assets/Icons';
 import Modal from '@/components/ui/Modal';
 import Tooltip from '@/components/ui/Tooltip';
@@ -193,6 +194,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, user }) => 
 
   const secondaryNav = [
     { href: '/settings', label: 'Configurações', icon: <SettingsIcon className="w-5 h-5" /> },
+    { href: '/joint-account', label: 'Conta Conjunta', icon: <UsersIcon className="w-5 h-5" /> },
     { href: '/help', label: 'Ajuda e Suporte', icon: <HelpCircleIcon className="w-5 h-5" /> },
   ];
 
