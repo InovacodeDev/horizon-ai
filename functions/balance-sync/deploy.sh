@@ -85,7 +85,8 @@ fi
 
 # Criar arquivo tar.gz para deploy
 print_info "Criando arquivo de deploy..."
-tar -czf balance-sync.tar.gz src/ package.json tsconfig.json dist/
+# Incluir apenas os arquivos necessários na raiz do tar.gz
+tar -czf balance-sync.tar.gz src/ package.json tsconfig.json
 print_success "Arquivo balance-sync.tar.gz criado"
 
 # Verificar tamanho do arquivo

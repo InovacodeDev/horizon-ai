@@ -22,7 +22,16 @@ npm run build
 
 ```bash
 # Criar arquivo tar.gz com o código
+# IMPORTANTE: Os arquivos devem estar na raiz do tar.gz
 tar -czf balance-sync.tar.gz src/ package.json tsconfig.json
+
+# Verificar estrutura do arquivo (opcional)
+tar -tzf balance-sync.tar.gz | head -10
+# Deve mostrar:
+# src/
+# src/main.ts
+# package.json
+# tsconfig.json
 ```
 
 ### Passo 3: Criar a Função no Console
@@ -227,7 +236,26 @@ No Appwrite Console:
 
 ### Build Falhou
 
-**Erro**: `npm install failed`
+**Erro 1**: `No package.json found in /usr/local/build`
+
+**Causa**: Estrutura incorreta do arquivo tar.gz
+
+**Solução**:
+
+```bash
+cd functions/balance-sync
+
+# Remover arquivo antigo
+rm -f balance-sync.tar.gz
+
+# Criar novo arquivo com estrutura correta
+tar -czf balance-sync.tar.gz src/ package.json tsconfig.json
+
+# Verificar estrutura (os arquivos devem estar na raiz)
+tar -tzf balance-sync.tar.gz | head -10
+```
+
+**Erro 2**: `npm install failed`
 
 **Solução**:
 

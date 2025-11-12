@@ -18,6 +18,7 @@ Função Appwrite para gerenciar automaticamente o saldo das contas baseado nas 
 ### Operacional
 
 - **[CHECKLIST.md](./CHECKLIST.md)** - Checklist de verificação ✅
+- **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** - Solução de problemas 🔧
 - **[EXECUTIVE_SUMMARY.md](./EXECUTIVE_SUMMARY.md)** - Sumário executivo 📊
 
 ### Geral

@@ -16,7 +16,7 @@
       "timeout": 900,
       "enabled": true,
       "logging": true,
-      "entrypoint": "src/main.ts",
+      "entrypoint": "dist/main.js",
       "commands": "npm install && npm run build",
       "path": ".",
       "vars": {
