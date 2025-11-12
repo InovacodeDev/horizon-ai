@@ -175,6 +175,10 @@ async function processAllUsers(databases) {
 export default async ({ req, res, log, error }) => {
     try {
         log('Balance Sync Function started');
+        log(`Request method: ${req.method}`);
+        log(`Request headers: ${JSON.stringify(req.headers)}`);
+        log(`Request body (raw): ${req.bodyRaw}`);
+        log(`Request body (parsed): ${JSON.stringify(req.body)}`);
         const { client, databases } = initializeClient();
         // Verificar o tipo de execução
         const executionType = req.headers['x-appwrite-trigger'] || 'manual';
@@ -220,11 +224,22 @@ export default async ({ req, res, log, error }) => {
         }
         // Execução manual
         log('Running manual balance sync');
+        log(`Request body: ${JSON.stringify(req.body)}`);
+        log(`Request body type: ${typeof req.body}`);
+        log(`Request bodyRaw: ${req.bodyRaw}`);
         const userId = req.body?.userId;
+        log(`Extracted userId: ${userId}`);
+        log(`userId type: ${typeof userId}`);
         if (!userId) {
+            log('ERROR: userId is missing or undefined');
             return res.json({
                 success: false,
                 error: 'userId is required for manual execution',
+                debug: {
+                    body: req.body,
+                    bodyRaw: req.bodyRaw,
+                    bodyType: typeof req.body,
+                },
             }, 400);
         }
         const accountsProcessed = await processDueTransactions(databases, userId);
