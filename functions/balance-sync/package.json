@@ -2,7 +2,7 @@
     "name": "balance-sync-function",
     "version": "1.0.0",
     "description": "Appwrite Function to sync account balances based on transactions",
-    "main": "dist/main.js",
+    "main": "index.js",
     "type": "module",
     "scripts": {
         "build": "tsc",
