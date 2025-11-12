@@ -485,7 +485,7 @@ export default function OverviewPage() {
                 ...apiTx,
                 $id: apiTx.$id,
                 $updatedAt: new Date().toISOString(),
-                description: apiTx.description || apiTx.merchant || 'Transaction',
+                description: apiTx.description || (apiTx as any).merchant || 'Transaction',
                 amount: (apiTx.type === 'income' || apiTx.type === 'salary') ? Math.abs(apiTx.amount) : -Math.abs(apiTx.amount),
                 date: apiTx.date,
                 bankName: accountName,

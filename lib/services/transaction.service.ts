@@ -416,7 +416,7 @@ export class TransactionService {
 
       // Handle tax amount update for salary transactions
       if (existing.type === 'salary' && data.taxAmount !== undefined) {
-        const linkedTaxId = existing.linked_transaction_id;
+        const linkedTaxId = (existing as any).linked_transaction_id;
 
         if (linkedTaxId) {
           // Update existing tax transaction
@@ -556,7 +556,7 @@ export class TransactionService {
 
       // If this is a salary transaction, also delete the linked tax transaction
       if (existing && existing.type === 'salary') {
-        const linkedTaxId = existing.linked_transaction_id;
+        const linkedTaxId = (existing as any).linked_transaction_id;
 
         if (linkedTaxId) {
           try {
@@ -812,17 +812,12 @@ export class TransactionService {
       source: document.source,
       merchant: document.merchant,
       tags: document.tags,
-      location: document.location,
-      receipt_url: document.receipt_url,
       is_recurring: document.is_recurring,
-      recurring_pattern: document.recurring_pattern,
       installment: document.installment,
       installments: document.installments,
       credit_card_transaction_created_at: document.credit_card_transaction_created_at,
       direction: document.direction,
-      integration_id: document.integration_id,
-      integration_data: document.integration_data,
-      linked_transaction_id: document.linked_transaction_id,
+      data: document.data,
       created_at: document.created_at,
       updated_at: document.updated_at,
     };

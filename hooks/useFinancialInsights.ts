@@ -28,12 +28,7 @@ export function useFinancialInsights(transactions: Transaction[]): FinancialInsi
     // Separate transactions by time period (excluding transfers)
     const currentMonthTransactions = transactions.filter((tx) => {
       const txDate = new Date(tx.date);
-      return (
-        txDate.getMonth() === currentMonth &&
-        txDate.getFullYear() === currentYear &&
-        tx.type === 'expense' &&
-        tx.type !== 'transfer'
-      );
+      return txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear && tx.type === 'expense';
     });
 
     const previousMonthsTransactions = transactions.filter((tx) => {
@@ -41,7 +36,7 @@ export function useFinancialInsights(transactions: Transaction[]): FinancialInsi
       const isOlderThanCurrentMonth =
         txDate.getFullYear() < currentYear ||
         (txDate.getFullYear() === currentYear && txDate.getMonth() < currentMonth);
-      return isOlderThanCurrentMonth && tx.type === 'expense' && tx.type !== 'transfer';
+      return isOlderThanCurrentMonth && tx.type === 'expense';
     });
 
     // Need at least some historical data for comparison
@@ -146,8 +141,7 @@ export function useFinancialInsights(transactions: Transaction[]): FinancialInsi
           return (
             txDate.getMonth() === currentMonth &&
             txDate.getFullYear() === currentYear &&
-            (tx.type === 'income' || tx.type === 'salary') &&
-            tx.type !== 'transfer'
+            (tx.type === 'income' || tx.type === 'salary')
           );
         })
         .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
@@ -168,7 +162,7 @@ export function useFinancialInsights(transactions: Transaction[]): FinancialInsi
       // Estimate income for the month (assume similar to average or already received)
       const avgPreviousIncome =
         transactions
-          .filter((tx) => (tx.type === 'income' || tx.type === 'salary') && tx.type !== 'transfer')
+          .filter((tx) => tx.type === 'income' || tx.type === 'salary')
           .reduce((sum, tx) => sum + Math.abs(tx.amount), 0) / previousMonthsCount;
 
       const estimatedTotalIncome = Math.max(currentMonthIncome, avgPreviousIncome);

@@ -306,9 +306,7 @@ export class CreditCardService {
       used_limit: document.used_limit,
       closing_day: document.closing_day,
       due_day: document.due_day,
-      brand: document.brand,
-      network: document.network,
-      color: document.color,
+      data: document.data,
       created_at: document.created_at,
       updated_at: document.updated_at,
     };

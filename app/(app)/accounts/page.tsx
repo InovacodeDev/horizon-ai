@@ -228,9 +228,9 @@ const AccountCard: React.FC<AccountCardProps> = ({
                         {/* Ownership Badge */}
                         {'isOwn' in account && (
                             <OwnershipBadge
-                                isOwn={account.isOwn}
-                                ownerName={account.ownerName}
-                                ownerId={account.ownerId}
+                                isOwn={account.isOwn as boolean}
+                                ownerName={(account as any).ownerName}
+                                ownerId={(account as any).ownerId}
                                 size="sm"
                             />
                         )}
@@ -304,7 +304,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
                         </DropdownMenuItem>
                     )}
                     {/* Only show delete option for own accounts */}
-                    {(!('isOwn' in account) || account.isOwn) && (
+                    {(!('isOwn' in account) || (account as any).isOwn) && (
                         <DropdownMenuItem
                             onClick={() => onConfirmDelete(account.$id, account.name)}
                             icon={
@@ -318,7 +318,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
                         </DropdownMenuItem>
                     )}
                     {/* Show read-only indicator for shared accounts */}
-                    {('isOwn' in account && !account.isOwn) && (
+                    {('isOwn' in account && !(account as any).isOwn) && (
                         <DropdownMenuItem
                             onClick={() => alert('Você não pode excluir contas compartilhadas')}
                             icon={

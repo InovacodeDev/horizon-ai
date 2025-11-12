@@ -27,6 +27,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const creditCardService = new CreditCardService();
     const creditCard = await creditCardService.getCreditCardById(creditCardId);
 
+    if (!creditCard) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Credit card not found',
+        },
+        { status: 404 },
+      );
+    }
+
     // Fetch the account to get the owner user_id
     const accountService = new AccountService();
     const account = await accountService.getAccountById(creditCard.account_id, userId);
@@ -93,6 +103,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     // Fetch credit card to verify ownership
     const creditCardService = new CreditCardService();
     const creditCard = await creditCardService.getCreditCardById(creditCardId);
+
+    if (!creditCard) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Credit card not found',
+        },
+        { status: 404 },
+      );
+    }
 
     // Fetch the account to get the owner user_id
     const accountService = new AccountService();
@@ -228,6 +248,16 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     // Fetch credit card to verify ownership
     const creditCardService = new CreditCardService();
     const creditCard = await creditCardService.getCreditCardById(creditCardId);
+
+    if (!creditCard) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Credit card not found',
+        },
+        { status: 404 },
+      );
+    }
 
     // Fetch the account to get the owner user_id
     const accountService = new AccountService();

@@ -351,7 +351,7 @@ export default function JointAccountPage() {
           confirmModal.onConfirm();
           setConfirmModal({ ...confirmModal, isOpen: false });
         }}
-        onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
         variant={confirmModal.variant}
       />
     </>
