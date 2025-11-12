@@ -74,7 +74,7 @@ export class AccountService {
             date: now,
             currency: 'BRL',
             accountId: account.$id,
-            status: 'completed',
+            status: 'pending',
           });
         } catch (error: any) {
           console.error('Failed to create initial balance transaction:', error);
@@ -299,7 +299,7 @@ export class AccountService {
         direction: 'out',
         type: 'transfer',
         date: now,
-        status: 'completed',
+        status: 'pending',
         description: data.description || `Transferência para ${toAccount.name}`,
         created_at: now,
         updated_at: now,
@@ -313,7 +313,7 @@ export class AccountService {
         direction: 'in',
         type: 'transfer',
         date: now,
-        status: 'completed',
+        status: 'pending',
         description: data.description || `Transferência de ${fromAccount.name}`,
         created_at: now,
         updated_at: now,

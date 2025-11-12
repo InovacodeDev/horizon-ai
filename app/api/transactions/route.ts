@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
       receiptUrl: body.receipt_url,
       isRecurring: body.is_recurring,
       recurringPattern: body.recurring_pattern,
-      status: body.status || 'completed',
+      status: body.status || 'pending',
     });
 
     return NextResponse.json({

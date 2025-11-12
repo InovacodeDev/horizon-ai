@@ -92,7 +92,7 @@ export async function createTransactionAction(
       currency: 'BRL',
       accountId: accountId || undefined,
       merchant: merchant || undefined,
-      status: 'completed',
+      status: 'pending',
       taxAmount: taxAmount !== undefined ? Math.abs(taxAmount) : undefined,
     };
 

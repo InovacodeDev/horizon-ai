@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
       installment: t.installment,
       installments: t.installments,
       isRecurring: t.is_recurring,
-      status: t.status || 'completed',
+      status: t.status || 'pending',
     }));
 
     const createdTransactions = await creditCardTransactionService.bulkCreateTransactions(transactionsData);

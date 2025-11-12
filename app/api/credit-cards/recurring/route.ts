@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
       purchaseDate: dateToUserTimezone(body.start_date),
       creditCardId: body.credit_card_id,
       merchant: body.merchant,
-      status: 'completed',
+      status: 'pending',
       isRecurring: true,
     });
 

@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
       // DO NOT include credit_card_id - this is a regular account transaction
       date: body.payment_date,
       currency: 'BRL',
-      status: 'completed',
+      status: 'pending',
       merchant: creditCardName,
     });
 

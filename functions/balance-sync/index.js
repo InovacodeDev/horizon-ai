@@ -59,41 +59,54 @@ async function getAllTransactions(databases, accountId) {
  */
 async function syncAccountBalance(databases, accountId) {
     console.log(`[BalanceSync] Syncing account ${accountId}`);
-    // Buscar a conta
-    const account = (await databases.getDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, accountId));
-    // Buscar todas as transações desta conta
-    const transactions = await getAllTransactions(databases, accountId);
-    // Recalcular balance do zero
-    let newBalance = 0;
-    const now = new Date();
-    console.log(`[BalanceSync] - Total transactions: ${transactions.length}`);
-    for (const transaction of transactions) {
-        // Ignorar transações de cartão de crédito
-        if (transaction.credit_card_id)
-            continue;
-        // Ignorar transações futuras
-        const transactionDate = new Date(transaction.date);
-        if (transactionDate > now) {
-            continue;
+    try {
+        // Buscar todas as transações desta conta
+        const transactions = await getAllTransactions(databases, accountId);
+        // Recalcular balance do zero
+        let newBalance = 0;
+        const now = new Date();
+        now.setHours(23, 59, 59, 999); // Fim do dia atual
+        console.log(`[BalanceSync] - Total transactions: ${transactions.length}`);
+        console.log(`[BalanceSync] - Current date: ${now.toISOString()}`);
+        const processedTransactions = [];
+        for (const transaction of transactions) {
+            // Ignorar transações de cartão de crédito
+            if (transaction.credit_card_id) {
+                console.log(`[BalanceSync] - Skipping credit card transaction: ${transaction.$id}`);
+                continue;
+            }
+            // Ignorar transações futuras
+            const transactionDate = new Date(transaction.date);
+            if (transactionDate > now) {
+                console.log(`[BalanceSync] - Skipping future transaction: ${transaction.$id} (${transactionDate.toISOString()})`);
+                continue;
+            }
+            // Processar cada tipo de transação
+            if (transaction.direction === 'in') {
+                newBalance += transaction.amount;
+                console.log(`[BalanceSync] - Adding ${transaction.amount} from transaction ${transaction.$id} (direction: in)`);
+            }
+            else {
+                newBalance -= transaction.amount;
+                console.log(`[BalanceSync] - Subtracting ${transaction.amount} from transaction ${transaction.$id} (direction: out)`);
+            }
+            processedTransactions.push(transaction.$id);
         }
-        // Processar cada tipo de transação
-        if (transaction.direction === 'in') {
-            newBalance += transaction.amount;
-        }
-        else {
-            newBalance -= transaction.amount;
-        }
+        console.log(`[BalanceSync] - Final balance: ${newBalance}`);
+        console.log(`[BalanceSync] - Processed ${processedTransactions.length} transactions`);
+        // Atualizar conta com novo balance
+        await databases.updateDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, accountId, {
+            balance: newBalance,
+            synced_transaction_ids: JSON.stringify(processedTransactions),
+            updated_at: new Date().toISOString(),
+        });
+        console.log(`[BalanceSync] Account ${accountId} updated successfully with balance: ${newBalance}`);
+        return newBalance;
     }
-    console.log(`[BalanceSync] - Final balance: ${newBalance}`);
-    // Atualizar conta com novo balance
-    const updatedSyncedIds = transactions.filter((t) => !t.credit_card_id).map((t) => t.$id);
-    await databases.updateDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, accountId, {
-        balance: newBalance,
-        synced_transaction_ids: JSON.stringify(updatedSyncedIds),
-        updated_at: new Date().toISOString(),
-    });
-    console.log(`[BalanceSync] Account ${accountId} updated successfully`);
-    return newBalance;
+    catch (error) {
+        console.error(`[BalanceSync] Error syncing account ${accountId}:`, error);
+        throw error;
+    }
 }
 /**
  * Processa transações futuras que chegaram na data de hoje
@@ -199,6 +212,13 @@ export default async ({ req, res, log, error }) => {
             log(`Processing database event: ${JSON.stringify(eventData)}`);
             // Extrair dados da transação do evento
             const transaction = eventData;
+            // Log detalhado para debug
+            log(`Transaction ID: ${transaction.$id}`);
+            log(`Account ID: ${transaction.account_id}`);
+            log(`Credit Card ID: ${transaction.credit_card_id}`);
+            log(`Amount: ${transaction.amount}`);
+            log(`Direction: ${transaction.direction}`);
+            log(`Date: ${transaction.date}`);
             if (!transaction.account_id) {
                 log('Transaction has no account_id, skipping');
                 return res.json({
@@ -214,12 +234,16 @@ export default async ({ req, res, log, error }) => {
                 });
             }
             // Sincronizar saldo da conta
+            log(`Starting balance sync for account: ${transaction.account_id}`);
             const newBalance = await syncAccountBalance(databases, transaction.account_id);
+            log(`Balance sync completed. New balance: ${newBalance}`);
             return res.json({
                 success: true,
                 message: 'Account balance synced',
                 accountId: transaction.account_id,
+                transactionId: transaction.$id,
                 newBalance,
+                timestamp: new Date().toISOString(),
             });
         }
         // Execução manual
