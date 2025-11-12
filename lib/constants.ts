@@ -1,32 +1,31 @@
 /**
  * Application Constants
- * 
+ *
  * This file contains all constant values used throughout the application,
  * migrated from apps/web/src/constants.ts
  */
-
 import type {
   Bank,
-  User,
-  Transaction,
+  Beneficiary,
   Category,
+  CategoryIcon,
+  FamilyMember,
+  FinancialGoal,
+  FinancialInsight,
+  InsurancePolicy,
+  Integration,
   Invoice,
+  MonthlyChartData,
   Notification,
-  Warranty,
-  TaxSection,
+  PurchaseRecord,
+  RetirementGoal,
+  ShoppingList,
   TaxAsset,
   TaxIncome,
-  FinancialInsight,
-  Integration,
-  ShoppingList,
-  PurchaseRecord,
-  Beneficiary,
-  InsurancePolicy,
-  FinancialGoal,
-  FamilyMember,
-  MonthlyChartData,
-  CategoryIcon,
-  RetirementGoal,
+  TaxSection,
+  Transaction,
+  User,
+  Warranty,
 } from './types';
 
 // Note: Icon and Logo imports will need to be updated once components are migrated
@@ -105,3 +104,34 @@ export const ALLOWED_FILE_TYPES = [
   'application/xml',
   'text/xml',
 ];
+
+// ============================================
+// Mock Data (for pages that haven't been migrated yet)
+// ============================================
+
+export const MOCK_CATEGORIES: Category[] = [];
+
+export const MOCK_INTEGRATIONS: Integration[] = [];
+
+export const MOCK_NOTIFICATIONS: Notification[] = [];
+
+export const MOCK_FINANCIAL_GOALS: FinancialGoal[] = [];
+
+export const MOCK_RETIREMENT_GOAL: RetirementGoal = {
+  targetAge: 65,
+  targetSavings: 0,
+  currentSavings: 0,
+  monthlyContribution: 0,
+};
+
+export const MOCK_BALANCE = 0;
+
+export const MOCK_MONTHLY_INCOME = 0;
+
+export const MOCK_MONTHLY_EXPENSES = 0;
+
+export const MOCK_TRANSACTIONS: Transaction[] = [];
+
+export const MOCK_SHOPPING_LISTS: ShoppingList[] = [];
+
+export const MOCK_PURCHASE_HISTORY: PurchaseRecord[] = [];

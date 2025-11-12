@@ -5,6 +5,7 @@ import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { MOCK_RETIREMENT_GOAL } from "@/lib/constants";
+import type { RetirementGoal } from "@/lib/types";
 import { TrendingUpIcon, DollarSignIcon, CalendarIcon, TargetIcon } from "@/components/assets/Icons";
 
 const formatCurrency = (value: number) => {
@@ -28,7 +29,7 @@ export default function RetirementPage() {
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
-        setRetirementData((prev) => ({
+        setRetirementData((prev: RetirementGoal) => ({
             ...prev,
             [name]: name === "targetAge" ? parseInt(value) || 0 : parseFloat(value) || 0,
         }));

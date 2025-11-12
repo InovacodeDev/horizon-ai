@@ -38,7 +38,7 @@ export default function NotificationsPage() {
       </header>
       <main>
         <div className="bg-surface rounded-m shadow-sm overflow-hidden divide-y divide-outline">
-          {MOCK_NOTIFICATIONS.map((notif) => (
+          {MOCK_NOTIFICATIONS.map((notif: Notification) => (
             <NotificationItem key={notif.$id} notification={notif} />
           ))}
         </div>

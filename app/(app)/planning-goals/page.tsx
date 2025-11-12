@@ -15,7 +15,7 @@ import {
     MOCK_MONTHLY_EXPENSES,
     MOCK_TRANSACTIONS,
 } from "@/lib/constants";
-import type { FinancialGoal, SuggestedGoal } from "@/lib/types";
+import type { FinancialGoal, SuggestedGoal, Transaction } from "@/lib/types";
 import {
     PlusIcon,
     HomeIcon,
@@ -228,7 +228,7 @@ export default function PlanningGoalsPage() {
         } anos.
             - Metas existentes: ${goals.map((g) => g.name).join(", ") || "Nenhuma"}
             - Últimas transações (para entender hábitos): ${MOCK_TRANSACTIONS.slice(0, 5)
-                .map((t) => `${t.description}: ${formatCurrency(t.amount)}`)
+                .map((t: Transaction) => `${t.description}: ${formatCurrency(t.amount)}`)
                 .join("; ")}
 
             Instruções:

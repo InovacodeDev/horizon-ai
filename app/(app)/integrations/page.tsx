@@ -35,7 +35,7 @@ const IntegrationCard: React.FC<{ integration: Integration }> = ({ integration }
 
 export default function IntegrationsPage() {
   const groupedIntegrations = React.useMemo(() => {
-    return MOCK_INTEGRATIONS.reduce((acc, integration) => {
+    return MOCK_INTEGRATIONS.reduce((acc: Record<string, Integration[]>, integration: Integration) => {
       const category = integration.category;
       if (!acc[category]) {
         acc[category] = [];
@@ -62,7 +62,7 @@ export default function IntegrationsPage() {
               <section key={category}>
                 <h2 className="text-xl font-medium text-on-surface mb-4">{category}</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {groupedIntegrations[category].map((integration) => (
+                  {groupedIntegrations[category].map((integration: Integration) => (
                     <IntegrationCard key={integration.name} integration={integration} />
                   ))}
                 </div>
