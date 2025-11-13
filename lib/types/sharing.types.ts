@@ -154,7 +154,7 @@ export interface TransactionWithOwnership extends WithOwnership {
   $createdAt: string;
   $updatedAt: string;
   user_id: string;
-  amount: number;
+  amount: number; // Positive for 'in' direction, negative for 'out' direction
   type: 'income' | 'expense' | 'transfer' | 'salary';
   date: string;
   status: 'pending' | 'completed' | 'failed' | 'cancelled';
@@ -162,6 +162,15 @@ export interface TransactionWithOwnership extends WithOwnership {
   credit_card_id?: string;
   category?: string;
   description?: string;
+  currency?: string;
+  source?: 'manual' | 'integration' | 'import';
+  merchant?: string;
+  tags?: string;
+  is_recurring?: boolean;
+  installment?: number;
+  installments?: number;
+  credit_card_transaction_created_at?: string;
+  direction: 'in' | 'out'; // Transaction direction: 'in' for income/salary/transfers in, 'out' for expense/transfers out
   data?: string;
   created_at: string;
   updated_at: string;

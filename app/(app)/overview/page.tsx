@@ -486,11 +486,12 @@ export default function OverviewPage() {
                 $id: apiTx.$id,
                 $updatedAt: new Date().toISOString(),
                 description: apiTx.description || (apiTx as any).merchant || 'Transaction',
-                amount: (apiTx.type === 'income' || apiTx.type === 'salary') ? Math.abs(apiTx.amount) : -Math.abs(apiTx.amount),
+                amount: apiTx.amount, // Amount is already signed based on direction
                 date: apiTx.date,
                 bankName: accountName,
                 category: category?.name || apiTx.category || 'Uncategorized',
                 type: apiTx.type,
+                direction: apiTx.direction,
                 icon: categoryIcon,
                 notes: apiTx.description || '',
                 account_id: apiTx.account_id,
