@@ -30,14 +30,20 @@ Processa apenas transações que chegaram na data de hoje ou passado.
 
 ### 2. Reprocessamento Completo (Todas as Transações)
 
-Recalcula o saldo de TODAS as contas do usuário do zero, baseado em todas as transações.
+Recalcula o saldo de TODAS as contas do usuário do zero, baseado em todas as transações, **incluindo transações já marcadas como "completed"**.
 
 **Quando usar:**
 
 - Corrigir inconsistências de saldo
 - Após migrações de dados
 - Após correções manuais no banco de dados
+- Após alterações em transações já completadas
 - Manutenção preventiva
+
+**Diferença do processamento normal:**
+
+- **Processamento normal**: ignora transações já "completed" (mais rápido)
+- **Reprocessamento completo**: reprocessa TODAS as transações, incluindo as "completed" (mais completo)
 
 **Payload:**
 
@@ -175,22 +181,64 @@ console.log('Execution started:', execution.$id);
 ```
 [BalanceSync] Running manual balance sync
 [BalanceSync] reprocessAll: true
-[BalanceSync] Reprocessing ALL transactions for all user accounts
+[BalanceSync] Reprocessing ALL transactions for all user accounts (including completed transactions)
 [BalanceSync] Found 3 accounts to reprocess
 [BalanceSync] Reprocessing account: 68fbd3a700145f22609d
 [BalanceSync] Syncing account 68fbd3a700145f22609d
+[BalanceSync] - Force reprocess mode: will reprocess ALL transactions including completed ones
 [BalanceSync] - Total transactions: 45
+[BalanceSync] - Adding 1000.00 from transaction abc123 (direction: in, status: completed)
+[BalanceSync] - Subtracting 500.00 from transaction def456 (direction: out, status: completed)
 [BalanceSync] - Final balance: 15000.50
 [BalanceSync] Account 68fbd3a700145f22609d updated successfully
 [BalanceSync] Reprocessing completed. Total accounts processed: 3
 ```
 
+## 📊 Comparação: Normal vs Reprocessamento Completo
+
+| Aspecto                    | Processamento Normal              | Reprocessamento Completo      |
+| -------------------------- | --------------------------------- | ----------------------------- |
+| **Transações Processadas** | Apenas vencidas (não "completed") | TODAS (incluindo "completed") |
+| **Velocidade**             | ⚡ Rápido                         | 🐢 Mais lento                 |
+| **Uso Recomendado**        | Execução diária, rotina           | Manutenção, correções         |
+| **Transações Futuras**     | ❌ Ignoradas                      | ❌ Ignoradas                  |
+| **Transações de Cartão**   | ❌ Ignoradas                      | ❌ Ignoradas                  |
+| **Transações "Completed"** | ⏭️ Puladas (já processadas)       | ✅ Reprocessadas              |
+| **Quando Usar**            | Processamento regular             | Após migrações, correções     |
+
+### Exemplo Prático
+
+Imagine uma conta com estas transações:
+
+```
+1. Transação A: R$ 1000 (status: completed, data: 01/11/2025)
+2. Transação B: R$ 500  (status: pending, data: 05/11/2025)
+3. Transação C: R$ 200  (status: completed, data: 10/11/2025)
+4. Transação D: R$ 300  (status: pending, data: 20/11/2025) [futura]
+```
+
+**Processamento Normal** (hoje: 13/11/2025):
+
+- ⏭️ Pula Transação A (completed)
+- ✅ Processa Transação B (pending)
+- ⏭️ Pula Transação C (completed)
+- ❌ Ignora Transação D (futura)
+- **Resultado**: Processa apenas B
+
+**Reprocessamento Completo** (hoje: 13/11/2025):
+
+- ✅ Reprocessa Transação A (completed)
+- ✅ Reprocessa Transação B (pending)
+- ✅ Reprocessa Transação C (completed)
+- ❌ Ignora Transação D (futura)
+- **Resultado**: Recalcula saldo do zero com A + B + C
+
 ## ⚠️ Considerações Importantes
 
 ### Performance
 
-- **Processamento Normal**: Rápido, processa apenas transações vencidas
-- **Reprocessamento Completo**: Mais lento, processa todas as transações de todas as contas
+- **Processamento Normal**: Rápido, processa apenas transações vencidas não completadas
+- **Reprocessamento Completo**: Mais lento, processa todas as transações de todas as contas (incluindo completadas)
 
 ### Frequência
 
@@ -200,8 +248,9 @@ console.log('Execution started:', execution.$id);
 ### Impacto
 
 - A função adiciona pequenos delays entre processamentos para evitar sobrecarga
-- Transações de cartão de crédito são sempre ignoradas
-- Transações futuras são sempre ignoradas no cálculo do saldo
+- Transações de cartão de crédito são sempre ignoradas em ambos os modos
+- Transações futuras são sempre ignoradas no cálculo do saldo em ambos os modos
+- Reprocessamento completo é mais intensivo em recursos, mas garante precisão total
 
 ## 🛠️ Troubleshooting
 

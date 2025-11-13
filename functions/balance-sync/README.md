@@ -30,7 +30,7 @@ Função Appwrite para gerenciar automaticamente o saldo das contas baseado nas 
 
 1. **Sincronização Automática**: Atualiza o saldo da conta sempre que uma transação é criada, editada ou removida
 2. **Processamento Diário**: Executa diariamente às 20:00 para processar transações que chegaram na data de hoje
-3. **Reprocessamento Manual**: Permite reprocessar todas as transações de todas as contas do usuário via parâmetro `reprocessAll: true`
+3. **Reprocessamento Manual Completo**: Permite reprocessar TODAS as transações (incluindo as já "completed") de todas as contas do usuário via parâmetro `reprocessAll: true`
 4. **Ignora Transações Futuras**: Transações com data futura não são contabilizadas no saldo até chegarem na data
 5. **Ignora Cartão de Crédito**: Transações de cartão de crédito são gerenciadas separadamente
 

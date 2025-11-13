@@ -96,13 +96,21 @@ async function getAllTransactions(databases: TablesDB, accountId: string): Promi
 
 /**
  * Sincroniza o saldo de uma conta
+ * @param databases - Cliente TablesDB
+ * @param accountId - ID da conta
+ * @param deletedTransactionId - ID da transação deletada (opcional)
+ * @param forceReprocess - Se true, reprocessa até transações já completadas
  */
 async function syncAccountBalance(
   databases: TablesDB,
   accountId: string,
   deletedTransactionId?: string,
+  forceReprocess: boolean = false,
 ): Promise<number> {
   console.log(`[BalanceSync] Syncing account ${accountId}`);
+  if (forceReprocess) {
+    console.log(`[BalanceSync] - Force reprocess mode: will reprocess ALL transactions including completed ones`);
+  }
 
   try {
     // Buscar todas as transações desta conta
@@ -135,8 +143,8 @@ async function syncAccountBalance(
         continue;
       }
 
-      // Ignorar transações já completadas (exceto se for a transação deletada)
-      if (transaction.status === 'completed' && transaction.$id !== deletedTransactionId) {
+      // Se NÃO for force reprocess, ignorar transações já completadas (exceto se for a transação deletada)
+      if (!forceReprocess && transaction.status === 'completed' && transaction.$id !== deletedTransactionId) {
         console.log(`[BalanceSync] - Skipping completed transaction: ${transaction.$id}`);
         // Ainda incluir no cálculo do saldo
         if (transaction.direction === 'in') {
@@ -151,11 +159,13 @@ async function syncAccountBalance(
       // Processar cada tipo de transação
       if (transaction.direction === 'in') {
         newBalance += transaction.amount;
-        console.log(`[BalanceSync] - Adding ${transaction.amount} from transaction ${transaction.$id} (direction: in)`);
+        console.log(
+          `[BalanceSync] - Adding ${transaction.amount} from transaction ${transaction.$id} (direction: in, status: ${transaction.status})`,
+        );
       } else {
         newBalance -= transaction.amount;
         console.log(
-          `[BalanceSync] - Subtracting ${transaction.amount} from transaction ${transaction.$id} (direction: out)`,
+          `[BalanceSync] - Subtracting ${transaction.amount} from transaction ${transaction.$id} (direction: out, status: ${transaction.status})`,
         );
       }
 
@@ -481,7 +491,7 @@ export default async ({ req, res, log, error }: any) => {
 
     // Se reprocessAll for true, reprocessar todas as contas do usuário
     if (reprocessAll) {
-      log('Reprocessing ALL transactions for all user accounts');
+      log('Reprocessing ALL transactions for all user accounts (including completed transactions)');
 
       // Buscar todas as contas do usuário
       const accountsResult = await databases.listRows({
@@ -493,11 +503,11 @@ export default async ({ req, res, log, error }: any) => {
       const accounts = accountsResult.rows as unknown as Account[];
       log(`Found ${accounts.length} accounts to reprocess`);
 
-      // Reprocessar cada conta
+      // Reprocessar cada conta com forceReprocess = true
       for (const account of accounts) {
         try {
           log(`Reprocessing account: ${account.$id}`);
-          await syncAccountBalance(databases, account.$id);
+          await syncAccountBalance(databases, account.$id, undefined, true);
           accountsProcessed++;
 
           // Pequeno delay entre contas (50ms)
