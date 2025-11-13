@@ -107,7 +107,6 @@ export class ImportService {
         accountInfo,
       };
     } catch (error) {
-      console.log(error);
       if (error instanceof ImportError) {
         throw error;
       }
