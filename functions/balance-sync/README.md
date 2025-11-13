@@ -11,6 +11,7 @@ Função Appwrite para gerenciar automaticamente o saldo das contas baseado nas 
 
 ### Referência
 
+- **[MANUAL_EXECUTION.md](./MANUAL_EXECUTION.md)** - Guia de execução manual e reprocessamento 🔄
 - **[EXAMPLES.md](./EXAMPLES.md)** - Exemplos práticos de uso 💡
 - **[FAQ.md](./FAQ.md)** - Perguntas frequentes ❓
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Arquitetura técnica 🏗️
@@ -29,8 +30,9 @@ Função Appwrite para gerenciar automaticamente o saldo das contas baseado nas 
 
 1. **Sincronização Automática**: Atualiza o saldo da conta sempre que uma transação é criada, editada ou removida
 2. **Processamento Diário**: Executa diariamente às 20:00 para processar transações que chegaram na data de hoje
-3. **Ignora Transações Futuras**: Transações com data futura não são contabilizadas no saldo até chegarem na data
-4. **Ignora Cartão de Crédito**: Transações de cartão de crédito são gerenciadas separadamente
+3. **Reprocessamento Manual**: Permite reprocessar todas as transações de todas as contas do usuário via parâmetro `reprocessAll: true`
+4. **Ignora Transações Futuras**: Transações com data futura não são contabilizadas no saldo até chegarem na data
+5. **Ignora Cartão de Crédito**: Transações de cartão de crédito são gerenciadas separadamente
 
 ## Configuração no Appwrite Console
 
@@ -90,15 +92,32 @@ Timezone: America/Sao_Paulo (ou seu timezone)
 
 ### 5. Testar
 
-#### Teste Manual
+#### Teste Manual (Processamento Normal)
 
-Execute a função manualmente com o seguinte payload:
+Execute a função manualmente com o seguinte payload para processar apenas transações vencidas:
 
 ```json
 {
   "userId": "68fbd3a700145f22609d"
 }
 ```
+
+#### Teste Manual (Reprocessamento Completo)
+
+Execute a função manualmente com o seguinte payload para reprocessar TODAS as transações de todas as contas do usuário:
+
+```json
+{
+  "userId": "68fbd3a700145f22609d",
+  "reprocessAll": true
+}
+```
+
+**Nota**: O reprocessamento completo recalcula o saldo de todas as contas do zero, baseado em todas as transações. Use isso para:
+
+- Corrigir inconsistências de saldo
+- Após migrações de dados
+- Execuções manuais de manutenção
 
 #### Teste de Evento
 
@@ -157,10 +176,29 @@ A função gera logs detalhados para debug:
 
 ### Saldo Incorreto
 
-Se o saldo estiver incorreto, você pode forçar um recálculo:
+Se o saldo estiver incorreto, você pode forçar um recálculo completo:
 
-1. Execute a função manualmente com o `userId`
-2. Ou use a action `reprocessAllBalancesAction` no código Next.js
+1. **Via Appwrite Console**: Execute a função manualmente com o payload:
+
+   ```json
+   {
+     "userId": "seu-user-id",
+     "reprocessAll": true
+   }
+   ```
+
+2. **Via API**: Faça uma requisição POST para o endpoint da função:
+
+   ```bash
+   curl -X POST \
+     https://cloud.appwrite.io/v1/functions/[FUNCTION_ID]/executions \
+     -H "Content-Type: application/json" \
+     -H "X-Appwrite-Project: [PROJECT_ID]" \
+     -H "X-Appwrite-Key: [API_KEY]" \
+     -d '{"userId": "seu-user-id", "reprocessAll": true}'
+   ```
+
+3. **Via código Next.js**: Use a action `reprocessAccountBalanceAction` para contas individuais
 
 ### Função Não Executa
 

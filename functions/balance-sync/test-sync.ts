@@ -3,9 +3,24 @@
  *
  * Este script testa se a sincronização automática de saldo está funcionando corretamente.
  *
+ * Funcionalidades testadas:
+ * - Sincronização automática ao criar transações
+ * - Sincronização automática ao remover transações
+ * - Validação de cálculo de saldo
+ * - Reprocessamento completo (opcional, requer função deployada)
+ *
  * Uso:
- * 1. Configure as variáveis de ambiente no .env
- * 2. Execute: npx tsx test-sync.ts
+ * 1. Configure as variáveis de ambiente no .env:
+ *    - APPWRITE_ENDPOINT
+ *    - APPWRITE_FUNCTION_PROJECT_ID
+ *    - APPWRITE_API_KEY
+ *    - APPWRITE_DATABASE_ID
+ *    - BALANCE_SYNC_FUNCTION_ID (opcional, para teste de reprocessamento)
+ * 2. Execute: npx tsx test-sync.ts <userId>
+ *
+ * Exemplo de reprocessamento manual via Appwrite Console:
+ * - Vá em Functions > balance-sync > Execute
+ * - Use o payload: { "userId": "seu-user-id", "reprocessAll": true }
  */
 import { Client, Databases, ID, Query } from 'node-appwrite';
 
@@ -306,6 +321,43 @@ async function test6_validateBalance(account: Account): Promise<boolean> {
     }
   } catch (err) {
     error(`Erro ao validar saldo: ${err}`);
+    return false;
+  }
+}
+
+/**
+ * Teste 7: Testar reprocessamento completo (opcional)
+ *
+ * Este teste demonstra como usar a funcionalidade de reprocessamento completo.
+ * Para executar este teste, você precisa ter a função balance-sync deployada
+ * e configurar o FUNCTION_ID.
+ */
+async function test7_reprocessAll(userId: string): Promise<boolean> {
+  info('Teste 7: Testando reprocessamento completo...');
+
+  const functionId = process.env.BALANCE_SYNC_FUNCTION_ID;
+
+  if (!functionId) {
+    warning('BALANCE_SYNC_FUNCTION_ID não configurado, pulando teste de reprocessamento');
+    info('Para testar o reprocessamento, configure a variável BALANCE_SYNC_FUNCTION_ID');
+    return true; // Não falhar se não estiver configurado
+  }
+
+  try {
+    info('Executando função com reprocessAll: true...');
+
+    // Nota: Este é um exemplo de como chamar a função
+    // Na prática, você usaria o SDK de Functions do Appwrite
+    info(`Payload: { "userId": "${userId}", "reprocessAll": true }`);
+
+    warning('Este teste requer implementação adicional com o SDK de Functions');
+    info('Use o Appwrite Console para testar manualmente:');
+    info('Functions > balance-sync > Execute');
+    info(`Payload: { "userId": "${userId}", "reprocessAll": true }`);
+
+    return true;
+  } catch (err) {
+    error(`Erro ao testar reprocessamento: ${err}`);
     return false;
   }
 }

@@ -6,12 +6,18 @@
  * Triggers:
  * - Eventos de database: transactions.*.create, transactions.*.update, transactions.*.delete
  * - Schedule: Diariamente às 20:00 (cron: 0 20 * * *)
+ * - Manual: Execução manual via console ou API
  *
  * Funcionalidades:
  * 1. Sincroniza saldo quando transações são criadas/editadas/removidas
  * 2. Processa transações futuras que chegaram na data de hoje (execução diária)
- * 3. Ignora transações futuras no cálculo do saldo
- * 4. Ignora transações de cartão de crédito (gerenciadas separadamente)
+ * 3. Reprocessa todas as transações quando recebe { reprocessAll: true } no body
+ * 4. Ignora transações futuras no cálculo do saldo
+ * 5. Ignora transações de cartão de crédito (gerenciadas separadamente)
+ *
+ * Execução Manual:
+ * - Processamento normal: { "userId": "user-id" }
+ * - Reprocessamento completo: { "userId": "user-id", "reprocessAll": true }
  */
 import { Client, Databases, Query, TablesDB } from 'node-appwrite';
 
@@ -449,8 +455,11 @@ export default async ({ req, res, log, error }: any) => {
     }
 
     const userId = bodyData?.userId;
+    const reprocessAll = bodyData?.reprocessAll === true || bodyData?.reprocessAll === 'true';
+
     log(`Extracted userId: ${userId}`);
     log(`userId type: ${typeof userId}`);
+    log(`reprocessAll: ${reprocessAll}`);
 
     if (!userId) {
       log('ERROR: userId is missing or undefined');
@@ -468,16 +477,53 @@ export default async ({ req, res, log, error }: any) => {
       );
     }
 
-    const accountsProcessed = await processDueTransactions(databases, userId);
+    let accountsProcessed = 0;
 
-    log(`Manual balance sync completed. Accounts processed: ${accountsProcessed}`);
+    // Se reprocessAll for true, reprocessar todas as contas do usuário
+    if (reprocessAll) {
+      log('Reprocessing ALL transactions for all user accounts');
+
+      // Buscar todas as contas do usuário
+      const accountsResult = await databases.listRows({
+        databaseId: DATABASE_ID,
+        tableId: COLLECTIONS.ACCOUNTS,
+        queries: [Query.equal('user_id', userId)],
+      });
+
+      const accounts = accountsResult.rows as unknown as Account[];
+      log(`Found ${accounts.length} accounts to reprocess`);
+
+      // Reprocessar cada conta
+      for (const account of accounts) {
+        try {
+          log(`Reprocessing account: ${account.$id}`);
+          await syncAccountBalance(databases, account.$id);
+          accountsProcessed++;
+
+          // Pequeno delay entre contas (50ms)
+          if (accountsProcessed < accounts.length) {
+            await new Promise((resolve) => setTimeout(resolve, 50));
+          }
+        } catch (err: any) {
+          error(`Error reprocessing account ${account.$id}:`, err);
+          // Continuar com as próximas contas mesmo se uma falhar
+        }
+      }
+
+      log(`Reprocessing completed. Total accounts processed: ${accountsProcessed}`);
+    } else {
+      // Comportamento padrão: processar apenas transações vencidas
+      accountsProcessed = await processDueTransactions(databases, userId);
+      log(`Manual balance sync completed. Accounts processed: ${accountsProcessed}`);
+    }
 
     // Se não for assíncrono, retornar resposta normal
     if (!isAsync) {
       return res.json({
         success: true,
-        message: 'Manual balance sync completed',
+        message: reprocessAll ? 'All transactions reprocessed successfully' : 'Manual balance sync completed',
         accountsProcessed,
+        reprocessAll,
       });
     }
   } catch (err: any) {
