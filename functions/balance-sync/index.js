@@ -85,10 +85,13 @@ async function syncAccountBalance(databases, accountId) {
         continue;
       }
       // Processar cada tipo de transação
-      // Amount is already signed: positive for 'in', negative for 'out'
-      newBalance += transaction.amount;
+      // Entradas (in) somam, saídas (out) subtraem
+      const transactionAmount =
+        transaction.direction === 'in' ? Math.abs(transaction.amount) : -Math.abs(transaction.amount);
+
+      newBalance += transactionAmount;
       console.log(
-        `[BalanceSync] - Processing transaction ${transaction.$id}: ${transaction.amount} (direction: ${transaction.direction})`,
+        `[BalanceSync] - Processing transaction ${transaction.$id}: ${transactionAmount} (direction: ${transaction.direction}, original: ${transaction.amount})`,
       );
       processedTransactions.push(transaction.$id);
     }
@@ -194,7 +197,7 @@ export default async ({ req, res, log, error }) => {
     log(`Request headers: ${JSON.stringify(req.headers)}`);
     log(`Request body (raw): ${req.bodyRaw}`);
     log(`Request body (parsed): ${JSON.stringify(req.body)}`);
-    const { client, databases } = initializeClient();
+    const { databases } = initializeClient();
     // Verificar o tipo de execução
     const executionType = req.headers['x-appwrite-trigger'] || 'manual';
     log(`Execution type: ${executionType}`);

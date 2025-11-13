@@ -117,7 +117,7 @@ export default async ({ req, res, log, error }: any) => {
 
   if (isScheduled) {
     // Responder imediatamente para evitar timeout
-    res.json({
+    return res.json({
       success: true,
       message: 'Invitation expiration started asynchronously',
       timestamp: new Date().toISOString(),
@@ -136,28 +136,22 @@ export default async ({ req, res, log, error }: any) => {
 
     log(`Invitation expiration completed. Expired: ${expiredCount}`);
 
-    // Se não for agendado, retornar resposta normal
-    if (!isScheduled) {
-      return res.json({
-        success: true,
-        message: `Successfully expired ${expiredCount} invitation(s)`,
-        expiredCount,
-        timestamp: new Date().toISOString(),
-      });
-    }
+    return res.json({
+      success: true,
+      message: `Successfully expired ${expiredCount} invitation(s)`,
+      expiredCount,
+      timestamp: new Date().toISOString(),
+    });
   } catch (err: any) {
     error('Expire Invitations Function error:', err);
 
-    // Se não for agendado, retornar erro
-    if (!isScheduled) {
-      return res.json(
-        {
-          success: false,
-          error: err.message || 'Unknown error',
-          stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
-        },
-        500,
-      );
-    }
+    return res.json(
+      {
+        success: false,
+        error: err.message || 'Unknown error',
+        stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+      },
+      500,
+    );
   }
 };
