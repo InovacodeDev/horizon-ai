@@ -32,7 +32,8 @@
     "test:credit-cards": "tsx tests/credit-cards-crud.test.ts",
     "test:realtime": "tsx scripts/test-realtime.ts",
     "test:nfe-crawler": "tsx tests/nfe-crawler-integration.test.ts",
-    "demo:toon": "tsx scripts/demo-toon-savings.ts"
+    "demo:toon": "tsx scripts/demo-toon-savings.ts",
+    "reset:balances": "tsx scripts/reset-balances-and-transactions.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.68.0",

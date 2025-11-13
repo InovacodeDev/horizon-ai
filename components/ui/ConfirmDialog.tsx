@@ -37,32 +37,35 @@ export function ConfirmDialog({
 
   return createPortal(
     <div
-      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in"
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-dialog-title"
     >
       <div
-        className="bg-surface rounded-lg w-full max-w-md shadow-xl transform transition-all"
+        className="bg-surface-new-primary rounded-lg w-full max-w-md shadow-soft-xl transform transition-smooth-200 animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-6 pb-4">
-          <h3 className="text-lg font-semibold text-on-surface">{title}</h3>
+        <div className="px-6 py-5 border-b border-border-primary">
+          <h3 id="confirm-dialog-title" className="text-lg font-semibold text-text-primary">{title}</h3>
         </div>
 
         {/* Content */}
-        <div className="px-6 pb-6">
-          <p className="text-on-surface-variant">{message}</p>
+        <div className="px-6 py-5">
+          <p className="text-text-secondary leading-relaxed">{message}</p>
         </div>
 
         {/* Actions */}
-        <div className="flex gap-3 justify-end p-6 pt-0">
+        <div className="flex gap-3 justify-end px-6 py-5 border-t border-border-primary">
           <Button variant="ghost" onClick={onClose} disabled={loading}>
             {cancelText}
           </Button>
           <button
             onClick={onConfirm}
             disabled={loading}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${variantStyles[variant]}`}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors-smooth shadow-soft-xs hover:shadow-soft-sm disabled:opacity-50 disabled:cursor-not-allowed focus-ring ${variantStyles[variant]}`}
           >
             {loading ? 'Processando...' : confirmText}
           </button>

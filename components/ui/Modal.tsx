@@ -41,7 +41,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size, m
 
     return createPortal(
         <div
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in"
             aria-labelledby="modal-title"
             role="dialog"
             aria-modal="true"
@@ -51,14 +51,14 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size, m
                 className={`bg-surface-new-primary w-full ${maxWidthClasses[effectiveSize]} rounded-lg shadow-soft-xl transform transition-smooth-200 animate-slide-up`}
                 onClick={(e) => e.stopPropagation()}
             >
-                <header className="flex items-center justify-between p-6 border-b border-border-primary">
+                <header className="flex items-center justify-between px-6 py-5 border-b border-border-primary">
                     <h2 id="modal-title" className="text-lg font-semibold text-text-primary">
                         {title}
                     </h2>
                     <button
                         onClick={onClose}
                         className="p-2 rounded-md text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors-smooth focus-ring"
-                        aria-label="Close modal"
+                        aria-label="Fechar modal"
                     >
                         <XIcon className="w-5 h-5" />
                     </button>

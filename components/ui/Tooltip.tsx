@@ -34,7 +34,8 @@ const Tooltip: React.FC<TooltipProps> = ({ content, children, position = 'right'
       {children}
       {isVisible && (
         <div
-          className={`absolute z-50 px-3 py-2 text-xs text-white bg-text-primary rounded-md shadow-soft-md whitespace-nowrap animate-fade-in ${positionClasses[position]}`}
+          className={`absolute z-50 px-3 py-2 text-xs font-medium text-white bg-text-primary rounded-md shadow-soft-lg whitespace-nowrap animate-fade-in ${positionClasses[position]}`}
+          role="tooltip"
         >
           {content}
           <div

@@ -215,8 +215,11 @@ export function ExportInvoicesModal({ isOpen, onClose, onExport, currentFilters 
 
         {/* Error Message */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-            <p className="text-sm text-red-800">{error}</p>
+          <div className="bg-red-bg border border-red-border text-red-text px-4 py-3.5 rounded-lg flex items-start gap-3">
+            <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            <p className="text-sm leading-relaxed">{error}</p>
           </div>
         )}
 

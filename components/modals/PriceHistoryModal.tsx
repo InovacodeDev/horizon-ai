@@ -138,8 +138,11 @@ export default function PriceHistoryModal({ isOpen, onClose, productId, productN
 
         {/* Error State */}
         {error && !loading && (
-          <div className="bg-error/10 border border-error/20 rounded-lg p-4 text-error">
-            {error}
+          <div className="bg-red-bg border border-red-border text-red-text px-4 py-3.5 rounded-lg flex items-start gap-3">
+            <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            <p className="text-sm leading-relaxed">{error}</p>
           </div>
         )}
 

@@ -68,15 +68,15 @@ export function ConfirmModal({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
-      <div className="p-6">
-        <div className="flex items-start gap-5 mb-8">
+      <div className="px-6 py-5">
+        <div className="flex items-start gap-4 mb-6">
           <div className={`flex-shrink-0 p-3 rounded-full ${style.bgColor}`}>
             {style.icon}
           </div>
-          <p className="text-on-surface flex-1 pt-2 leading-relaxed">{message}</p>
+          <p className="text-text-secondary flex-1 pt-2 leading-relaxed">{message}</p>
         </div>
 
-        <div className="flex justify-end gap-4 pt-6 border-t border-outline-variant">
+        <div className="flex justify-end gap-3 pt-5 border-t border-border-primary">
           <Button
             variant="secondary"
             onClick={onClose}
