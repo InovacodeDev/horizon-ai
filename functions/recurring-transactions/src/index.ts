@@ -55,20 +55,28 @@ async function getRecurringTransactions(databases: Databases): Promise<Recurring
   const limit = 100;
 
   while (true) {
-    const result = await databases.listDocuments(DATABASE_ID, TRANSACTIONS_COLLECTION, [
-      Query.equal('is_recurring', true),
-      Query.limit(limit),
-      Query.offset(offset),
-    ]);
+    try {
+      const result = await databases.listDocuments(DATABASE_ID, TRANSACTIONS_COLLECTION, [
+        Query.equal('is_recurring', true),
+        Query.limit(limit),
+        Query.offset(offset),
+      ]);
 
-    const transactions = result.documents as unknown as RecurringTransaction[];
-    allTransactions.push(...transactions);
+      const transactions = result.documents as unknown as RecurringTransaction[];
+      allTransactions.push(...transactions);
 
-    if (transactions.length === 0 || transactions.length < limit) {
-      break;
+      if (transactions.length === 0 || transactions.length < limit) {
+        break;
+      }
+
+      offset += limit;
+
+      // Pequeno delay entre lotes (100ms)
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    } catch (error) {
+      console.error(`[RecurringTransactions] Error fetching transactions at offset ${offset}:`, error);
+      throw error;
     }
-
-    offset += limit;
   }
 
   return allTransactions;
@@ -180,8 +188,14 @@ async function processRecurringTransactions(databases: Databases): Promise<numbe
       const nextDate = getNextRecurringDate(transaction.date);
       await createRecurringTransaction(databases, transaction, nextDate);
       created++;
+
+      // Pequeno delay entre transações (50ms) para evitar sobrecarga
+      if (created < recurringTransactions.length) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
     } catch (error: any) {
       console.error(`[RecurringTransactions] Error processing transaction ${transaction.$id}:`, error.message);
+      // Continuar com as próximas transações mesmo se uma falhar
     }
   }
 
@@ -193,6 +207,18 @@ async function processRecurringTransactions(databases: Databases): Promise<numbe
  * Função principal
  */
 export default async ({ req, res, log, error }: any) => {
+  // Para execuções agendadas, retornar resposta imediatamente e processar de forma assíncrona
+  const isScheduled = req.headers['x-appwrite-trigger'] === 'schedule';
+
+  if (isScheduled) {
+    // Responder imediatamente para evitar timeout
+    res.json({
+      success: true,
+      message: 'Recurring transactions processing started asynchronously',
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   try {
     log('Recurring Transactions Function started');
     log(`Execution type: ${req.headers['x-appwrite-trigger'] || 'manual'}`);
@@ -201,20 +227,29 @@ export default async ({ req, res, log, error }: any) => {
 
     const created = await processRecurringTransactions(databases);
 
-    return res.json({
-      success: true,
-      message: 'Recurring transactions processed successfully',
-      transactionsCreated: created,
-      timestamp: new Date().toISOString(),
-    });
+    log(`Recurring transactions processing completed. Created: ${created}`);
+
+    // Se não for agendado, retornar resposta normal
+    if (!isScheduled) {
+      return res.json({
+        success: true,
+        message: 'Recurring transactions processed successfully',
+        transactionsCreated: created,
+        timestamp: new Date().toISOString(),
+      });
+    }
   } catch (err: any) {
     error('Recurring Transactions Function error:', err);
-    return res.json(
-      {
-        success: false,
-        error: err.message || 'Unknown error',
-      },
-      500,
-    );
+
+    // Se não for agendado, retornar erro
+    if (!isScheduled) {
+      return res.json(
+        {
+          success: false,
+          error: err.message || 'Unknown error',
+        },
+        500,
+      );
+    }
   }
 };

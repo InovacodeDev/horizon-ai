@@ -51,7 +51,7 @@ async function expireOldInvitations(databases: Databases): Promise<number> {
   const now = new Date().toISOString();
   let expiredCount = 0;
   let offset = 0;
-  const limit = 100;
+  const limit = 50; // Reduzido para processar em lotes menores
 
   while (true) {
     try {
@@ -78,8 +78,14 @@ async function expireOldInvitations(databases: Databases): Promise<number> {
           });
           expiredCount++;
           console.log(`[ExpireInvitations] Expired invitation ${invitation.$id}`);
+
+          // Pequeno delay entre atualizações (50ms)
+          if (expiredCount < result.documents.length) {
+            await new Promise((resolve) => setTimeout(resolve, 50));
+          }
         } catch (error) {
           console.error(`[ExpireInvitations] Error expiring invitation ${invitation.$id}:`, error);
+          // Continuar com os próximos convites mesmo se um falhar
         }
       }
 
@@ -89,6 +95,9 @@ async function expireOldInvitations(databases: Databases): Promise<number> {
       }
 
       offset += limit;
+
+      // Delay entre lotes (100ms)
+      await new Promise((resolve) => setTimeout(resolve, 100));
     } catch (error) {
       console.error('[ExpireInvitations] Error querying invitations:', error);
       throw error;
@@ -103,6 +112,18 @@ async function expireOldInvitations(databases: Databases): Promise<number> {
  * Main function
  */
 export default async ({ req, res, log, error }: any) => {
+  // Para execuções agendadas, retornar resposta imediatamente e processar de forma assíncrona
+  const isScheduled = req.headers['x-appwrite-trigger'] === 'schedule';
+
+  if (isScheduled) {
+    // Responder imediatamente para evitar timeout
+    res.json({
+      success: true,
+      message: 'Invitation expiration started asynchronously',
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   try {
     log('Expire Invitations Function started');
     log(`Request method: ${req.method}`);
@@ -113,21 +134,30 @@ export default async ({ req, res, log, error }: any) => {
     // Expire old invitations
     const expiredCount = await expireOldInvitations(databases);
 
-    return res.json({
-      success: true,
-      message: `Successfully expired ${expiredCount} invitation(s)`,
-      expiredCount,
-      timestamp: new Date().toISOString(),
-    });
+    log(`Invitation expiration completed. Expired: ${expiredCount}`);
+
+    // Se não for agendado, retornar resposta normal
+    if (!isScheduled) {
+      return res.json({
+        success: true,
+        message: `Successfully expired ${expiredCount} invitation(s)`,
+        expiredCount,
+        timestamp: new Date().toISOString(),
+      });
+    }
   } catch (err: any) {
     error('Expire Invitations Function error:', err);
-    return res.json(
-      {
-        success: false,
-        error: err.message || 'Unknown error',
-        stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
-      },
-      500,
-    );
+
+    // Se não for agendado, retornar erro
+    if (!isScheduled) {
+      return res.json(
+        {
+          success: false,
+          error: err.message || 'Unknown error',
+          stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+        },
+        500,
+      );
+    }
   }
 };

@@ -165,20 +165,32 @@ async function syncAccountBalance(
     console.log(`[BalanceSync] - Processed ${processedTransactions.length} transactions`);
     console.log(`[BalanceSync] - Marking ${transactionsToMarkCompleted.length} transactions as completed`);
 
-    // Atualizar status das transações para completed
-    for (const transactionId of transactionsToMarkCompleted) {
-      try {
-        await databases.updateRow({
-          databaseId: DATABASE_ID,
-          tableId: COLLECTIONS.TRANSACTIONS,
-          rowId: transactionId,
-          data: {
-            status: 'completed',
-          },
-        });
-        console.log(`[BalanceSync] - Marked transaction ${transactionId} as completed`);
-      } catch (error) {
-        console.error(`[BalanceSync] - Error marking transaction ${transactionId} as completed:`, error);
+    // Atualizar status das transações para completed em lotes
+    const batchSize = 10;
+    for (let i = 0; i < transactionsToMarkCompleted.length; i += batchSize) {
+      const batch = transactionsToMarkCompleted.slice(i, i + batchSize);
+
+      await Promise.all(
+        batch.map(async (transactionId) => {
+          try {
+            await databases.updateRow({
+              databaseId: DATABASE_ID,
+              tableId: COLLECTIONS.TRANSACTIONS,
+              rowId: transactionId,
+              data: {
+                status: 'completed',
+              },
+            });
+            console.log(`[BalanceSync] - Marked transaction ${transactionId} as completed`);
+          } catch (error) {
+            console.error(`[BalanceSync] - Error marking transaction ${transactionId} as completed:`, error);
+          }
+        }),
+      );
+
+      // Pequeno delay entre lotes (100ms)
+      if (i + batchSize < transactionsToMarkCompleted.length) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
     }
 
@@ -209,19 +221,33 @@ async function syncAccountBalance(
 async function processDueTransactions(databases: TablesDB, userId: string): Promise<number> {
   console.log(`[BalanceSync] Processing due transactions for user ${userId}`);
 
-  // Buscar todas as transações do usuário
-  const result = await databases.listRows({
-    databaseId: DATABASE_ID,
-    tableId: COLLECTIONS.TRANSACTIONS,
-    queries: [Query.equal('user_id', userId), Query.limit(10000)],
-  });
+  // Buscar todas as transações do usuário com paginação
+  const allTransactions: TransactionEvent[] = [];
+  let offset = 0;
+  const limit = 500;
 
-  const transactions = result.rows as unknown as TransactionEvent[];
+  while (true) {
+    const result = await databases.listRows({
+      databaseId: DATABASE_ID,
+      tableId: COLLECTIONS.TRANSACTIONS,
+      queries: [Query.equal('user_id', userId), Query.limit(limit), Query.offset(offset)],
+    });
+
+    const transactions = result.rows as unknown as TransactionEvent[];
+    allTransactions.push(...transactions);
+
+    if (transactions.length === 0 || transactions.length < limit) {
+      break;
+    }
+
+    offset += limit;
+  }
+
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   // Identificar transações que eram futuras mas agora são de hoje ou passado
-  const dueTransactions = transactions.filter((t) => {
+  const dueTransactions = allTransactions.filter((t) => {
     const transactionDate = new Date(t.date);
     const transactionDay = new Date(
       transactionDate.getFullYear(),
@@ -247,12 +273,24 @@ async function processDueTransactions(databases: TablesDB, userId: string): Prom
 
   console.log(`[BalanceSync] Found ${accountIds.size} accounts to update`);
 
-  // Recalcular saldo de cada conta afetada
+  // Recalcular saldo de cada conta afetada com pequeno delay entre cada uma
+  let processed = 0;
   for (const accountId of accountIds) {
-    await syncAccountBalance(databases, accountId);
+    try {
+      await syncAccountBalance(databases, accountId);
+      processed++;
+
+      // Pequeno delay para evitar sobrecarga (50ms)
+      if (processed < accountIds.size) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+    } catch (error) {
+      console.error(`[BalanceSync] Error syncing account ${accountId}:`, error);
+      // Continuar com as próximas contas mesmo se uma falhar
+    }
   }
 
-  return accountIds.size;
+  return processed;
 }
 
 /**
@@ -263,7 +301,7 @@ async function processAllUsers(databases: TablesDB): Promise<void> {
 
   // Buscar todas as contas
   let offset = 0;
-  const limit = 100;
+  const limit = 50; // Reduzido para processar em lotes menores
   const processedUsers = new Set<string>();
 
   while (true) {
@@ -285,8 +323,12 @@ async function processAllUsers(databases: TablesDB): Promise<void> {
         processedUsers.add(account.user_id);
         try {
           await processDueTransactions(databases, account.user_id);
+
+          // Pequeno delay entre usuários (100ms)
+          await new Promise((resolve) => setTimeout(resolve, 100));
         } catch (error) {
           console.error(`[BalanceSync] Error processing user ${account.user_id}:`, error);
+          // Continuar com os próximos usuários mesmo se um falhar
         }
       }
     }
@@ -296,6 +338,9 @@ async function processAllUsers(databases: TablesDB): Promise<void> {
     }
 
     offset += limit;
+
+    // Delay entre lotes (200ms)
+    await new Promise((resolve) => setTimeout(resolve, 200));
   }
 
   console.log(`[BalanceSync] Processed ${processedUsers.size} users`);
@@ -305,6 +350,18 @@ async function processAllUsers(databases: TablesDB): Promise<void> {
  * Função principal
  */
 export default async ({ req, res, log, error }: any) => {
+  // Para execuções longas, retornar resposta imediatamente e processar de forma assíncrona
+  const isAsync = req.headers['x-appwrite-trigger'] === 'schedule' || req.headers['x-appwrite-trigger'] === 'event';
+
+  if (isAsync) {
+    // Responder imediatamente para evitar timeout
+    res.json({
+      success: true,
+      message: 'Balance sync started asynchronously',
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   try {
     log('Balance Sync Function started');
     log(`Request method: ${req.method}`);
@@ -322,11 +379,8 @@ export default async ({ req, res, log, error }: any) => {
     if (executionType === 'schedule') {
       log('Running scheduled balance sync (processing due transactions)');
       await processAllUsers(databases);
-      return res.json({
-        success: true,
-        message: 'Scheduled balance sync completed',
-        timestamp: new Date().toISOString(),
-      });
+      log('Scheduled balance sync completed successfully');
+      return; // Resposta já foi enviada no início
     }
 
     // Execução por evento de database
@@ -374,16 +428,8 @@ export default async ({ req, res, log, error }: any) => {
       const newBalance = await syncAccountBalance(databases, transaction.account_id, deletedTransactionId);
 
       log(`Balance sync completed. New balance: ${newBalance}`);
-
-      return res.json({
-        success: true,
-        message: 'Account balance synced',
-        accountId: transaction.account_id,
-        transactionId: transaction.$id,
-        newBalance,
-        eventType,
-        timestamp: new Date().toISOString(),
-      });
+      log(`Event processing completed successfully`);
+      return; // Resposta já foi enviada no início
     }
 
     // Execução manual
@@ -424,19 +470,28 @@ export default async ({ req, res, log, error }: any) => {
 
     const accountsProcessed = await processDueTransactions(databases, userId);
 
-    return res.json({
-      success: true,
-      message: 'Manual balance sync completed',
-      accountsProcessed,
-    });
+    log(`Manual balance sync completed. Accounts processed: ${accountsProcessed}`);
+
+    // Se não for assíncrono, retornar resposta normal
+    if (!isAsync) {
+      return res.json({
+        success: true,
+        message: 'Manual balance sync completed',
+        accountsProcessed,
+      });
+    }
   } catch (err: any) {
     error('Balance Sync Function error:', err);
-    return res.json(
-      {
-        success: false,
-        error: err.message || 'Unknown error',
-      },
-      500,
-    );
+
+    // Se não for assíncrono, retornar erro
+    if (!isAsync) {
+      return res.json(
+        {
+          success: false,
+          error: err.message || 'Unknown error',
+        },
+        500,
+      );
+    }
   }
 };
