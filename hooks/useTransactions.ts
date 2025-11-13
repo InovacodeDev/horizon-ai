@@ -221,6 +221,7 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
         user_id: userId || '',
         amount: input.amount,
         type: input.type,
+        direction: input.type !== 'expense' ? 'in' : 'out',
         date: input.date,
         status: 'completed',
         category: input.category,

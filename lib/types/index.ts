@@ -174,24 +174,30 @@ export interface Transaction {
   $createdAt: string;
   $updatedAt: string;
   user_id: string;
-  amount: number;
+  amount: number; // Positive for 'in' direction, negative for 'out' direction
   type: TransactionType;
   date: string;
   status: TransactionStatus;
-  data?: string; // JSON string containing TransactionData
+  account_id?: string;
+  credit_card_id?: string;
+  category?: string;
+  description?: string;
+  currency?: string;
+  source?: TransactionSource;
+  merchant?: string;
+  tags?: string;
+  is_recurring?: boolean;
+  installment?: number;
+  installments?: number;
+  credit_card_transaction_created_at?: string;
+  direction: 'in' | 'out'; // Transaction direction: 'in' for income/salary/transfers in, 'out' for expense/transfers out
+  data?: string; // JSON string containing additional data
   created_at: string;
   updated_at: string;
-  // Extended fields (parsed from data JSON or for UI)
-  description?: string;
-  category?: string;
+  // Extended fields for UI
   bankName?: string;
   icon?: FC<{ className?: string }>;
   notes?: string;
-  account_id?: string;
-  credit_card_id?: string;
-  merchant?: string;
-  currency?: string;
-  source?: TransactionSource;
 }
 
 /**

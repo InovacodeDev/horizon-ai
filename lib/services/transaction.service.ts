@@ -77,6 +77,7 @@ export interface UpdateTransactionData {
 
 export interface TransactionFilter {
   userId?: string;
+  accountId?: string;
   type?: 'income' | 'expense' | 'transfer' | 'salary';
   category?: string;
   status?: 'pending' | 'completed' | 'failed' | 'cancelled';
@@ -151,9 +152,12 @@ export class TransactionService {
     // Determine direction based on type
     const direction = data.type === 'expense' ? 'out' : 'in';
 
+    // Amount should be positive for 'in' direction, negative for 'out' direction
+    const signedAmount = direction === 'in' ? Math.abs(data.amount) : -Math.abs(data.amount);
+
     const payload: any = {
       user_id: data.userId,
-      amount: data.amount,
+      amount: signedAmount,
       type: data.type,
       date: dateInUserTimezone,
       status: data.status || 'completed',
@@ -255,9 +259,12 @@ export class TransactionService {
     // Determine direction based on type
     const direction = data.type === 'expense' ? 'out' : 'in';
 
+    // Amount should be positive for 'in' direction, negative for 'out' direction
+    const signedAmount = direction === 'in' ? Math.abs(data.amount) : -Math.abs(data.amount);
+
     const payload: any = {
       user_id: data.userId,
-      amount: data.amount,
+      amount: signedAmount,
       type: data.type,
       date: dateInUserTimezone,
       status: data.status || 'completed',
@@ -338,11 +345,21 @@ export class TransactionService {
       }
 
       // Core indexed fields that can be updated directly
-      if (data.amount !== undefined) updatePayload.amount = data.amount;
-      if (data.type !== undefined) {
-        updatePayload.type = data.type;
-        // Update direction based on new type
-        updatePayload.direction = data.type === 'expense' ? 'out' : 'in';
+      if (data.amount !== undefined || data.type !== undefined) {
+        // Determine direction (use existing if type not changed)
+        const newType = data.type !== undefined ? data.type : existing.type;
+        const newDirection = newType === 'expense' ? 'out' : 'in';
+
+        // Calculate signed amount
+        const newAmount = data.amount !== undefined ? data.amount : Math.abs(existing.amount);
+        const signedAmount = newDirection === 'in' ? Math.abs(newAmount) : -Math.abs(newAmount);
+
+        updatePayload.amount = signedAmount;
+
+        if (data.type !== undefined) {
+          updatePayload.type = data.type;
+          updatePayload.direction = newDirection;
+        }
       }
       if (data.date !== undefined) {
         // Convert date to user's timezone
@@ -552,9 +569,6 @@ export class TransactionService {
         queries.push(Query.equal('user_id', filters.userId));
       }
 
-      // Sempre excluir transações tipo "transfer" (são invisíveis para o usuário)
-      queries.push(Query.notEqual('type', 'transfer'));
-
       if (filters.type) {
         queries.push(Query.equal('type', filters.type));
       }
@@ -569,6 +583,10 @@ export class TransactionService {
 
       if (filters.source) {
         queries.push(Query.equal('source', filters.source));
+      }
+
+      if (filters.accountId) {
+        queries.push(Query.equal('account_id', filters.accountId));
       }
 
       if (filters.startDate) {
@@ -596,6 +614,7 @@ export class TransactionService {
         queries.push(Query.equal('credit_card_id', filters.creditCardId));
       }
 
+      console.log({ queries });
       // Pagination
       const limit = filters.limit || 50;
       const offset = filters.offset || 0;
@@ -646,20 +665,25 @@ export class TransactionService {
     const categoryBreakdown: Record<string, number> = {};
 
     for (const transaction of transactions) {
-      if (transaction.type === 'income' || transaction.type === 'salary') {
-        totalIncome += transaction.amount;
-      } else if (transaction.type === 'expense') {
-        totalExpense += transaction.amount;
-      }
+      // Exclude transfers from income/expense calculations
+      if (transaction.type !== 'transfer') {
+        // Use direction to determine if it's income or expense
+        // amount is already signed: positive for 'in', negative for 'out'
+        if (transaction.direction === 'in') {
+          totalIncome += Math.abs(transaction.amount);
+        } else if (transaction.direction === 'out') {
+          totalExpense += Math.abs(transaction.amount);
+        }
 
-      // Parse data to get category
-      const transactionData = this.parseJSON(transaction.data, {});
-      const category = transactionData.category || 'uncategorized';
+        // Parse data to get category
+        const transactionData = this.parseJSON(transaction.data, {});
+        const category = transaction.category || transactionData.category || 'uncategorized';
 
-      if (!categoryBreakdown[category]) {
-        categoryBreakdown[category] = 0;
+        if (!categoryBreakdown[category]) {
+          categoryBreakdown[category] = 0;
+        }
+        categoryBreakdown[category] += Math.abs(transaction.amount);
       }
-      categoryBreakdown[category] += transaction.amount;
     }
 
     return {

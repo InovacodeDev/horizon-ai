@@ -430,7 +430,7 @@ export interface Transaction {
   $createdAt: string;
   $updatedAt: string;
   user_id: string;
-  amount: number;
+  amount: number; // Positive for 'in' direction, negative for 'out' direction
   type: 'income' | 'expense' | 'transfer' | 'salary';
   date: string;
   status: 'pending' | 'completed' | 'failed' | 'cancelled';
@@ -446,7 +446,7 @@ export interface Transaction {
   installment?: number; // Current installment number (1, 2, 3...)
   installments?: number; // Total number of installments (12 for 12x)
   credit_card_transaction_created_at?: string; // Original purchase date on credit card
-  direction: 'in' | 'out'; // Transaction direction: 'in' for income/salary/transfer, 'out' for expense
+  direction: 'in' | 'out'; // Transaction direction: 'in' for income/salary/transfers in, 'out' for expense/transfers out
   data?: string; // JSON string for remaining data (location, receipt_url, recurring_pattern, etc.)
   created_at: string;
   updated_at: string;

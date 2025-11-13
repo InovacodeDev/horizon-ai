@@ -15,7 +15,6 @@ import { ID, Query } from 'node-appwrite';
 
 import { CSVParser } from './parsers/csv.parser';
 import { OFXParser } from './parsers/ofx.parser';
-import { PDFParser } from './parsers/pdf.parser';
 import { type CreateTransactionData, TransactionService } from './transaction.service';
 
 /**
@@ -36,8 +35,8 @@ export class ImportService {
   private dbAdapter: any;
 
   constructor() {
-    // Initialize parsers (order matters - try OFX first, then CSV, then PDF as fallback)
-    this.parsers = [new OFXParser(), new CSVParser(), new PDFParser()];
+    // Initialize parsers (order matters - try OFX first, then CSV)
+    this.parsers = [new OFXParser(), new CSVParser()];
 
     // Initialize transaction service
     this.transactionService = new TransactionService();
@@ -64,7 +63,7 @@ export class ImportService {
       const parser = this.selectParser(file);
       if (!parser) {
         throw new ImportError(
-          'Unsupported file format. Please use .ofx, .csv, or .pdf files',
+          'Unsupported file format. Please use .ofx or .csv files',
           ImportErrorCode.INVALID_FILE_FORMAT,
           { fileName: file.name },
         );
@@ -271,8 +270,6 @@ export class ImportService {
         return 'ofx';
       case 'csv':
         return 'csv';
-      case 'pdf':
-        return 'pdf';
       default:
         return 'csv'; // Default fallback
     }
@@ -291,9 +288,9 @@ export class ImportService {
   }
 
   /**
-   * Read file content as string or buffer
+   * Read file content as string
    */
-  private async readFile(file: File): Promise<string | Buffer> {
+  private async readFile(file: File): Promise<string> {
     // Check if we're in a browser environment
     if (typeof FileReader !== 'undefined') {
       return new Promise((resolve, reject) => {
@@ -303,8 +300,6 @@ export class ImportService {
           const result = event.target?.result;
           if (typeof result === 'string') {
             resolve(result);
-          } else if (result instanceof ArrayBuffer) {
-            resolve(Buffer.from(result));
           } else {
             reject(new Error('Failed to read file'));
           }
@@ -314,23 +309,14 @@ export class ImportService {
           reject(new Error('Failed to read file'));
         };
 
-        // Read as text for OFX and CSV, as array buffer for PDF
-        if (file.name.toLowerCase().endsWith('.pdf')) {
-          reader.readAsArrayBuffer(file);
-        } else {
-          reader.readAsText(file);
-        }
+        // Read as text for OFX and CSV
+        reader.readAsText(file);
       });
     } else {
-      // Server-side: use arrayBuffer and TextDecoder/Buffer
+      // Server-side: use arrayBuffer and TextDecoder
       const arrayBuffer = await file.arrayBuffer();
-
-      if (file.name.toLowerCase().endsWith('.pdf')) {
-        return Buffer.from(arrayBuffer);
-      } else {
-        const decoder = new TextDecoder('utf-8');
-        return decoder.decode(arrayBuffer);
-      }
+      const decoder = new TextDecoder('utf-8');
+      return decoder.decode(arrayBuffer);
     }
   }
 
@@ -371,7 +357,10 @@ export class ImportService {
 
   /**
    * Detect duplicate transactions
-   * Checks for matches by external ID and by date/amount/description fuzzy matching
+   * Checks for matches by external ID and by date/amount/type fuzzy matching
+   * Date matching: ±1 day tolerance
+   * Amount matching: ±0.01 tolerance (handles rounding differences)
+   * Type matching: exact match (income/expense)
    */
   private async detectDuplicates(
     transactions: ParsedTransaction[],
@@ -389,6 +378,7 @@ export class ImportService {
 
       const { transactions: existingTransactions } = await this.transactionService.listTransactions({
         userId,
+        accountId, // Filter by account to only check duplicates in the same account
         startDate,
         limit: 10000, // Get all recent transactions
       });
@@ -417,30 +407,35 @@ export class ImportService {
           }
         }
 
-        // Check for fuzzy match by date (±2 days), amount (±0.01), and description
+        // Check for fuzzy match by date (±1 day), amount (±0.01), and type
         if (!isDuplicate) {
           const parsedDate = new Date(parsedTransaction.date);
           const parsedAmount = parsedTransaction.amount;
-          const parsedDescription = this.normalizeDescription(parsedTransaction.description);
+          const parsedType = parsedTransaction.type;
 
           const fuzzyMatch = existingTransactions.find((existing) => {
-            // Check date within ±2 days
+            // Check date within ±1 day
             const existingDate = new Date(existing.date);
             const daysDiff = Math.abs((existingDate.getTime() - parsedDate.getTime()) / (1000 * 60 * 60 * 24));
 
-            if (daysDiff > 2) {
+            if (daysDiff > 1) {
               return false;
             }
 
-            // Check amount within ±0.01
+            console.log({
+              existing,
+              parsedAmount,
+              parsedType,
+              parsedDate,
+            })
+            // Check amount match with tolerance for rounding differences (±0.01)
             const amountDiff = Math.abs(existing.amount - parsedAmount);
             if (amountDiff > 0.01) {
               return false;
             }
 
-            // Check description similarity
-            const existingDescription = this.normalizeDescription(existing.description || '');
-            if (existingDescription !== parsedDescription) {
+            // Check transaction type match
+            if (existing.type !== parsedType) {
               return false;
             }
 

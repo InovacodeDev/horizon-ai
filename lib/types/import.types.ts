@@ -39,7 +39,7 @@ export class ImportError extends Error {
 /**
  * Supported file formats for import
  */
-export type ImportFileFormat = 'ofx' | 'csv' | 'pdf';
+export type ImportFileFormat = 'ofx' | 'csv';
 
 /**
  * Import status
@@ -195,7 +195,7 @@ export interface Parser {
   /**
    * Parse file and extract transactions
    */
-  parse(fileContent: string | Buffer): Promise<ParsedTransaction[]>;
+  parse(fileContent: string): Promise<ParsedTransaction[]>;
 }
 
 /**
@@ -270,14 +270,14 @@ export interface ErrorMessageWithSuggestion {
  * User-friendly error messages in Portuguese with suggestions
  */
 export const ERROR_MESSAGES: Record<ImportErrorCode, string> = {
-  [ImportErrorCode.INVALID_FILE_FORMAT]: 'Formato de arquivo não suportado. Use .ofx, .csv ou .pdf',
+  [ImportErrorCode.INVALID_FILE_FORMAT]: 'Formato de arquivo não suportado. Use .ofx ou .csv',
   [ImportErrorCode.FILE_TOO_LARGE]: 'Arquivo muito grande. O tamanho máximo é 10MB',
   [ImportErrorCode.PARSE_ERROR]: 'Erro ao processar o arquivo. Verifique se o formato está correto',
   [ImportErrorCode.VALIDATION_ERROR]: 'Dados inválidos encontrados no arquivo',
   [ImportErrorCode.NO_TRANSACTIONS_FOUND]: 'Nenhuma transação encontrada no arquivo',
   [ImportErrorCode.DUPLICATE_IMPORT]: 'Este arquivo já foi importado anteriormente',
   [ImportErrorCode.DATABASE_ERROR]: 'Erro ao salvar as transações. Tente novamente',
-  [ImportErrorCode.AI_SERVICE_ERROR]: 'Erro ao processar PDF. Tente novamente mais tarde',
+  [ImportErrorCode.AI_SERVICE_ERROR]: 'Erro ao processar arquivo. Tente novamente mais tarde',
   [ImportErrorCode.MISSING_REQUIRED_COLUMNS]:
     'Colunas obrigatórias não encontradas. Verifique se o arquivo contém Data, Valor e Descrição',
   [ImportErrorCode.INVALID_DATE_FORMAT]: 'Formato de data inválido. Use DD/MM/YYYY, YYYY-MM-DD ou DD-MM-YYYY',
@@ -294,7 +294,7 @@ export const ERROR_MESSAGES_WITH_SUGGESTIONS: Record<ImportErrorCode, ErrorMessa
   [ImportErrorCode.INVALID_FILE_FORMAT]: {
     message: 'Formato de arquivo não suportado',
     suggestion:
-      'Certifique-se de que o arquivo tem extensão .ofx, .csv ou .pdf. Baixe o extrato diretamente do site do seu banco.',
+      'Certifique-se de que o arquivo tem extensão .ofx ou .csv. Baixe o extrato diretamente do site do seu banco.',
   },
   [ImportErrorCode.FILE_TOO_LARGE]: {
     message: 'Arquivo muito grande',
@@ -327,9 +327,8 @@ export const ERROR_MESSAGES_WITH_SUGGESTIONS: Record<ImportErrorCode, ErrorMessa
       'Ocorreu um erro ao salvar no banco de dados. Verifique sua conexão com a internet e tente novamente em alguns instantes.',
   },
   [ImportErrorCode.AI_SERVICE_ERROR]: {
-    message: 'Erro ao processar PDF',
-    suggestion:
-      'O serviço de processamento de PDF está temporariamente indisponível. Tente novamente mais tarde ou use um arquivo OFX ou CSV.',
+    message: 'Erro ao processar arquivo',
+    suggestion: 'Ocorreu um erro ao processar o arquivo. Tente novamente mais tarde ou use um arquivo OFX ou CSV.',
   },
   [ImportErrorCode.MISSING_REQUIRED_COLUMNS]: {
     message: 'Colunas obrigatórias não encontradas',

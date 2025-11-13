@@ -5,22 +5,6 @@ import { AVAILABLE_CATEGORY_ICONS } from "@/lib/constants";
 import { TRANSACTION_CATEGORIES, getCategoryById } from "@/lib/constants/categories";
 import type { Transaction as APITransaction, TransactionType } from "@/lib/types";
 
-// UI Transaction type for display
-interface Transaction {
-  $id: string;
-  description: string;
-  amount: number;
-  date: string;
-  bankName: string;
-  category: string;
-  type: 'credit' | 'debit' | 'pix' | 'boleto';
-  icon: React.FC<{ className?: string }>;
-  notes?: string;
-  account_id?: string;
-  credit_card_id?: string;
-  source?: string;
-  apiType?: string;
-}
 import { SearchIcon, FilterIcon, SwapIcon, PlusIcon, XIcon } from "@/components/assets/Icons";
 import Input from "@/components/ui/Input";
 import CurrencyInput from "@/components/ui/CurrencyInput";
@@ -37,6 +21,24 @@ import { useSearchParams } from "next/navigation";
 import { getCurrentDateInUserTimezone } from "@/lib/utils/timezone";
 import { ProcessDueTransactions } from "@/components/ProcessDueTransactions";
 import { ImportTransactionsModal } from "@/components/transactions/ImportTransactionsModal";
+
+// UI Transaction type for display
+interface Transaction {
+  $id: string;
+  description: string;
+  amount: number;
+  date: string;
+  bankName: string;
+  category: string;
+  type: 'credit' | 'debit' | 'pix' | 'boleto';
+  direction: 'in' | 'out';
+  icon: React.FC<{ className?: string }>;
+  notes?: string;
+  account_id?: string;
+  credit_card_id?: string;
+  source?: string;
+  apiType?: string;
+}
 
 // Helper function to convert date string to ISO string in user's timezone
 const dateToUserTimezone = (dateString: string): string => {
@@ -172,9 +174,9 @@ const TransactionCategoryBadge: React.FC<{ categoryId: string }> = ({ categoryId
 };
 
 const TransactionItem: React.FC<{ transaction: Transaction; onClick: () => void }> = ({ transaction, onClick }) => {
-    const isIncome = transaction.amount > 0;
+    const isIncome = transaction.direction === 'in';
     const amountColor = isIncome ? "text-secondary" : "text-on-surface";
-    const formattedAmount = `${isIncome ? "+" : ""}${transaction.amount.toLocaleString("pt-BR", {
+    const formattedAmount = `${isIncome ? "+" : ""}${Math.abs(transaction.amount).toLocaleString("pt-BR", {
         style: "currency",
         currency: "BRL",
     })}`;
@@ -279,6 +281,7 @@ export default function TransactionsPage() {
         bankName: "",
         category: "",
         type: "debit" as Transaction['type'],
+        direction: "in",
         notes: "",
         flow: "expense",
         accountId: "",
@@ -320,11 +323,12 @@ export default function TransactionsPage() {
             return {
                 $id: apiTx.$id,
                 description: apiTx.description || apiTx.merchant || 'Transaction',
-                amount: (apiTx.type === 'income' || apiTx.type === 'salary') ? Math.abs(apiTx.amount) : -Math.abs(apiTx.amount),
+                amount: apiTx.amount, // Amount is already signed based on direction
                 date: apiTx.date,
                 bankName: accountName,
                 category: apiTx.category || 'Uncategorized',
                 type: mapTransactionType(apiTx.type, apiTx.source),
+                direction: apiTx.direction,
                 icon: categoryIcon,
                 notes: apiTx.description,
                 account_id: apiTx.account_id,
@@ -473,6 +477,7 @@ export default function TransactionsPage() {
             bankName: transaction.bankName,
             category: transaction.category,
             type: transaction.type,
+            direction: transaction.direction,
             notes: transaction.notes || '',
             flow: transaction.apiType === 'income' ? 'income' : 'expense',
             accountId: transaction.account_id || '',
@@ -1262,10 +1267,10 @@ export default function TransactionsPage() {
                             <p className="text-3xl font-light text-on-surface">{selectedTransaction.description}</p>
                             <p
                                 className={`text-4xl font-light mt-1 ${
-                                    selectedTransaction.amount > 0 ? "text-secondary" : "text-on-surface"
+                                    selectedTransaction.direction === 'in' ? "text-secondary" : "text-on-surface"
                                 }`}
                             >
-                                {selectedTransaction.amount.toLocaleString("pt-BR", {
+                                {Math.abs(selectedTransaction.amount).toLocaleString("pt-BR", {
                                     style: "currency",
                                     currency: "BRL",
                                 })}
