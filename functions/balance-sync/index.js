@@ -25,10 +25,19 @@ const COLLECTIONS = {
  * Inicializa o cliente Appwrite
  */
 function initializeClient() {
-  const client = new Client()
-    .setEndpoint(process.env.APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1')
-    .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID || '')
-    .setKey(process.env.APPWRITE_API_KEY || '');
+  const endpoint = process.env.APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1';
+  const projectId = process.env.APPWRITE_FUNCTION_PROJECT_ID;
+  const apiKey = process.env.APPWRITE_API_KEY;
+
+  if (!projectId) {
+    throw new Error('APPWRITE_FUNCTION_PROJECT_ID is not set');
+  }
+  if (!apiKey) {
+    throw new Error('APPWRITE_API_KEY is not set');
+  }
+
+  const client = new Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey);
+
   const databases = new Databases(client);
   return { client, databases };
 }
@@ -115,12 +124,28 @@ async function syncAccountBalance(databases, accountId) {
  */
 async function processDueTransactions(databases, userId) {
   console.log(`[BalanceSync] Processing due transactions for user ${userId}`);
-  // Buscar todas as transações do usuário
-  const result = await databases.listDocuments(DATABASE_ID, COLLECTIONS.TRANSACTIONS, [
-    Query.equal('user_id', userId),
-    Query.limit(10000),
-  ]);
-  const transactions = result.documents;
+
+  // Buscar todas as transações do usuário com paginação
+  const allTransactions = [];
+  let offset = 0;
+  const limit = 500;
+
+  while (true) {
+    const result = await databases.listDocuments(DATABASE_ID, COLLECTIONS.TRANSACTIONS, [
+      Query.equal('user_id', userId),
+      Query.limit(limit),
+      Query.offset(offset),
+    ]);
+
+    allTransactions.push(...result.documents);
+
+    if (result.documents.length < limit) {
+      break;
+    }
+    offset += limit;
+  }
+
+  const transactions = allTransactions;
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   // Identificar transações que eram futuras mas agora são de hoje ou passado
@@ -197,7 +222,23 @@ export default async ({ req, res, log, error }) => {
     log(`Request headers: ${JSON.stringify(req.headers)}`);
     log(`Request body (raw): ${req.bodyRaw}`);
     log(`Request body (parsed): ${JSON.stringify(req.body)}`);
-    const { databases } = initializeClient();
+
+    // Inicializar cliente com validação
+    let databases;
+    try {
+      const client = initializeClient();
+      databases = client.databases;
+      log('Appwrite client initialized successfully');
+    } catch (initError) {
+      error('Failed to initialize Appwrite client:', initError);
+      return res.json(
+        {
+          success: false,
+          error: `Initialization error: ${initError.message}`,
+        },
+        500,
+      );
+    }
     // Verificar o tipo de execução
     const executionType = req.headers['x-appwrite-trigger'] || 'manual';
     log(`Execution type: ${executionType}`);
