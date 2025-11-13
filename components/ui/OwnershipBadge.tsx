@@ -74,21 +74,21 @@ export const OwnershipBadge: React.FC<OwnershipBadgeProps> = ({
   
   // Size classes
   const sizeClasses = {
-    sm: 'text-xs px-2 py-0.5',
-    md: 'text-sm px-2.5 py-1',
-    lg: 'text-base px-3 py-1.5',
+    sm: 'text-xs px-2 py-1',
+    md: 'text-xs px-2.5 py-1',
+    lg: 'text-sm px-3 py-1.5',
   };
   
   // Variant classes
   const variantClasses = {
     default: isOwn
-      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-      : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+      ? 'bg-blue-light text-blue-primary border border-blue-primary/20'
+      : 'bg-purple-100 text-purple-700 border border-purple-300 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700',
     subtle: isOwn
-      ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
+      ? 'bg-blue-light/50 text-blue-primary'
       : 'bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400',
     outlined: isOwn
-      ? 'border border-blue-300 text-blue-700 bg-transparent dark:border-blue-700 dark:text-blue-300'
+      ? 'border border-blue-primary text-blue-primary bg-transparent'
       : 'border border-purple-300 text-purple-700 bg-transparent dark:border-purple-700 dark:text-purple-300',
   };
   
@@ -100,7 +100,7 @@ export const OwnershipBadge: React.FC<OwnershipBadgeProps> = ({
   const badgeElement = (
     <span
       className={`
-        inline-flex items-center gap-1 font-medium rounded-full
+        inline-flex items-center gap-1 font-medium rounded-lg
         ${sizeClasses[size]}
         ${variantClasses[variant]}
         ${className}

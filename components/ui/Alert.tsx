@@ -38,16 +38,16 @@ export function Alert({ type = 'info', title, message, onClose, className = '' }
   const style = styles[type];
 
   return (
-    <div className={`flex items-start gap-3 px-4 py-3.5 rounded-lg border ${style.container} ${className}`} role="alert">
+    <div className={`flex items-start gap-3 px-4 py-3 rounded-xl border ${style.container} ${className}`} role="alert">
       {style.icon}
       <div className="flex-1 min-w-0">
-        {title && <p className="font-semibold text-sm mb-1">{title}</p>}
+        {title && <p className="font-semibold text-sm mb-0.5">{title}</p>}
         <p className="text-sm leading-relaxed">{message}</p>
       </div>
       {onClose && (
         <button
           onClick={onClose}
-          className="flex-shrink-0 p-1 rounded hover:bg-black/5 dark:hover:bg-white/5 transition-colors-smooth focus-ring"
+          className="flex-shrink-0 p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors-smooth focus-ring"
           aria-label="Fechar alerta"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

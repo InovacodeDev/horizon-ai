@@ -49,7 +49,7 @@ const CategorySelect: React.FC<CategorySelectProps> = ({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           required={required}
-          className={`w-full h-12 ${selectedCategory ? 'pl-12' : 'pl-3'} pr-3 bg-surface border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:outline-none transition-colors duration-200 appearance-none cursor-pointer`}
+          className={`w-full h-14 ${selectedCategory ? 'pl-12' : 'pl-4'} pr-10 bg-surface-new-primary border border-border-primary rounded-2xl text-text-primary focus:ring-2 focus:ring-border-focus focus:border-border-focus focus:outline-none transition-colors duration-200 appearance-none cursor-pointer`}
         >
           <option value="">Selecione uma categoria</option>
           {filteredCategories.map((category) => (
@@ -58,9 +58,9 @@ const CategorySelect: React.FC<CategorySelectProps> = ({
             </option>
           ))}
         </select>
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
           <svg
-            className="w-5 h-5 text-on-surface-variant"
+            className="w-5 h-5 text-text-tertiary"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

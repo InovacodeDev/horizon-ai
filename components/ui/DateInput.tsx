@@ -122,10 +122,10 @@ const DateInput: React.FC<DateInputProps> = ({
       {label && (
         <label
           htmlFor={id}
-          className='block text-sm font-medium text-on-surface-variant mb-1'
+          className='block text-sm font-medium text-text-secondary mb-2'
         >
           {label}
-          {required && <span className='text-error ml-1'>*</span>}
+          {required && <span className='text-red-text ml-1'>*</span>}
         </label>
       )}
       <input
@@ -138,7 +138,7 @@ const DateInput: React.FC<DateInputProps> = ({
         required={required}
         disabled={disabled}
         maxLength={10}
-        className='w-full h-12 px-4 bg-surface border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:outline-none transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed'
+        className='w-full h-12 px-4 bg-surface-new-primary border border-border-primary rounded-lg text-text-primary placeholder:text-text-tertiary focus:ring-2 focus:ring-border-focus focus:border-border-focus focus:outline-none transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed'
       />
     </div>
   );

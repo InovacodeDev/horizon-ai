@@ -15,11 +15,11 @@ const Card: React.FC<CardProps> = ({
   className = '', 
   onClick 
 }) => {
-  const baseClasses = 'bg-surface-new-primary rounded-lg transition-smooth-200';
+  const baseClasses = 'bg-surface-new-primary rounded-xl transition-smooth-200';
   
   const variantClasses = {
     default: 'border border-border-primary',
-    elevated: 'shadow-soft-md',
+    elevated: 'shadow-soft-lg',
     flat: '',
     interactive: 'shadow-soft-md cursor-pointer hover:shadow-soft-lg hover:-translate-y-0.5',
   };

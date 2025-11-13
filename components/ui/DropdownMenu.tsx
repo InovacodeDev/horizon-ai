@@ -43,8 +43,8 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({ trigger, children })
         <div className="relative" ref={menuRef}>
             <div onClick={handleToggle}>{trigger}</div>
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-surface-new-primary rounded-md shadow-soft-lg border border-border-primary z-50 overflow-hidden animate-slide-up">
-                    <div className="py-1">{children}</div>
+                <div className="absolute right-0 mt-2 w-56 bg-surface-new-primary rounded-xl shadow-soft-xl border border-border-primary z-50 overflow-hidden animate-slide-up">
+                    <div className="py-1.5">{children}</div>
                 </div>
             )}
         </div>
@@ -69,9 +69,9 @@ export const DropdownMenuItem: React.FC<DropdownMenuItemProps> = ({
     return (
         <button
             onClick={handleClick}
-            className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-3 transition-colors-smooth ${variantStyles}`}
+            className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-3 transition-colors-smooth first:rounded-t-xl last:rounded-b-xl ${variantStyles}`}
         >
-            {icon && <span className="flex-shrink-0 w-4 h-4">{icon}</span>}
+            {icon && <span className="flex-shrink-0 w-5 h-5">{icon}</span>}
             {children}
         </button>
     );

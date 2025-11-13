@@ -47,20 +47,19 @@ const Input: React.FC<InputProps> = ({
           type={inputType}
           disabled={disabled}
           className={`
-            w-full h-11 px-4 
-            ${leftIcon ? 'pl-10' : ''} 
+            w-full h-12 px-4 
+            ${leftIcon ? 'pl-11' : ''} 
             ${isPasswordInput || rightIcon ? 'pr-12' : ''} 
             bg-surface-new-primary 
             border ${hasError ? 'border-red-border' : 'border-border-primary'}
-            rounded-md 
+            rounded-lg 
             text-sm text-text-primary
             placeholder:text-text-tertiary
             transition-colors-smooth
             focus:outline-none 
             focus:border-border-focus 
             focus:ring-2 
-            focus:ring-border-focus 
-            focus:ring-opacity-10
+            focus:ring-border-focus
             disabled:opacity-60 
             disabled:cursor-not-allowed
             disabled:bg-bg-secondary

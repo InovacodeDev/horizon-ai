@@ -85,13 +85,13 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
   return (
     <div className={className}>
       {label && (
-        <label htmlFor={id} className="block text-sm font-medium text-on-surface-variant mb-1">
+        <label htmlFor={id} className="block text-sm font-medium text-text-secondary mb-2">
           {label}
-          {required && <span className="text-error ml-1">*</span>}
+          {required && <span className="text-red-text ml-1">*</span>}
         </label>
       )}
       <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">
+        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none font-medium">
           R$
         </span>
         <input
@@ -104,7 +104,7 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
           placeholder={placeholder}
           required={required}
           disabled={disabled}
-          className="w-full h-12 pl-12 pr-3 bg-surface border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:outline-none transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full h-12 pl-12 pr-4 bg-surface-new-primary border border-border-primary rounded-lg text-text-primary placeholder:text-text-tertiary focus:ring-2 focus:ring-border-focus focus:border-border-focus focus:outline-none transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
         />
       </div>
     </div>

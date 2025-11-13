@@ -73,7 +73,7 @@ const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, onDelete, onViewS
     const isShared = 'isOwn' in card && !card.isOwn;
     
     return (
-        <div className="bg-gray-50 rounded-lg p-3 flex flex-col h-full">
+        <div className="bg-surface rounded-lg p-3 flex flex-col h-full">
             <div className="flex items-start justify-between mb-2">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                     <CreditCardIcon className="h-6 w-6 text-blue-600 flex-shrink-0" />
@@ -96,7 +96,7 @@ const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, onDelete, onViewS
             </div>
             
             <div className="flex-grow">
-                <div className="flex justify-between text-xs text-gray-600 mb-1">
+                <div className="flex justify-between text-xs text-on-surface-variant mb-1">
                     <span className="truncate">
                         R$ {card.used_limit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </span>
@@ -112,10 +112,10 @@ const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, onDelete, onViewS
                         style={{ width: `${Math.min(usagePercentage, 100)}%` }}
                     />
                 </div>
-                <p className="text-xs text-gray-600">
+                <p className="text-xs text-on-surface-variant">
                     Limite: R$ {card.credit_limit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </p>
-                <p className="text-xs text-gray-600 mt-1">
+                <p className="text-xs text-on-surface-variant mt-1">
                     Fecha: {card.closing_day} • Vence: {card.due_day}
                 </p>
             </div>
@@ -123,7 +123,7 @@ const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, onDelete, onViewS
             <div className="flex gap-2 mt-3 pt-2 border-t border-gray-200">
                 <button
                     onClick={onViewStatement}
-                    className="flex-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50 py-1.5 px-2 rounded text-xs font-medium"
+                    className="flex-1 text-blue-600 hover:text-blue-700 hover:bg-surface-variant py-1.5 px-2 rounded text-xs font-medium"
                 >
                     Ver Fatura
                 </button>
@@ -132,7 +132,7 @@ const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, onDelete, onViewS
                     <>
                         <button
                             onClick={onEdit}
-                            className="text-gray-400 hover:text-blue-600 hover:bg-blue-50 p-1.5 rounded"
+                            className="text-gray-400 hover:text-blue-600 hover:bg-surface-variant p-1.5 rounded"
                             aria-label="Edit card"
                             title="Editar cartão"
                         >
@@ -142,7 +142,7 @@ const CreditCardItem: React.FC<CreditCardItemProps> = ({ card, onDelete, onViewS
                         </button>
                         <button
                             onClick={onDelete}
-                            className="text-gray-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded"
+                            className="text-gray-400 hover:text-red-600 hover:bg-surface-variant p-1.5 rounded"
                             aria-label="Delete card"
                             title="Excluir cartão"
                         >

@@ -58,13 +58,13 @@ export function TransferBalanceModal({ isOpen, onClose, accounts, onSuccess }: T
   const availableBalance = fromAccount?.balance || 0;
 
   return (
-    <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in'>
-      <div className='bg-surface-new-primary w-full max-w-md rounded-lg shadow-soft-xl transform transition-smooth-200 animate-slide-up'>
-        <div className='flex justify-between items-center p-6 border-b border-border-primary'>
-          <h2 className='text-lg font-semibold text-text-primary'>Transferir Saldo</h2>
+    <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in'>
+      <div className='bg-surface-new-primary w-full max-w-md rounded-xl shadow-soft-xl transform transition-smooth-200 animate-slide-up'>
+        <div className='flex justify-between items-center px-6 py-4 border-b border-border-primary'>
+          <h2 className='text-xl font-semibold text-text-primary'>Transferir Saldo</h2>
           <button
             onClick={onClose}
-            className='p-2 rounded-md text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors-smooth focus:outline-none focus:ring-2 focus:ring-border-focus'
+            className='p-1.5 rounded-lg text-text-tertiary hover:bg-bg-secondary hover:text-text-primary transition-colors-smooth focus:outline-none focus:ring-2 focus:ring-border-focus'
             type='button'
             aria-label='Fechar modal'
           >
@@ -89,7 +89,7 @@ export function TransferBalanceModal({ isOpen, onClose, accounts, onSuccess }: T
           className='p-6 space-y-5'
         >
           {error && (
-            <div className='bg-red-bg border border-red-border text-red-text px-4 py-3.5 rounded-lg flex items-start gap-3'>
+            <div className='bg-red-bg border border-red-border text-red-text px-4 py-3 rounded-xl flex items-start gap-3'>
               <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -98,12 +98,12 @@ export function TransferBalanceModal({ isOpen, onClose, accounts, onSuccess }: T
           )}
 
           <div>
-            <label className='block text-sm font-medium text-text-primary mb-2'>Conta de Origem *</label>
+            <label className='block text-sm font-medium text-text-secondary mb-2'>Conta de Origem *</label>
             <select
               required
               value={fromAccountId}
               onChange={(e) => setFromAccountId(e.target.value)}
-              className='w-full h-11 px-4 bg-surface-new-primary border border-border-primary rounded-md text-sm text-text-primary transition-colors-smooth focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-border-focus focus:ring-opacity-10'
+              className='w-full h-12 px-4 bg-surface-new-primary border border-border-primary rounded-lg text-sm text-text-primary transition-colors-smooth focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-border-focus'
             >
               <option value=''>Selecione uma conta</option>
               {accounts.map((account) => (
@@ -116,19 +116,19 @@ export function TransferBalanceModal({ isOpen, onClose, accounts, onSuccess }: T
               ))}
             </select>
             {fromAccountId && (
-              <p className='text-xs text-text-tertiary mt-1.5'>
+              <p className='text-xs text-text-tertiary mt-2'>
                 Saldo disponível: {availableBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </p>
             )}
           </div>
 
           <div>
-            <label className='block text-sm font-medium text-text-primary mb-2'>Conta de Destino *</label>
+            <label className='block text-sm font-medium text-text-secondary mb-2'>Conta de Destino *</label>
             <select
               required
               value={toAccountId}
               onChange={(e) => setToAccountId(e.target.value)}
-              className='w-full h-11 px-4 bg-surface-new-primary border border-border-primary rounded-md text-sm text-text-primary transition-colors-smooth focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-border-focus focus:ring-opacity-10'
+              className='w-full h-12 px-4 bg-surface-new-primary border border-border-primary rounded-lg text-sm text-text-primary transition-colors-smooth focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-border-focus'
             >
               <option value=''>Selecione uma conta</option>
               {accounts
@@ -158,12 +158,12 @@ export function TransferBalanceModal({ isOpen, onClose, accounts, onSuccess }: T
           </div>
 
           <div>
-            <label className='block text-sm font-medium text-text-primary mb-2'>Descrição (opcional)</label>
+            <label className='block text-sm font-medium text-text-secondary mb-2'>Descrição (opcional)</label>
             <input
               type='text'
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className='w-full h-11 px-4 bg-surface-new-primary border border-border-primary rounded-md text-sm text-text-primary placeholder:text-text-tertiary transition-colors-smooth focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-border-focus focus:ring-opacity-10'
+              className='w-full h-12 px-4 bg-surface-new-primary border border-border-primary rounded-lg text-sm text-text-primary placeholder:text-text-tertiary transition-colors-smooth focus:outline-none focus:border-border-focus focus:ring-2 focus:ring-border-focus'
               placeholder='Ex: Transferência para poupança'
             />
           </div>
@@ -172,14 +172,14 @@ export function TransferBalanceModal({ isOpen, onClose, accounts, onSuccess }: T
             <button
               type='button'
               onClick={onClose}
-              className='h-10 px-4 rounded-md text-sm font-medium bg-bg-secondary text-text-primary hover:bg-bg-tertiary transition-colors-smooth focus:outline-none focus:ring-2 focus:ring-border-focus disabled:opacity-60 disabled:cursor-not-allowed'
+              className='h-11 px-5 rounded-lg text-sm font-medium bg-bg-secondary text-text-primary hover:bg-bg-tertiary transition-colors-smooth focus:outline-none focus:ring-2 focus:ring-border-focus disabled:opacity-60 disabled:cursor-not-allowed'
               disabled={loading}
             >
               Cancelar
             </button>
             <button
               type='submit'
-              className='h-10 px-4 rounded-md text-sm font-medium bg-blue-primary text-white hover:bg-blue-hover shadow-soft-xs hover:shadow-soft-sm transition-smooth focus:outline-none focus:ring-2 focus:ring-border-focus disabled:opacity-60 disabled:cursor-not-allowed'
+              className='h-11 px-5 rounded-lg text-sm font-medium bg-blue-primary text-white hover:bg-blue-hover shadow-soft-sm hover:shadow-soft-md transition-all focus:outline-none focus:ring-2 focus:ring-blue-primary disabled:opacity-60 disabled:cursor-not-allowed'
               disabled={loading || !fromAccountId || !toAccountId || amount <= 0 || amount > availableBalance}
             >
               {loading ? 'Transferindo...' : 'Transferir'}

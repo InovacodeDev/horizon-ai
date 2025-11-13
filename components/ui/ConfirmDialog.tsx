@@ -44,28 +44,28 @@ export function ConfirmDialog({
       aria-labelledby="confirm-dialog-title"
     >
       <div
-        className="bg-surface-new-primary rounded-lg w-full max-w-md shadow-soft-xl transform transition-smooth-200 animate-slide-up"
+        className="bg-surface-new-primary rounded-xl w-full max-w-md shadow-soft-xl transform transition-smooth-200 animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-6 py-5 border-b border-border-primary">
-          <h3 id="confirm-dialog-title" className="text-lg font-semibold text-text-primary">{title}</h3>
+        <div className="px-6 py-4 border-b border-border-primary">
+          <h3 id="confirm-dialog-title" className="text-xl font-semibold text-text-primary">{title}</h3>
         </div>
 
         {/* Content */}
-        <div className="px-6 py-5">
-          <p className="text-text-secondary leading-relaxed">{message}</p>
+        <div className="px-6 py-6">
+          <p className="text-text-secondary text-sm leading-relaxed">{message}</p>
         </div>
 
         {/* Actions */}
-        <div className="flex gap-3 justify-end px-6 py-5 border-t border-border-primary">
+        <div className="flex gap-3 justify-end px-6 py-4 border-t border-border-primary">
           <Button variant="ghost" onClick={onClose} disabled={loading}>
             {cancelText}
           </Button>
           <button
             onClick={onConfirm}
             disabled={loading}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors-smooth shadow-soft-xs hover:shadow-soft-sm disabled:opacity-50 disabled:cursor-not-allowed focus-ring ${variantStyles[variant]}`}
+            className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-colors-smooth shadow-soft-xs hover:shadow-soft-sm disabled:opacity-50 disabled:cursor-not-allowed focus-ring ${variantStyles[variant]}`}
           >
             {loading ? 'Processando...' : confirmText}
           </button>

@@ -22,20 +22,20 @@ const Button: React.FC<ButtonProps> = ({
   className = '', 
   ...props 
 }) => {
-  const baseClasses = 'inline-flex items-center justify-center rounded-md font-medium transition-smooth focus:outline-none focus:ring-2 focus:ring-border-focus focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98]';
+  const baseClasses = 'inline-flex items-center justify-center rounded-lg font-medium transition-all focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98]';
 
   const variantClasses = {
-    primary: 'bg-blue-primary text-white hover:bg-blue-hover shadow-soft-xs hover:shadow-soft-sm',
-    secondary: 'bg-bg-secondary text-text-primary hover:bg-bg-tertiary',
-    outline: 'border border-border-primary bg-transparent text-text-primary hover:bg-bg-secondary',
-    ghost: 'bg-transparent text-text-primary hover:bg-bg-secondary',
-    danger: 'bg-red-text text-white hover:bg-red-border shadow-soft-xs hover:shadow-soft-sm',
+    primary: 'bg-blue-primary text-white hover:bg-blue-hover shadow-soft-sm hover:shadow-soft-md focus:ring-blue-primary',
+    secondary: 'bg-bg-secondary text-text-primary hover:bg-bg-tertiary focus:ring-border-focus',
+    outline: 'border border-border-primary bg-transparent text-text-primary hover:bg-bg-secondary focus:ring-border-focus',
+    ghost: 'bg-transparent text-text-primary hover:bg-bg-secondary focus:ring-border-focus',
+    danger: 'bg-red-text text-white hover:bg-red-border shadow-soft-sm hover:shadow-soft-md focus:ring-red-border',
   };
 
   const sizeClasses = {
-    sm: 'h-8 px-3 text-sm',
-    md: 'h-10 px-4 text-sm',
-    lg: 'h-12 px-5 text-base',
+    sm: 'h-9 px-3.5 text-sm',
+    md: 'h-11 px-5 text-sm',
+    lg: 'h-12 px-6 text-base',
   };
 
   const isDisabled = disabled || loading;
