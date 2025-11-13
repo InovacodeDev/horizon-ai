@@ -5,58 +5,28 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * GET /api/credit-cards/transactions
- * List credit card transactions
+ *
+ * @deprecated This endpoint is deprecated. Use Appwrite Realtime subscriptions instead.
+ *
+ * All credit card transaction data should be fetched via the `useCreditCardTransactions` hook
+ * which uses Appwrite Realtime for automatic updates.
+ *
+ * @see hooks/useCreditCardTransactions.ts
+ * @see docs/REALTIME_USAGE_GUIDE.md
  */
 export async function GET(request: NextRequest) {
-  try {
-    const userId = await getCurrentUserId();
-
-    if (!userId) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const creditCardIdParam = searchParams.get('credit_card_id');
-
-    // Se não há credit_card_id ou é vazio, retorna vazio
-    if (!creditCardIdParam || creditCardIdParam.trim() === '') {
-      return NextResponse.json({
-        success: true,
-        data: [],
-        total: 0,
-      });
-    }
-
-    const creditCardTransactionService = new CreditCardTransactionService();
-    const result = await creditCardTransactionService.listTransactions({
-      userId,
-      creditCardId: creditCardIdParam,
-      category: searchParams.get('category') || undefined,
-      status: (searchParams.get('status') as any) || undefined,
-      startDate: searchParams.get('start_date') || undefined,
-      endDate: searchParams.get('end_date') || undefined,
-      startPurchaseDate: searchParams.get('start_purchase_date') || undefined,
-      endPurchaseDate: searchParams.get('end_purchase_date') || undefined,
-      isRecurring: searchParams.get('is_recurring') === 'true' ? true : undefined,
-      limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined,
-      offset: searchParams.get('offset') ? parseInt(searchParams.get('offset')!) : undefined,
-    });
-
-    return NextResponse.json({
-      success: true,
-      data: result.transactions,
-      total: result.total,
-    });
-  } catch (error: any) {
-    console.error('GET /api/credit-cards/transactions error:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: error.message || 'Failed to fetch transactions',
+  return NextResponse.json(
+    {
+      success: false,
+      message:
+        'This endpoint is deprecated. Use Appwrite Realtime subscriptions via useCreditCardTransactions hook instead.',
+      migration: {
+        hook: 'useCreditCardTransactions',
+        docs: '/docs/REALTIME_USAGE_GUIDE.md',
       },
-      { status: 500 },
-    );
-  }
+    },
+    { status: 410 },
+  );
 }
 
 /**

@@ -4,56 +4,27 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * GET /api/credit-cards
- * Get all credit cards for the user, optionally filtered by account IDs
- * Query params: account_ids (comma-separated list of account IDs)
+ *
+ * @deprecated This endpoint is deprecated. Use Appwrite Realtime subscriptions instead.
+ *
+ * All credit card data should be fetched via the `useCreditCards` hook which uses
+ * Appwrite Realtime for automatic updates.
+ *
+ * @see hooks/useCreditCards.ts
+ * @see docs/REALTIME_USAGE_GUIDE.md
  */
 export async function GET(request: NextRequest) {
-  try {
-    const userId = await getCurrentUserId();
-
-    if (!userId) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const accountIdsParam = searchParams.get('account_ids');
-
-    const creditCardService = new CreditCardService();
-
-    // If account_ids provided, filter by those accounts
-    if (accountIdsParam) {
-      const accountIds = accountIdsParam
-        .split(',')
-        .map((id) => id.trim())
-        .filter(Boolean);
-
-      if (accountIds.length === 0) {
-        return NextResponse.json({ data: [] }, { status: 200 });
-      }
-
-      // Fetch cards for each account and combine
-      const cardsPromises = accountIds.map((accountId) => creditCardService.getCreditCardsByAccountId(accountId));
-
-      const cardsArrays = await Promise.all(cardsPromises);
-      const allCards = cardsArrays.flat();
-
-      return NextResponse.json({ data: allCards }, { status: 200 });
-    }
-
-    // Otherwise, get all cards for the user
-    const cards = await creditCardService.getAllCreditCards(userId);
-
-    return NextResponse.json({ data: cards }, { status: 200 });
-  } catch (error: any) {
-    console.error('GET /api/credit-cards error:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: error.message || 'Failed to fetch credit cards',
+  return NextResponse.json(
+    {
+      success: false,
+      message: 'This endpoint is deprecated. Use Appwrite Realtime subscriptions via useCreditCards hook instead.',
+      migration: {
+        hook: 'useCreditCards',
+        docs: '/docs/REALTIME_USAGE_GUIDE.md',
       },
-      { status: 500 },
-    );
-  }
+    },
+    { status: 410 },
+  );
 }
 
 /**

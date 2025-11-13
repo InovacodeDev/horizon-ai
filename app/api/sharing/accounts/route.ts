@@ -4,33 +4,26 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * GET /api/sharing/accounts
- * Get all accounts accessible by the current user (own + shared)
+ *
+ * @deprecated This endpoint is deprecated. Use Appwrite Realtime subscriptions instead.
+ *
+ * All account data (own + shared) should be fetched via the `useAccountsWithSharing` hook
+ * which uses Appwrite Realtime for automatic updates.
+ *
+ * @see hooks/useAccountsWithSharing.ts
+ * @see docs/REALTIME_USAGE_GUIDE.md
  */
 export async function GET(request: NextRequest) {
-  try {
-    // Get user ID from session
-    const userId = await getCurrentUserId();
-
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Fetch accessible accounts using DataAccessService
-    const dataAccessService = new DataAccessService();
-    const accounts = await dataAccessService.getAccessibleAccounts(userId);
-
-    return NextResponse.json({
-      success: true,
-      data: accounts,
-    });
-  } catch (error: any) {
-    console.error('Error fetching accessible accounts:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || 'Failed to fetch accounts',
+  return NextResponse.json(
+    {
+      success: false,
+      message:
+        'This endpoint is deprecated. Use Appwrite Realtime subscriptions via useAccountsWithSharing hook instead.',
+      migration: {
+        hook: 'useAccountsWithSharing',
+        docs: '/docs/REALTIME_USAGE_GUIDE.md',
       },
-      { status: 500 },
-    );
-  }
+    },
+    { status: 410 },
+  );
 }

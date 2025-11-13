@@ -4,35 +4,27 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * GET /api/accounts
- * List all accounts for the authenticated user
+ *
+ * @deprecated This endpoint is deprecated. Use Appwrite Realtime subscriptions instead.
+ *
+ * All account data should be fetched via the `useAccounts` hook which uses
+ * Appwrite Realtime for automatic updates.
+ *
+ * @see hooks/useAccounts.ts
+ * @see docs/REALTIME_USAGE_GUIDE.md
  */
 export async function GET(request: NextRequest) {
-  try {
-    // Get authenticated user ID
-    const userId = await getCurrentUserId();
-
-    if (!userId) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Fetch accounts
-    const accountService = new AccountService();
-    const accounts = await accountService.getAccountsByUserId(userId);
-
-    return NextResponse.json({
-      success: true,
-      data: accounts,
-    });
-  } catch (error: any) {
-    console.error('GET /api/accounts error:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: error.message || 'Failed to fetch accounts',
+  return NextResponse.json(
+    {
+      success: false,
+      message: 'This endpoint is deprecated. Use Appwrite Realtime subscriptions via useAccounts hook instead.',
+      migration: {
+        hook: 'useAccounts',
+        docs: '/docs/REALTIME_USAGE_GUIDE.md',
       },
-      { status: 500 },
-    );
-  }
+    },
+    { status: 410 },
+  );
 }
 
 /**

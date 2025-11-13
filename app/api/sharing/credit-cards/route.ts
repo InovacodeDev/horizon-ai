@@ -4,33 +4,26 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * GET /api/sharing/credit-cards
- * Get all credit cards accessible by the current user (own + shared)
+ *
+ * @deprecated This endpoint is deprecated. Use Appwrite Realtime subscriptions instead.
+ *
+ * All credit card data (own + shared) should be fetched via the `useCreditCardsWithSharing` hook
+ * which uses Appwrite Realtime for automatic updates.
+ *
+ * @see hooks/useCreditCardsWithSharing.ts
+ * @see docs/REALTIME_USAGE_GUIDE.md
  */
 export async function GET(request: NextRequest) {
-  try {
-    // Get user ID from session
-    const userId = await getCurrentUserId();
-
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Fetch accessible credit cards using DataAccessService
-    const dataAccessService = new DataAccessService();
-    const creditCards = await dataAccessService.getAccessibleCreditCards(userId);
-
-    return NextResponse.json({
-      success: true,
-      data: creditCards,
-    });
-  } catch (error: any) {
-    console.error('Error fetching accessible credit cards:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || 'Failed to fetch credit cards',
+  return NextResponse.json(
+    {
+      success: false,
+      message:
+        'This endpoint is deprecated. Use Appwrite Realtime subscriptions via useCreditCardsWithSharing hook instead.',
+      migration: {
+        hook: 'useCreditCardsWithSharing',
+        docs: '/docs/REALTIME_USAGE_GUIDE.md',
       },
-      { status: 500 },
-    );
-  }
+    },
+    { status: 410 },
+  );
 }

@@ -4,20 +4,24 @@ import type { CreateCreditCardDto, CreditCard, UpdateCreditCardDto } from '@/lib
 import { cacheManager, getCacheKey, invalidateCache } from '@/lib/utils/cache';
 import { useCallback, useEffect, useOptimistic, useState, useTransition } from 'react';
 
+import { useAppwriteRealtime } from './useAppwriteRealtime';
+
 interface UseCreditCardsOptions {
   accountId?: string | null;
   initialCreditCards?: CreditCard[];
+  enableRealtime?: boolean;
 }
 
 /**
- * Hook for managing credit cards with React 19.2 optimistic updates
+ * Hook for managing credit cards with React 19.2 optimistic updates and Realtime
  */
 export function useCreditCards(options: UseCreditCardsOptions = {}) {
-  const { accountId, initialCreditCards } = options;
+  const { accountId, initialCreditCards, enableRealtime = true } = options;
   const [creditCards, setCreditCards] = useState<CreditCard[]>(initialCreditCards || []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [initialized, setInitialized] = useState(false);
 
   // Optimistic state for instant UI updates
   const [optimisticCreditCards, addOptimisticUpdate] = useOptimistic(
@@ -41,6 +45,7 @@ export function useCreditCards(options: UseCreditCardsOptions = {}) {
       if (!accountId) {
         setCreditCards([]);
         setLoading(false);
+        setInitialized(true);
         return;
       }
 
@@ -53,6 +58,7 @@ export function useCreditCards(options: UseCreditCardsOptions = {}) {
           if (cached) {
             setCreditCards(cached);
             setLoading(false);
+            setInitialized(true);
             return;
           }
         }
@@ -74,9 +80,11 @@ export function useCreditCards(options: UseCreditCardsOptions = {}) {
         // Cache the result
         const cacheKey = getCacheKey.creditCards('user');
         cacheManager.set(cacheKey, data);
+        setInitialized(true);
       } catch (err: any) {
         console.error('Error fetching credit cards:', err);
         setError(err.message || 'Failed to fetch credit cards');
+        setInitialized(true);
       } finally {
         setLoading(false);
       }
@@ -86,10 +94,34 @@ export function useCreditCards(options: UseCreditCardsOptions = {}) {
 
   // Auto-fetch on mount
   useEffect(() => {
-    if (accountId && !initialCreditCards) {
+    if (!initialized && !initialCreditCards) {
       fetchCreditCards();
     }
-  }, [accountId, initialCreditCards, fetchCreditCards]);
+  }, [initialized, initialCreditCards, fetchCreditCards]);
+
+  // Setup realtime subscription for credit cards
+  useAppwriteRealtime({
+    channels: [`databases.${process.env.APPWRITE_DATABASE_ID}.collections.credit_cards.documents`],
+    enabled: enableRealtime && initialized,
+    onCreate: (payload: CreditCard) => {
+      console.log('📡 Realtime: credit card created', payload.$id);
+      setCreditCards((prev) => {
+        if (prev.some((c) => c.$id === payload.$id)) return prev;
+        return [...prev, payload];
+      });
+      invalidateCache.creditCards('user');
+    },
+    onUpdate: (payload: CreditCard) => {
+      console.log('📡 Realtime: credit card updated', payload.$id);
+      setCreditCards((prev) => prev.map((c) => (c.$id === payload.$id ? payload : c)));
+      invalidateCache.creditCards('user');
+    },
+    onDelete: (payload: CreditCard) => {
+      console.log('📡 Realtime: credit card deleted', payload.$id);
+      setCreditCards((prev) => prev.filter((c) => c.$id !== payload.$id));
+      invalidateCache.creditCards('user');
+    },
+  });
 
   const createCreditCard = useCallback(
     async (input: CreateCreditCardDto) => {
