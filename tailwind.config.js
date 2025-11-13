@@ -19,6 +19,9 @@ module.exports = {
     './app/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
     './lib/**/*.{js,ts,jsx,tsx,mdx}',
+    // Explicitly exclude files that might contain non-CSS content
+    '!./public/**/*.ofx',
+    '!./public/assets/**/*.ofx',
   ],
 
   // Enable dark mode via class strategy (controlled by ThemeProvider)
@@ -222,8 +225,46 @@ module.exports = {
       transitionTimingFunction: {
         smooth: 'cubic-bezier(0.4, 0, 0.2, 1)', // Ease-in-out with slight acceleration
       },
+
+      // ============================================
+      // Custom Animations
+      // ============================================
+      // Animations for import system and other UI elements
+      keyframes: {
+        'fade-in': {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        'slide-up': {
+          '0%': { transform: 'translateY(10px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+        'scale-in': {
+          '0%': { transform: 'scale(0.8)', opacity: '0' },
+          '50%': { transform: 'scale(1.05)' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
+        },
+        'check-mark': {
+          '0%': { strokeDasharray: '0 100', strokeDashoffset: '0' },
+          '100%': { strokeDasharray: '100 100', strokeDashoffset: '0' },
+        },
+        'progress-pulse': {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.5' },
+        },
+      },
+      animation: {
+        'fade-in': 'fade-in 0.3s ease-out',
+        'slide-up': 'slide-up 0.4s ease-out',
+        'scale-in': 'scale-in 0.5s ease-out',
+        'check-mark': 'check-mark 0.6s ease-out forwards',
+        'progress-pulse': 'progress-pulse 1.5s ease-in-out infinite',
+      },
     },
   },
+
+  // Airbag extra (opcional): bloqueia explicitamente o token que te quebrou
+  blocklist: ['[-3:BRT]'],
 
   // No additional plugins required
   // All functionality achieved with core Tailwind + custom config

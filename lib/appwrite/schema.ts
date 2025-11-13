@@ -23,6 +23,7 @@ export const COLLECTIONS = {
   SHARING_RELATIONSHIPS: 'sharing_relationships',
   SHARING_INVITATIONS: 'sharing_invitations',
   SHARING_AUDIT_LOGS: 'sharing_audit_logs',
+  IMPORT_HISTORY: 'import_history',
 } as const;
 
 // Database ID - Configure no Appwrite Console
@@ -1154,4 +1155,134 @@ export interface SharingAuditLog {
   resource_id: string;
   details?: string;
   created_at: string;
+}
+
+// ============================================
+// Collection: import_history
+// ============================================
+export const importHistorySchema = {
+  collectionId: COLLECTIONS.IMPORT_HISTORY,
+  name: 'Import History',
+  permissions: ['read("any")', 'write("any")'],
+  rowSecurity: true,
+  attributes: [
+    {
+      key: 'user_id',
+      type: 'string',
+      size: 255,
+      required: true,
+      array: false,
+    },
+    {
+      key: 'account_id',
+      type: 'string',
+      size: 255,
+      required: true,
+      array: false,
+    },
+    {
+      key: 'file_name',
+      type: 'string',
+      size: 255,
+      required: true,
+      array: false,
+    },
+    {
+      key: 'file_format',
+      type: 'enum',
+      elements: ['ofx', 'csv', 'pdf'],
+      required: true,
+      array: false,
+    },
+    {
+      key: 'transaction_count',
+      type: 'integer',
+      required: true,
+      min: 0,
+    },
+    {
+      key: 'import_date',
+      type: 'datetime',
+      required: true,
+    },
+    {
+      key: 'status',
+      type: 'enum',
+      elements: ['completed', 'failed', 'partial'],
+      required: true,
+      array: false,
+    },
+    {
+      key: 'error_message',
+      type: 'string',
+      size: 1000,
+      required: false,
+      array: false,
+    },
+    {
+      key: 'metadata',
+      type: 'string',
+      size: 4000,
+      required: false,
+      array: false,
+    },
+    {
+      key: 'created_at',
+      type: 'datetime',
+      required: true,
+    },
+    {
+      key: 'updated_at',
+      type: 'datetime',
+      required: true,
+    },
+  ],
+  indexes: [
+    {
+      key: 'idx_user_id',
+      type: 'key',
+      attributes: ['user_id'],
+      orders: ['ASC'],
+    },
+    {
+      key: 'idx_account_id',
+      type: 'key',
+      attributes: ['account_id'],
+      orders: ['ASC'],
+    },
+    {
+      key: 'idx_import_date',
+      type: 'key',
+      attributes: ['import_date'],
+      orders: ['DESC'],
+    },
+    {
+      key: 'idx_status',
+      type: 'key',
+      attributes: ['status'],
+    },
+    {
+      key: 'idx_user_import_date',
+      type: 'key',
+      attributes: ['user_id', 'import_date'],
+      orders: ['ASC', 'DESC'],
+    },
+  ],
+};
+
+export interface ImportHistory {
+  $id: string;
+  $createdAt: string;
+  $updatedAt: string;
+  user_id: string;
+  account_id: string;
+  file_name: string;
+  file_format: 'ofx' | 'csv' | 'pdf';
+  transaction_count: number;
+  import_date: string;
+  status: 'completed' | 'failed' | 'partial';
+  error_message?: string;
+  metadata?: string; // JSON string
+  created_at: string;
+  updated_at: string;
 }

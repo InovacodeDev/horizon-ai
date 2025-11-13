@@ -779,3 +779,32 @@ export type {
   GetRelationshipResponse,
   GetMembersResponse,
 } from './sharing.types';
+
+// ============================================
+// Import Types
+// ============================================
+
+// Re-export import types for bank statement import feature
+export type {
+  ImportFileFormat,
+  ImportStatus,
+  ParsedTransaction,
+  ImportRecord,
+  ImportMetadata,
+  ImportTransactionMetadata,
+  ImportPreviewResult,
+  ImportResult,
+  ColumnMapping,
+  OFXTransaction,
+  OFXAccountInfo,
+  OFXData,
+  CSVRow,
+  Parser,
+  ImportPreviewRequest,
+  ImportPreviewResponse,
+  ImportProcessRequest,
+  ImportProcessResponse,
+  ImportHistoryResponse,
+} from './import.types';
+
+export { ImportErrorCode, ImportError, ERROR_MESSAGES } from './import.types';

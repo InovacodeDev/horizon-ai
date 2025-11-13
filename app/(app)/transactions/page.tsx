@@ -36,6 +36,7 @@ import { useCreditCards } from "@/hooks/useCreditCards";
 import { useSearchParams } from "next/navigation";
 import { getCurrentDateInUserTimezone } from "@/lib/utils/timezone";
 import { ProcessDueTransactions } from "@/components/ProcessDueTransactions";
+import { ImportTransactionsModal } from "@/components/transactions/ImportTransactionsModal";
 
 // Helper function to convert date string to ISO string in user's timezone
 const dateToUserTimezone = (dateString: string): string => {
@@ -267,6 +268,7 @@ export default function TransactionsPage() {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
     const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
 
@@ -391,6 +393,11 @@ export default function TransactionsPage() {
     const handleOpenAddModal = () => {
         setNewTransaction(initialNewTransactionState);
         setIsAddModalOpen(true);
+    };
+
+    const handleImportComplete = async (count: number) => {
+        setIsImportModalOpen(false);
+        await refetch();
     };
 
     const handleAddNewTransaction = async (e: React.FormEvent) => {
@@ -591,6 +598,17 @@ export default function TransactionsPage() {
                         leftIcon={<FilterIcon className="w-5 h-5" />}
                     >
                         Filtros {activeFilterCount > 0 && `(${activeFilterCount})`}
+                    </Button>
+                    <Button 
+                        variant="outline"
+                        onClick={() => setIsImportModalOpen(true)}
+                        leftIcon={
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                        }
+                    >
+                        Importar Extrato
                     </Button>
                     <Button leftIcon={<PlusIcon className="w-5 h-5" />} onClick={handleOpenAddModal}>
                         Adicionar Transação
@@ -1325,6 +1343,14 @@ export default function TransactionsPage() {
                     </div>
                 </Modal>
             )}
+
+            {/* Import Transactions Modal */}
+            <ImportTransactionsModal
+                isOpen={isImportModalOpen}
+                onClose={() => setIsImportModalOpen(false)}
+                onImportComplete={handleImportComplete}
+                accounts={accounts}
+            />
         </>
     );
 }
