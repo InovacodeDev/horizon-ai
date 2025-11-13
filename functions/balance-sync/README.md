@@ -1,40 +1,57 @@
 # Balance Sync Function
 
-Função Appwrite para gerenciar automaticamente o saldo das contas baseado nas transações.
+Função Appwrite para atualizar automaticamente o saldo das contas quando transações são modificadas.
 
-## 📖 Documentação
+## 🎯 Funcionalidade
 
-### Para Começar
+Esta função é **extremamente simples e direta**:
 
-- **[QUICKSTART.md](./QUICKSTART.md)** - Guia rápido de 5 minutos ⚡
-- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Guia completo de deploy 🚀
+1. **CREATE**: Quando uma transação é criada → soma o `amount` ao `balance` da conta
+2. **DELETE**: Quando uma transação é deletada → subtrai o `amount` do `balance` da conta
+3. **UPDATE**: Quando uma transação é editada → calcula a diferença entre o `amount` antigo e novo, aplica ao `balance`
 
-### Referência
+### Regras
 
-- **[MANUAL_EXECUTION.md](./MANUAL_EXECUTION.md)** - Guia de execução manual e reprocessamento 🔄
-- **[EXAMPLES.md](./EXAMPLES.md)** - Exemplos práticos de uso 💡
-- **[FAQ.md](./FAQ.md)** - Perguntas frequentes ❓
-- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Arquitetura técnica 🏗️
+- ✅ Processa apenas transações com status `pending` ou `failed`
+- ✅ Marca transação como `completed` após processar (CREATE e UPDATE)
+- ✅ O `amount` já vem sinalizado (positivo/negativo), basta somar
+- ❌ Ignora transações de cartão de crédito (`credit_card_id` presente)
+- ❌ Ignora transações sem `account_id`
 
-### Operacional
+## 📖 Como Funciona
 
-- **[CHECKLIST.md](./CHECKLIST.md)** - Checklist de verificação ✅
-- **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** - Solução de problemas 🔧
-- **[EXECUTIVE_SUMMARY.md](./EXECUTIVE_SUMMARY.md)** - Sumário executivo 📊
+### Evento CREATE
 
-### Geral
+```
+Transação criada: amount = 1000
+Balance atual: 5000
 
-- **[../../docs/APPWRITE_FUNCTIONS.md](../../docs/APPWRITE_FUNCTIONS.md)** - Guia completo de funções 📚
+Ação: balance = 5000 + 1000 = 6000
+Status: pending → completed
+```
 
-## Funcionalidades
+### Evento DELETE
 
-1. **Sincronização Automática**: Atualiza o saldo da conta sempre que uma transação é criada, editada ou removida
-2. **Processamento Diário**: Executa diariamente às 20:00 para processar transações que chegaram na data de hoje
-3. **Reprocessamento Manual Completo**: Permite reprocessar TODAS as transações (incluindo as já "completed") de todas as contas do usuário via parâmetro `reprocessAll: true`
-4. **Ignora Transações Futuras**: Transações com data futura não são contabilizadas no saldo até chegarem na data
-5. **Ignora Cartão de Crédito**: Transações de cartão de crédito são gerenciadas separadamente
+```
+Transação deletada: amount = 500
+Balance atual: 6000
 
-## Configuração no Appwrite Console
+Ação: balance = 6000 - 500 = 5500
+```
+
+### Evento UPDATE
+
+```
+Amount antigo: 1000
+Amount novo: 1500
+Balance atual: 6000
+
+Diferença: 1500 - 1000 = 500
+Ação: balance = 6000 + 500 = 6500
+Status: pending → completed
+```
+
+## 🚀 Configuração no Appwrite Console
 
 ### 1. Criar a Função
 
@@ -43,12 +60,10 @@ Função Appwrite para gerenciar automaticamente o saldo das contas baseado nas 
 3. Configure:
    - **Name**: Balance Sync
    - **Runtime**: Node.js 20.x (ou superior)
-   - **Entrypoint**: `src/main.ts`
+   - **Entrypoint**: `dist/index.js`
    - **Build Commands**: `npm install && npm run build`
 
 ### 2. Configurar Variáveis de Ambiente
-
-Adicione as seguintes variáveis de ambiente na função:
 
 ```
 APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
@@ -56,11 +71,9 @@ APPWRITE_DATABASE_ID=seu-database-id
 APPWRITE_API_KEY=sua-api-key
 ```
 
-### 3. Configurar Triggers
+### 3. Configurar Triggers (Eventos de Database)
 
-#### A. Eventos de Database (Sincronização em Tempo Real)
-
-Adicione os seguintes eventos para sincronizar automaticamente quando transações são modificadas:
+Adicione os seguintes eventos:
 
 ```
 databases.*.collections.transactions.documents.*.create
@@ -68,176 +81,106 @@ databases.*.collections.transactions.documents.*.update
 databases.*.collections.transactions.documents.*.delete
 ```
 
-#### B. Schedule (Execução Diária)
-
-Configure um schedule para executar diariamente às 20:00:
-
-```
-Cron Expression: 0 20 * * *
-Timezone: America/Sao_Paulo (ou seu timezone)
-```
-
 ### 4. Deploy
 
-1. Faça upload do código da função:
+1. Faça upload do código:
 
    ```bash
    cd functions/balance-sync
+   npm install
+   npm run build
    tar -czf balance-sync.tar.gz .
    ```
 
-2. No Appwrite Console, vá em **Functions** > **Balance Sync** > **Deployments**
-3. Faça upload do arquivo `balance-sync.tar.gz`
-4. Aguarde o build completar
+2. No Appwrite Console:
+   - **Functions** > **Balance Sync** > **Deployments**
+   - Faça upload do arquivo `balance-sync.tar.gz`
+   - Aguarde o build completar
 
 ### 5. Testar
 
-#### Teste Manual (Processamento Normal)
+Crie, edite ou remova uma transação no banco de dados. A função será executada automaticamente e atualizará o saldo da conta.
 
-Execute a função manualmente com o seguinte payload para processar apenas transações vencidas:
+## 📊 Logs
 
-```json
-{
-  "userId": "68fbd3a700145f22609d"
-}
-```
-
-#### Teste Manual (Reprocessamento Completo)
-
-Execute a função manualmente com o seguinte payload para reprocessar TODAS as transações de todas as contas do usuário:
-
-```json
-{
-  "userId": "68fbd3a700145f22609d",
-  "reprocessAll": true
-}
-```
-
-**Nota**: O reprocessamento completo recalcula o saldo de todas as contas do zero, baseado em todas as transações. Use isso para:
-
-- Corrigir inconsistências de saldo
-- Após migrações de dados
-- Execuções manuais de manutenção
-
-#### Teste de Evento
-
-Crie, edite ou remova uma transação no banco de dados. A função será executada automaticamente.
-
-#### Teste de Schedule
-
-Aguarde a execução agendada às 20:00 ou force uma execução manual do schedule.
-
-## Estrutura do Código
+A função gera logs detalhados:
 
 ```
-functions/balance-sync/
-├── src/
-│   └── main.ts          # Código principal da função
-├── package.json         # Dependências
-├── tsconfig.json        # Configuração TypeScript
-├── .gitignore          # Arquivos ignorados
-└── README.md           # Esta documentação
+[BalanceSync] Handling CREATE event for transaction abc123
+[BalanceSync] Transaction ID: abc123
+[BalanceSync] Account ID: acc456
+[BalanceSync] Amount: 1000
+[BalanceSync] Status: pending
+[BalanceSync] Updating account acc456 balance by 1000
+[BalanceSync] - Current balance: 5000
+[BalanceSync] - Balance change: 1000
+[BalanceSync] - New balance: 6000
+[BalanceSync] Account acc456 balance updated successfully
+[BalanceSync] Marking transaction abc123 as completed
+[BalanceSync] Transaction abc123 marked as completed
+[BalanceSync] CREATE event processed successfully
 ```
 
-## Como Funciona
+## 🔧 Estrutura do Código
 
-### Sincronização de Saldo
+```typescript
+// CREATE: Soma amount ao balance
+await updateAccountBalance(databases, accountId, amount);
+await markTransactionCompleted(databases, transactionId);
 
-1. Busca todas as transações da conta
-2. Filtra transações futuras e de cartão de crédito
-3. Calcula o saldo: soma receitas (`direction: 'in'`) e subtrai despesas (`direction: 'out'`)
-4. Atualiza o campo `balance` da conta
+// DELETE: Subtrai amount do balance
+await updateAccountBalance(databases, accountId, -amount);
 
-### Processamento de Transações Futuras
-
-1. Busca todas as transações do usuário
-2. Identifica transações que eram futuras mas agora são de hoje ou passado
-3. Agrupa por conta
-4. Recalcula o saldo de cada conta afetada
-
-### Execução Agendada
-
-1. Busca todas as contas do sistema
-2. Para cada usuário único, processa transações futuras
-3. Atualiza os saldos conforme necessário
-
-## Logs
-
-A função gera logs detalhados para debug:
-
-```
-[BalanceSync] Syncing account {accountId}
-[BalanceSync] - Total transactions: {count}
-[BalanceSync] - Final balance: {balance}
-[BalanceSync] Account {accountId} updated successfully
+// UPDATE: Aplica diferença ao balance
+const difference = newAmount - oldAmount;
+await updateAccountBalance(databases, accountId, difference);
+await markTransactionCompleted(databases, transactionId);
 ```
 
-## Troubleshooting
+## ⚠️ Importante
 
-### Saldo Incorreto
+### Amount Sinalizado
 
-Se o saldo estiver incorreto, você pode forçar um recálculo completo:
+O `amount` da transação já deve vir com o sinal correto:
 
-1. **Via Appwrite Console**: Execute a função manualmente com o payload:
+- **Receitas**: amount positivo (ex: 1000)
+- **Despesas**: amount negativo (ex: -500)
 
-   ```json
-   {
-     "userId": "seu-user-id",
-     "reprocessAll": true
-   }
-   ```
+A função simplesmente **soma** o amount ao balance, sem fazer conversões.
 
-2. **Via API**: Faça uma requisição POST para o endpoint da função:
+### Status da Transação
 
-   ```bash
-   curl -X POST \
-     https://cloud.appwrite.io/v1/functions/[FUNCTION_ID]/executions \
-     -H "Content-Type: application/json" \
-     -H "X-Appwrite-Project: [PROJECT_ID]" \
-     -H "X-Appwrite-Key: [API_KEY]" \
-     -d '{"userId": "seu-user-id", "reprocessAll": true}'
-   ```
+- Transações devem ser criadas/editadas com status `pending` ou `failed`
+- A função processa e marca como `completed`
+- Transações já `completed` são ignoradas
 
-3. **Via código Next.js**: Use a action `reprocessAccountBalanceAction` para contas individuais
+### Transações de Cartão de Crédito
 
-### Função Não Executa
+Transações com `credit_card_id` são ignoradas, pois são gerenciadas separadamente.
+
+## 🛠️ Troubleshooting
+
+### Saldo não atualiza
 
 Verifique:
 
-1. Variáveis de ambiente configuradas corretamente
-2. Triggers configurados (eventos e schedule)
-3. Permissões da API Key (deve ter acesso ao database)
-4. Logs de execução no Appwrite Console
+1. ✅ Função está ativa e deployada
+2. ✅ Triggers configurados corretamente
+3. ✅ Transação tem `account_id`
+4. ✅ Transação não tem `credit_card_id`
+5. ✅ Status da transação é `pending` ou `failed`
+6. ✅ Logs da função no Appwrite Console
 
-### Transações Futuras Não Processadas
+### Transação não marca como completed
 
 Verifique:
 
-1. Schedule configurado corretamente (cron: `0 20 * * *`)
-2. Timezone correto
-3. Logs da execução agendada
+1. ✅ Status inicial é `pending` ou `failed`
+2. ✅ Não é transação de cartão de crédito
+3. ✅ Evento é CREATE ou UPDATE (DELETE não marca)
 
-## Manutenção
-
-### Atualizar a Função
-
-1. Modifique o código em `src/main.ts`
-2. Crie um novo deployment no Appwrite Console
-3. Aguarde o build completar
-4. Teste a nova versão
-
-### Monitoramento
-
-Monitore as execuções da função no Appwrite Console:
-
-1. **Functions** > **Balance Sync** > **Executions**
-2. Verifique logs de erro
-3. Monitore tempo de execução
-4. Verifique taxa de sucesso
-
-## Referências
+## 📚 Referências
 
 - [Appwrite Functions Documentation](https://appwrite.io/docs/products/functions)
-- [Appwrite Functions Quick Start](https://appwrite.io/docs/products/functions/quick-start)
-- [Appwrite Functions Deployments](https://appwrite.io/docs/products/functions/deployments)
-- [Appwrite Functions Executions](https://appwrite.io/docs/products/functions/executions)
+- [Appwrite Database Events](https://appwrite.io/docs/advanced/platform/events)
+- [TablesDB API Reference](https://appwrite.io/docs/references/cloud/server-nodejs/tablesdb)

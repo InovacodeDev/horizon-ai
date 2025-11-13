@@ -1,43 +1,33 @@
 /**
  * Appwrite Function: Balance Sync
  *
- * Esta função gerencia automaticamente o saldo das contas baseado nas transações.
+ * Esta função atualiza automaticamente o saldo das contas quando transações são modificadas.
  *
  * Triggers:
  * - Eventos de database: transactions.*.create, transactions.*.update, transactions.*.delete
- * - Schedule: Diariamente às 20:00 (cron: 0 20 * * *)
- * - Manual: Execução manual via console ou API
  *
- * Funcionalidades:
- * 1. Sincroniza saldo quando transações são criadas/editadas/removidas
- * 2. Processa transações futuras que chegaram na data de hoje (execução diária)
- * 3. Reprocessa todas as transações quando recebe { reprocessAll: true } no body
- * 4. Ignora transações futuras no cálculo do saldo
- * 5. Ignora transações de cartão de crédito (gerenciadas separadamente)
- *
- * Execução Manual:
- * - Processamento normal: { "userId": "user-id" }
- * - Reprocessamento completo: { "userId": "user-id", "reprocessAll": true }
+ * Lógica:
+ * - CREATE: Soma o amount ao balance da conta
+ * - DELETE: Subtrai o amount do balance da conta
+ * - UPDATE: Calcula a diferença entre amount antigo e novo, aplica ao balance
+ * - Processa apenas transações com status 'pending' ou 'failed'
+ * - Marca transação como 'completed' após processar
+ * - O amount já vem sinalizado (positivo/negativo), basta somar
  */
-import { Client, Databases, Query, TablesDB } from 'node-appwrite';
+import { Client, TablesDB } from 'node-appwrite';
 
 // Tipos
-interface TransactionEvent {
+interface Transaction {
   $id: string;
-  user_id: string;
   account_id?: string;
   credit_card_id?: string;
   amount: number;
-  direction: 'in' | 'out';
-  date: string;
-  status: string;
+  status: 'pending' | 'completed' | 'failed';
 }
 
 interface Account {
   $id: string;
-  user_id: string;
   balance: number;
-  synced_transaction_ids?: string;
 }
 
 // Configuração
@@ -50,504 +40,221 @@ const COLLECTIONS = {
 /**
  * Inicializa o cliente Appwrite
  */
-function initializeClient(): { client: Client; databases: TablesDB } {
+function initializeClient(): TablesDB {
   const client = new Client()
     .setEndpoint(process.env.APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1')
     .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID || '')
     .setKey(process.env.APPWRITE_API_KEY || '');
 
-  const databases = new TablesDB(client);
-
-  return { client, databases };
+  return new TablesDB(client);
 }
 
 /**
- * Busca todas as transações de uma conta com paginação
+ * Busca uma conta pelo ID
  */
-async function getAllTransactions(databases: TablesDB, accountId: string): Promise<TransactionEvent[]> {
-  const allTransactions: TransactionEvent[] = [];
-  let offset = 0;
-  const limit = 500;
-
-  while (true) {
-    const result = await databases.listRows({
-      databaseId: DATABASE_ID,
-      tableId: COLLECTIONS.TRANSACTIONS,
-      queries: [
-        Query.equal('account_id', accountId),
-        Query.limit(limit),
-        Query.offset(offset),
-        Query.orderDesc('date'),
-      ],
-    });
-
-    const transactions = result.rows as unknown as TransactionEvent[];
-    allTransactions.push(...transactions);
-
-    if (transactions.length === 0 || transactions.length < limit) {
-      break;
-    }
-
-    offset += limit;
-  }
-
-  return allTransactions;
-}
-
-/**
- * Sincroniza o saldo de uma conta
- * @param databases - Cliente TablesDB
- * @param accountId - ID da conta
- * @param deletedTransactionId - ID da transação deletada (opcional)
- * @param forceReprocess - Se true, reprocessa até transações já completadas
- */
-async function syncAccountBalance(
-  databases: TablesDB,
-  accountId: string,
-  deletedTransactionId?: string,
-  forceReprocess: boolean = false,
-): Promise<number> {
-  console.log(`[BalanceSync] Syncing account ${accountId}`);
-  if (forceReprocess) {
-    console.log(`[BalanceSync] - Force reprocess mode: will reprocess ALL transactions including completed ones`);
-  }
-
-  try {
-    // Buscar todas as transações desta conta
-    const transactions = await getAllTransactions(databases, accountId);
-
-    // Recalcular balance do zero
-    let newBalance = 0;
-    const now = new Date();
-    now.setHours(23, 59, 59, 999); // Fim do dia atual
-
-    console.log(`[BalanceSync] - Total transactions: ${transactions.length}`);
-    console.log(`[BalanceSync] - Current date: ${now.toISOString()}`);
-
-    const processedTransactions: string[] = [];
-    const transactionsToMarkCompleted: string[] = [];
-
-    for (const transaction of transactions) {
-      // Ignorar transações de cartão de crédito
-      if (transaction.credit_card_id) {
-        console.log(`[BalanceSync] - Skipping credit card transaction: ${transaction.$id}`);
-        continue;
-      }
-
-      // Ignorar transações futuras
-      const transactionDate = new Date(transaction.date);
-      if (transactionDate > now) {
-        console.log(
-          `[BalanceSync] - Skipping future transaction: ${transaction.$id} (${transactionDate.toISOString()})`,
-        );
-        continue;
-      }
-
-      // Se NÃO for force reprocess, ignorar transações já completadas (exceto se for a transação deletada)
-      if (!forceReprocess && transaction.status === 'completed' && transaction.$id !== deletedTransactionId) {
-        console.log(`[BalanceSync] - Skipping completed transaction: ${transaction.$id}`);
-        // Ainda incluir no cálculo do saldo
-        if (transaction.direction === 'in') {
-          newBalance += transaction.amount;
-        } else {
-          newBalance -= transaction.amount;
-        }
-        processedTransactions.push(transaction.$id);
-        continue;
-      }
-
-      // Processar cada tipo de transação
-      if (transaction.direction === 'in') {
-        newBalance += transaction.amount;
-        console.log(
-          `[BalanceSync] - Adding ${transaction.amount} from transaction ${transaction.$id} (direction: in, status: ${transaction.status})`,
-        );
-      } else {
-        newBalance -= transaction.amount;
-        console.log(
-          `[BalanceSync] - Subtracting ${transaction.amount} from transaction ${transaction.$id} (direction: out, status: ${transaction.status})`,
-        );
-      }
-
-      processedTransactions.push(transaction.$id);
-
-      // Marcar para atualizar status para completed (se não for a transação deletada)
-      if (transaction.status !== 'completed' && transaction.$id !== deletedTransactionId) {
-        transactionsToMarkCompleted.push(transaction.$id);
-      }
-    }
-
-    console.log(`[BalanceSync] - Final balance: ${newBalance}`);
-    console.log(`[BalanceSync] - Processed ${processedTransactions.length} transactions`);
-    console.log(`[BalanceSync] - Marking ${transactionsToMarkCompleted.length} transactions as completed`);
-
-    // Atualizar status das transações para completed em lotes
-    const batchSize = 10;
-    for (let i = 0; i < transactionsToMarkCompleted.length; i += batchSize) {
-      const batch = transactionsToMarkCompleted.slice(i, i + batchSize);
-
-      await Promise.all(
-        batch.map(async (transactionId) => {
-          try {
-            await databases.updateRow({
-              databaseId: DATABASE_ID,
-              tableId: COLLECTIONS.TRANSACTIONS,
-              rowId: transactionId,
-              data: {
-                status: 'completed',
-              },
-            });
-            console.log(`[BalanceSync] - Marked transaction ${transactionId} as completed`);
-          } catch (error) {
-            console.error(`[BalanceSync] - Error marking transaction ${transactionId} as completed:`, error);
-          }
-        }),
-      );
-
-      // Pequeno delay entre lotes (100ms)
-      if (i + batchSize < transactionsToMarkCompleted.length) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-    }
-
-    // Atualizar conta com novo balance
-    await databases.updateRow({
-      databaseId: DATABASE_ID,
-      tableId: COLLECTIONS.ACCOUNTS,
-      rowId: accountId,
-      data: {
-        balance: newBalance,
-        synced_transaction_ids: JSON.stringify(processedTransactions),
-        updated_at: new Date().toISOString(),
-      },
-    });
-
-    console.log(`[BalanceSync] Account ${accountId} updated successfully with balance: ${newBalance}`);
-
-    return newBalance;
-  } catch (error) {
-    console.error(`[BalanceSync] Error syncing account ${accountId}:`, error);
-    throw error;
-  }
-}
-
-/**
- * Processa transações futuras que chegaram na data de hoje
- */
-async function processDueTransactions(databases: TablesDB, userId: string): Promise<number> {
-  console.log(`[BalanceSync] Processing due transactions for user ${userId}`);
-
-  // Buscar todas as transações do usuário com paginação
-  const allTransactions: TransactionEvent[] = [];
-  let offset = 0;
-  const limit = 500;
-
-  while (true) {
-    const result = await databases.listRows({
-      databaseId: DATABASE_ID,
-      tableId: COLLECTIONS.TRANSACTIONS,
-      queries: [Query.equal('user_id', userId), Query.limit(limit), Query.offset(offset)],
-    });
-
-    const transactions = result.rows as unknown as TransactionEvent[];
-    allTransactions.push(...transactions);
-
-    if (transactions.length === 0 || transactions.length < limit) {
-      break;
-    }
-
-    offset += limit;
-  }
-
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-  // Identificar transações que eram futuras mas agora são de hoje ou passado
-  const dueTransactions = allTransactions.filter((t) => {
-    const transactionDate = new Date(t.date);
-    const transactionDay = new Date(
-      transactionDate.getFullYear(),
-      transactionDate.getMonth(),
-      transactionDate.getDate(),
-    );
-
-    return transactionDay <= today;
+async function getAccount(databases: TablesDB, accountId: string): Promise<Account> {
+  const account = await databases.getRow({
+    databaseId: DATABASE_ID,
+    tableId: COLLECTIONS.ACCOUNTS,
+    rowId: accountId,
   });
 
-  if (dueTransactions.length === 0) {
-    console.log('[BalanceSync] No due transactions found');
-    return 0;
-  }
-
-  // Agrupar por conta
-  const accountIds = new Set<string>();
-  for (const transaction of dueTransactions) {
-    if (transaction.account_id && !transaction.credit_card_id) {
-      accountIds.add(transaction.account_id);
-    }
-  }
-
-  console.log(`[BalanceSync] Found ${accountIds.size} accounts to update`);
-
-  // Recalcular saldo de cada conta afetada com pequeno delay entre cada uma
-  let processed = 0;
-  for (const accountId of accountIds) {
-    try {
-      await syncAccountBalance(databases, accountId);
-      processed++;
-
-      // Pequeno delay para evitar sobrecarga (50ms)
-      if (processed < accountIds.size) {
-        await new Promise((resolve) => setTimeout(resolve, 50));
-      }
-    } catch (error) {
-      console.error(`[BalanceSync] Error syncing account ${accountId}:`, error);
-      // Continuar com as próximas contas mesmo se uma falhar
-    }
-  }
-
-  return processed;
+  return account as unknown as Account;
 }
 
 /**
- * Processa todos os usuários (para execução agendada)
+ * Atualiza o saldo da conta
  */
-async function processAllUsers(databases: TablesDB): Promise<void> {
-  console.log('[BalanceSync] Processing all users (scheduled execution)');
+async function updateAccountBalance(databases: TablesDB, accountId: string, balanceChange: number): Promise<void> {
+  console.log(`[BalanceSync] Updating account ${accountId} balance by ${balanceChange}`);
 
-  // Buscar todas as contas
-  let offset = 0;
-  const limit = 50; // Reduzido para processar em lotes menores
-  const processedUsers = new Set<string>();
+  // Buscar conta atual
+  const account = await getAccount(databases, accountId);
+  const newBalance = account.balance + balanceChange;
 
-  while (true) {
-    const result = await databases.listRows({
-      databaseId: DATABASE_ID,
-      tableId: COLLECTIONS.ACCOUNTS,
-      queries: [Query.limit(limit), Query.offset(offset)],
-    });
+  console.log(`[BalanceSync] - Current balance: ${account.balance}`);
+  console.log(`[BalanceSync] - Balance change: ${balanceChange}`);
+  console.log(`[BalanceSync] - New balance: ${newBalance}`);
 
-    const accounts = result.rows as unknown as Account[];
+  // Atualizar balance da conta
+  await databases.updateRow({
+    databaseId: DATABASE_ID,
+    tableId: COLLECTIONS.ACCOUNTS,
+    rowId: accountId,
+    data: {
+      balance: newBalance,
+    },
+  });
 
-    if (accounts.length === 0) {
-      break;
-    }
+  console.log(`[BalanceSync] Account ${accountId} balance updated successfully`);
+}
 
-    // Processar cada usuário único
-    for (const account of accounts) {
-      if (!processedUsers.has(account.user_id)) {
-        processedUsers.add(account.user_id);
-        try {
-          await processDueTransactions(databases, account.user_id);
+/**
+ * Marca transação como completed
+ */
+async function markTransactionCompleted(databases: TablesDB, transactionId: string): Promise<void> {
+  console.log(`[BalanceSync] Marking transaction ${transactionId} as completed`);
 
-          // Pequeno delay entre usuários (100ms)
-          await new Promise((resolve) => setTimeout(resolve, 100));
-        } catch (error) {
-          console.error(`[BalanceSync] Error processing user ${account.user_id}:`, error);
-          // Continuar com os próximos usuários mesmo se um falhar
-        }
-      }
-    }
+  await databases.updateRow({
+    databaseId: DATABASE_ID,
+    tableId: COLLECTIONS.TRANSACTIONS,
+    rowId: transactionId,
+    data: {
+      status: 'completed',
+    },
+  });
 
-    if (accounts.length < limit) {
-      break;
-    }
+  console.log(`[BalanceSync] Transaction ${transactionId} marked as completed`);
+}
 
-    offset += limit;
+/**
+ * Processa evento de CREATE
+ */
+async function handleCreate(databases: TablesDB, transaction: Transaction): Promise<void> {
+  console.log(`[BalanceSync] Handling CREATE event for transaction ${transaction.$id}`);
 
-    // Delay entre lotes (200ms)
-    await new Promise((resolve) => setTimeout(resolve, 200));
+  // Validações
+  if (!transaction.account_id) {
+    console.log('[BalanceSync] Transaction has no account_id, skipping');
+    return;
   }
 
-  console.log(`[BalanceSync] Processed ${processedUsers.size} users`);
+  if (transaction.credit_card_id) {
+    console.log('[BalanceSync] Credit card transaction, skipping');
+    return;
+  }
+
+  if (transaction.status !== 'pending' && transaction.status !== 'failed') {
+    console.log(`[BalanceSync] Transaction status is ${transaction.status}, skipping`);
+    return;
+  }
+
+  // Atualizar balance (somar amount)
+  await updateAccountBalance(databases, transaction.account_id, transaction.amount);
+
+  // Marcar como completed
+  await markTransactionCompleted(databases, transaction.$id);
+
+  console.log('[BalanceSync] CREATE event processed successfully');
+}
+
+/**
+ * Processa evento de DELETE
+ */
+async function handleDelete(databases: TablesDB, transaction: Transaction): Promise<void> {
+  console.log(`[BalanceSync] Handling DELETE event for transaction ${transaction.$id}`);
+
+  // Validações
+  if (!transaction.account_id) {
+    console.log('[BalanceSync] Transaction has no account_id, skipping');
+    return;
+  }
+
+  if (transaction.credit_card_id) {
+    console.log('[BalanceSync] Credit card transaction, skipping');
+    return;
+  }
+
+  // Atualizar balance (subtrair amount)
+  // Invertemos o sinal porque estamos removendo a transação
+  await updateAccountBalance(databases, transaction.account_id, -transaction.amount);
+
+  console.log('[BalanceSync] DELETE event processed successfully');
+}
+
+/**
+ * Processa evento de UPDATE
+ */
+async function handleUpdate(databases: TablesDB, newTransaction: Transaction, oldAmount: number): Promise<void> {
+  console.log(`[BalanceSync] Handling UPDATE event for transaction ${newTransaction.$id}`);
+
+  // Validações
+  if (!newTransaction.account_id) {
+    console.log('[BalanceSync] Transaction has no account_id, skipping');
+    return;
+  }
+
+  if (newTransaction.credit_card_id) {
+    console.log('[BalanceSync] Credit card transaction, skipping');
+    return;
+  }
+
+  if (newTransaction.status !== 'pending' && newTransaction.status !== 'failed') {
+    console.log(`[BalanceSync] Transaction status is ${newTransaction.status}, skipping`);
+    return;
+  }
+
+  // Calcular diferença entre amount novo e antigo
+  const amountDifference = newTransaction.amount - oldAmount;
+
+  console.log(`[BalanceSync] - Old amount: ${oldAmount}`);
+  console.log(`[BalanceSync] - New amount: ${newTransaction.amount}`);
+  console.log(`[BalanceSync] - Difference: ${amountDifference}`);
+
+  // Atualizar balance com a diferença
+  await updateAccountBalance(databases, newTransaction.account_id, amountDifference);
+
+  // Marcar como completed
+  await markTransactionCompleted(databases, newTransaction.$id);
+
+  console.log('[BalanceSync] UPDATE event processed successfully');
 }
 
 /**
  * Função principal
  */
 export default async ({ req, res, log, error }: any) => {
-  // Para execuções longas, retornar resposta imediatamente e processar de forma assíncrona
-  const isAsync = req.headers['x-appwrite-trigger'] === 'schedule' || req.headers['x-appwrite-trigger'] === 'event';
-
-  if (isAsync) {
-    // Responder imediatamente para evitar timeout
-    res.json({
-      success: true,
-      message: 'Balance sync started asynchronously',
-      timestamp: new Date().toISOString(),
-    });
-  }
-
   try {
     log('Balance Sync Function started');
-    log(`Request method: ${req.method}`);
-    log(`Request headers: ${JSON.stringify(req.headers)}`);
-    log(`Request body (raw): ${req.bodyRaw}`);
-    log(`Request body (parsed): ${JSON.stringify(req.body)}`);
+    log(`Event type: ${req.headers['x-appwrite-event'] || 'unknown'}`);
 
-    const { client, databases } = initializeClient();
+    const databases = initializeClient();
 
-    // Verificar o tipo de execução
-    const executionType = req.headers['x-appwrite-trigger'] || 'manual';
-    log(`Execution type: ${executionType}`);
+    // Extrair dados do evento
+    const eventType = req.headers['x-appwrite-event'] || '';
+    const transaction = req.body as Transaction;
 
-    // Execução agendada (cron)
-    if (executionType === 'schedule') {
-      log('Running scheduled balance sync (processing due transactions)');
-      await processAllUsers(databases);
-      log('Scheduled balance sync completed successfully');
-      return; // Resposta já foi enviada no início
-    }
+    log(`Transaction ID: ${transaction.$id}`);
+    log(`Account ID: ${transaction.account_id}`);
+    log(`Amount: ${transaction.amount}`);
+    log(`Status: ${transaction.status}`);
 
-    // Execução por evento de database
-    if (executionType === 'event') {
-      const eventData = req.body;
-      const eventType = req.headers['x-appwrite-event'] || '';
-      log(`Processing database event: ${eventType}`);
-      log(`Event data: ${JSON.stringify(eventData)}`);
+    // Processar baseado no tipo de evento
+    if (eventType.includes('.create')) {
+      log('Processing CREATE event');
+      await handleCreate(databases, transaction);
+    } else if (eventType.includes('.delete')) {
+      log('Processing DELETE event');
+      await handleDelete(databases, transaction);
+    } else if (eventType.includes('.update')) {
+      log('Processing UPDATE event');
 
-      // Extrair dados da transação do evento
-      const transaction = eventData as TransactionEvent;
+      // Para UPDATE, precisamos do amount antigo
+      // O Appwrite não fornece isso diretamente, então vamos buscar do payload
+      // Se não tiver, assumimos que não houve mudança no amount
+      const oldAmount = (req.body as any).$previousDocument?.amount || transaction.amount;
 
-      // Log detalhado para debug
-      log(`Transaction ID: ${transaction.$id}`);
-      log(`Account ID: ${transaction.account_id}`);
-      log(`Credit Card ID: ${transaction.credit_card_id}`);
-      log(`Amount: ${transaction.amount}`);
-      log(`Direction: ${transaction.direction}`);
-      log(`Date: ${transaction.date}`);
-      log(`Status: ${transaction.status}`);
-
-      if (!transaction.account_id) {
-        log('Transaction has no account_id, skipping');
-        return res.json({
-          success: true,
-          message: 'Transaction has no account, skipped',
-        });
-      }
-
-      if (transaction.credit_card_id) {
-        log('Transaction is for credit card, skipping');
-        return res.json({
-          success: true,
-          message: 'Credit card transaction, skipped',
-        });
-      }
-
-      // Detectar se é um evento de delete
-      const isDeleteEvent = eventType.includes('.delete');
-      const deletedTransactionId = isDeleteEvent ? transaction.$id : undefined;
-
-      // Sincronizar saldo da conta
-      log(`Starting balance sync for account: ${transaction.account_id}`);
-      log(`Is delete event: ${isDeleteEvent}`);
-      const newBalance = await syncAccountBalance(databases, transaction.account_id, deletedTransactionId);
-
-      log(`Balance sync completed. New balance: ${newBalance}`);
-      log(`Event processing completed successfully`);
-      return; // Resposta já foi enviada no início
-    }
-
-    // Execução manual
-    log('Running manual balance sync');
-    log(`Request body: ${JSON.stringify(req.body)}`);
-    log(`Request body type: ${typeof req.body}`);
-
-    // Parse do body se vier como string
-    let bodyData = req.body;
-    if (typeof req.body === 'string') {
-      try {
-        bodyData = JSON.parse(req.body);
-        log(`Body parsed successfully: ${JSON.stringify(bodyData)}`);
-      } catch (e) {
-        log(`Failed to parse body: ${e}`);
-      }
-    }
-
-    const userId = bodyData?.userId;
-    const reprocessAll = bodyData?.reprocessAll === true || bodyData?.reprocessAll === 'true';
-
-    log(`Extracted userId: ${userId}`);
-    log(`userId type: ${typeof userId}`);
-    log(`reprocessAll: ${reprocessAll}`);
-
-    if (!userId) {
-      log('ERROR: userId is missing or undefined');
-      return res.json(
-        {
-          success: false,
-          error: 'userId is required for manual execution',
-          debug: {
-            body: req.body,
-            bodyData: bodyData,
-            bodyType: typeof req.body,
-          },
-        },
-        400,
-      );
-    }
-
-    let accountsProcessed = 0;
-
-    // Se reprocessAll for true, reprocessar todas as contas do usuário
-    if (reprocessAll) {
-      log('Reprocessing ALL transactions for all user accounts (including completed transactions)');
-
-      // Buscar todas as contas do usuário
-      const accountsResult = await databases.listRows({
-        databaseId: DATABASE_ID,
-        tableId: COLLECTIONS.ACCOUNTS,
-        queries: [Query.equal('user_id', userId)],
-      });
-
-      const accounts = accountsResult.rows as unknown as Account[];
-      log(`Found ${accounts.length} accounts to reprocess`);
-
-      // Reprocessar cada conta com forceReprocess = true
-      for (const account of accounts) {
-        try {
-          log(`Reprocessing account: ${account.$id}`);
-          await syncAccountBalance(databases, account.$id, undefined, true);
-          accountsProcessed++;
-
-          // Pequeno delay entre contas (50ms)
-          if (accountsProcessed < accounts.length) {
-            await new Promise((resolve) => setTimeout(resolve, 50));
-          }
-        } catch (err: any) {
-          error(`Error reprocessing account ${account.$id}:`, err);
-          // Continuar com as próximas contas mesmo se uma falhar
-        }
-      }
-
-      log(`Reprocessing completed. Total accounts processed: ${accountsProcessed}`);
+      await handleUpdate(databases, transaction, oldAmount);
     } else {
-      // Comportamento padrão: processar apenas transações vencidas
-      accountsProcessed = await processDueTransactions(databases, userId);
-      log(`Manual balance sync completed. Accounts processed: ${accountsProcessed}`);
+      log(`Unknown event type: ${eventType}`);
     }
 
-    // Se não for assíncrono, retornar resposta normal
-    if (!isAsync) {
-      return res.json({
-        success: true,
-        message: reprocessAll ? 'All transactions reprocessed successfully' : 'Manual balance sync completed',
-        accountsProcessed,
-        reprocessAll,
-      });
-    }
+    log('Balance Sync Function completed successfully');
+
+    return res.json({
+      success: true,
+      message: 'Balance sync completed',
+      transactionId: transaction.$id,
+    });
   } catch (err: any) {
     error('Balance Sync Function error:', err);
 
-    // Se não for assíncrono, retornar erro
-    if (!isAsync) {
-      return res.json(
-        {
-          success: false,
-          error: err.message || 'Unknown error',
-        },
-        500,
-      );
-    }
+    return res.json(
+      {
+        success: false,
+        error: err.message || 'Unknown error',
+      },
+      500,
+    );
   }
 };
