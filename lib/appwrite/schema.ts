@@ -769,9 +769,6 @@ export const productsSchema = {
     { key: 'ncm_code', type: 'string', size: 20, required: false, array: false },
     { key: 'category', type: 'string', size: 100, required: true, array: false },
     { key: 'subcategory', type: 'string', size: 100, required: false, array: false },
-    { key: 'total_purchases', type: 'integer', required: true, min: 0 },
-    { key: 'average_price', type: 'float', required: true },
-    { key: 'last_purchase_date', type: 'datetime', required: false },
     { key: 'created_at', type: 'datetime', required: true },
     { key: 'updated_at', type: 'datetime', required: true },
   ],
@@ -779,10 +776,8 @@ export const productsSchema = {
     { key: 'idx_user_id', type: 'key', attributes: ['user_id'], orders: ['ASC'] },
     { key: 'idx_product_code', type: 'key', attributes: ['product_code'] },
     { key: 'idx_category', type: 'key', attributes: ['category'] },
-    { key: 'idx_last_purchase_date', type: 'key', attributes: ['last_purchase_date'], orders: ['DESC'] },
     // Compound indexes for common query patterns
     { key: 'idx_user_category', type: 'key', attributes: ['user_id', 'category'], orders: ['ASC', 'ASC'] },
-    { key: 'idx_user_purchases', type: 'key', attributes: ['user_id', 'total_purchases'], orders: ['ASC', 'DESC'] },
     { key: 'idx_user_name', type: 'key', attributes: ['user_id', 'name'], orders: ['ASC', 'ASC'] },
   ],
 };
@@ -797,9 +792,6 @@ export interface Product {
   ncm_code?: string;
   category: string;
   subcategory?: string;
-  total_purchases: number;
-  average_price: number;
-  last_purchase_date?: string;
   created_at: string;
   updated_at: string;
 }

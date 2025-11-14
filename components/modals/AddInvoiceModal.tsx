@@ -114,6 +114,8 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
   const [error, setError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [showScanner, setShowScanner] = useState(false);
+  const [processingStep, setProcessingStep] = useState<string>('');
+  const [progress, setProgress] = useState(0);
 
   // Reset form state
   const resetForm = () => {
@@ -125,6 +127,8 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
     setValidationError(null);
     setShowScanner(false);
     setActiveTab('url');
+    setProcessingStep('');
+    setProgress(0);
   };
 
   // Handle close
@@ -164,8 +168,24 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
 
     setLoading(true);
     setError(null);
+    setProgress(0);
+    setProcessingStep('Iniciando processamento...');
 
     try {
+      // Step 1: Extract key
+      setProgress(20);
+      setProcessingStep('Extraindo chave de acesso...');
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      // Step 2: Fetch HTML
+      setProgress(40);
+      setProcessingStep('Buscando dados da nota fiscal...');
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      // Step 3: AI Parsing
+      setProgress(60);
+      setProcessingStep('Processando com IA...');
+
       const input: CreateInvoiceInput = {
         invoiceUrl: activeTab === 'url' ? invoiceUrl : undefined,
         qrCodeData: activeTab === 'qr' ? qrCodeData : undefined,
@@ -173,10 +193,21 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
       };
 
       await onSubmit(input);
+
+      // Step 4: Validation & Storage
+      setProgress(90);
+      setProcessingStep('Validando e salvando...');
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      setProgress(100);
+      setProcessingStep('Concluído!');
+
       resetForm();
       onClose();
     } catch (err: any) {
       setError(err.message || 'Falha ao registrar nota fiscal');
+      setProgress(0);
+      setProcessingStep('');
     } finally {
       setLoading(false);
     }
@@ -228,6 +259,25 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
         </div>
 
         <div className='p-6'>
+          {/* Progress Bar - Show during processing */}
+          {loading && (
+            <div className='mb-6 p-4 bg-blue-light rounded-lg border border-blue-border'>
+              <div className='flex items-center justify-between mb-2'>
+                <span className='text-sm font-medium text-blue-primary'>{processingStep}</span>
+                <span className='text-sm font-semibold text-blue-primary'>{progress}%</span>
+              </div>
+              <div className='w-full h-2 bg-surface-new-secondary rounded-full overflow-hidden'>
+                <div
+                  className='h-full bg-blue-primary transition-all duration-500 ease-out'
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <p className='text-xs text-text-secondary mt-2'>
+                Aguarde enquanto processamos sua nota fiscal...
+              </p>
+            </div>
+          )}
+
           {/* Input Form */}
           {true && (
             <form

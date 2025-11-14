@@ -25,17 +25,9 @@ interface PriceHistoryChartProps {
   productName: string;
 }
 
-// Generate distinct colors for different merchants
-const MERCHANT_COLORS = [
-  '#3b82f6', // blue
-  '#10b981', // green
-  '#f59e0b', // amber
-  '#ef4444', // red
-  '#8b5cf6', // purple
-  '#ec4899', // pink
-  '#06b6d4', // cyan
-  '#84cc16', // lime
-];
+// Generate distinct colors for different merchants leveraging theme-aware CSS variables
+const getChartColor = (index: number) => `var(--chart-${(index % 12) + 1})`;
+const MERCHANT_COLORS = Array.from({ length: 12 }, (_, index) => getChartColor(index));
 
 export default function PriceHistoryChart({ data, productName }: PriceHistoryChartProps) {
   // Format currency
@@ -108,16 +100,27 @@ export default function PriceHistoryChart({ data, productName }: PriceHistoryCha
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-          <p className="text-sm font-medium text-gray-900 mb-2">{formatDate(label)}</p>
+        <div
+          className="p-3 border rounded-lg shadow-soft-lg"
+          style={{
+            backgroundColor: 'var(--chart-tooltip-bg)',
+            borderColor: 'var(--chart-tooltip-border)',
+            color: 'var(--chart-tooltip-text)',
+          }}
+        >
+          <p className="text-sm font-medium mb-2" style={{ color: 'var(--chart-tooltip-text)' }}>
+            {formatDate(label)}
+          </p>
           {payload.map((entry: any, index: number) => (
             <div key={index} className="flex items-center gap-2 text-sm">
               <div
                 className="w-3 h-3 rounded-full"
                 style={{ backgroundColor: entry.color }}
               />
-              <span className="text-gray-600">{entry.name}:</span>
-              <span className="font-medium text-gray-900">{formatCurrency(entry.value)}</span>
+              <span className="text-on-surface-variant">{entry.name}:</span>
+              <span className="font-medium" style={{ color: 'var(--chart-tooltip-text)' }}>
+                {formatCurrency(entry.value)}
+              </span>
             </div>
           ))}
         </div>
@@ -153,70 +156,70 @@ export default function PriceHistoryChart({ data, productName }: PriceHistoryCha
   return (
     <div className="space-y-4">
       {/* Price Summary */}
-      <div className="grid grid-cols-3 gap-4 mb-4">
-        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-          <p className="text-xs text-green-700 font-medium mb-1">Menor Preço</p>
-          <p className="text-lg font-semibold text-green-900">{formatCurrency(minPrice)}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+        <div className="rounded-lg p-3 border bg-green-bg border-green-border">
+          <p className="text-xs font-medium text-green-text mb-1">Menor Preço</p>
+          <p className="text-lg font-semibold text-green-text">{formatCurrency(minPrice)}</p>
           {lowestPricePoint && (
-            <p className="text-xs text-green-600 mt-1">{lowestPricePoint.merchant}</p>
+            <p className="text-xs text-on-surface mt-1">{lowestPricePoint.merchant}</p>
           )}
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-          <p className="text-xs text-blue-700 font-medium mb-1">Preço Médio</p>
-          <p className="text-lg font-semibold text-blue-900">{formatCurrency(avgPrice)}</p>
-          <p className="text-xs text-blue-600 mt-1">{data.length} compras</p>
+        <div className="rounded-lg p-3 border bg-blue-info-bg border-blue-info-border">
+          <p className="text-xs font-medium text-blue-info-text mb-1">Preço Médio</p>
+          <p className="text-lg font-semibold text-blue-info-text">{formatCurrency(avgPrice)}</p>
+          <p className="text-xs text-on-surface mt-1">{data.length} compras</p>
         </div>
 
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-          <p className="text-xs text-red-700 font-medium mb-1">Maior Preço</p>
-          <p className="text-lg font-semibold text-red-900">{formatCurrency(maxPrice)}</p>
+        <div className="rounded-lg p-3 border bg-red-bg border-red-border">
+          <p className="text-xs font-medium text-red-text mb-1">Maior Preço</p>
+          <p className="text-lg font-semibold text-red-text">{formatCurrency(maxPrice)}</p>
           {highestPricePoint && (
-            <p className="text-xs text-red-600 mt-1">{highestPricePoint.merchant}</p>
+            <p className="text-xs text-on-surface mt-1">{highestPricePoint.merchant}</p>
           )}
         </div>
       </div>
 
       {/* Chart */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <h3 className="text-sm font-medium text-gray-900 mb-4">
+      <div className="bg-surface rounded-lg border border-outline p-4">
+        <h3 className="text-sm font-medium text-on-surface mb-4">
           Histórico de Preços - {productName}
         </h3>
         
         <ResponsiveContainer width="100%" height={350}>
           <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
             
             <XAxis
               dataKey="date"
               tickFormatter={formatAxisDate}
-              tick={{ fontSize: 12 }}
-              stroke="#6b7280"
+              tick={{ fontSize: 12, fill: 'var(--chart-axis)' }}
+              stroke="var(--chart-axis)"
             />
             
             <YAxis
               tickFormatter={(value) => formatCurrency(value)}
-              tick={{ fontSize: 12 }}
-              stroke="#6b7280"
+              tick={{ fontSize: 12, fill: 'var(--chart-axis)' }}
+              stroke="var(--chart-axis)"
               domain={['dataMin - 5', 'dataMax + 5']}
             />
             
             <Tooltip content={<CustomTooltip />} />
             
             <Legend
-              wrapperStyle={{ fontSize: '12px' }}
+              wrapperStyle={{ fontSize: '12px', color: 'var(--chart-axis)' }}
               iconType="line"
             />
 
             {/* Reference line for lowest price */}
             <ReferenceLine
               y={minPrice}
-              stroke="#10b981"
+              stroke="var(--chart-2)"
               strokeDasharray="3 3"
               label={{
                 value: `Menor: ${formatCurrency(minPrice)}`,
                 position: 'right',
-                fill: '#10b981',
+                fill: 'var(--chart-2)',
                 fontSize: 11,
               }}
             />
@@ -224,12 +227,12 @@ export default function PriceHistoryChart({ data, productName }: PriceHistoryCha
             {/* Reference line for highest price */}
             <ReferenceLine
               y={maxPrice}
-              stroke="#ef4444"
+              stroke="var(--chart-4)"
               strokeDasharray="3 3"
               label={{
                 value: `Maior: ${formatCurrency(maxPrice)}`,
                 position: 'right',
-                fill: '#ef4444',
+                fill: 'var(--chart-4)',
                 fontSize: 11,
               }}
             />
@@ -264,23 +267,23 @@ export default function PriceHistoryChart({ data, productName }: PriceHistoryCha
           return (
             <div
               key={merchant}
-              className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200"
+              className="flex items-start gap-3 p-3 rounded-lg border border-outline/40 bg-surface-variant/30"
             >
               <div
                 className="w-4 h-4 rounded-full mt-0.5 flex-shrink-0"
                 style={{ backgroundColor: MERCHANT_COLORS[index % MERCHANT_COLORS.length] }}
               />
               <div className="flex-grow min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{merchant}</p>
-                <div className="flex items-center gap-3 mt-1 text-xs text-gray-600">
+                <p className="text-sm font-medium text-on-surface truncate">{merchant}</p>
+                <div className="flex items-center gap-3 mt-1 text-xs text-on-surface-variant">
                   <span>Média: {formatCurrency(merchantAvg)}</span>
                   <span>•</span>
                   <span>{merchantData.length} compras</span>
                 </div>
-                <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
-                  <span className="text-green-600">↓ {formatCurrency(merchantMin)}</span>
+                <div className="flex items-center gap-2 mt-1 text-xs">
+                  <span className="text-green-text">↓ {formatCurrency(merchantMin)}</span>
                   <span>•</span>
-                  <span className="text-red-600">↑ {formatCurrency(merchantMax)}</span>
+                  <span className="text-red-text">↑ {formatCurrency(merchantMax)}</span>
                 </div>
               </div>
             </div>

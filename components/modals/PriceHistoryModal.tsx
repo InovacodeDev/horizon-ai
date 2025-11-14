@@ -13,6 +13,7 @@ interface PriceHistoryEntry {
   quantity: number;
   merchantName: string;
   merchantCnpj: string;
+  invoiceId: string;
 }
 
 interface GroupedPriceEntry {
@@ -22,6 +23,7 @@ interface GroupedPriceEntry {
   pricePerKg: number;
   totalQuantity: number;
   purchaseCount: number;
+  totalPrice: number;
   merchantName: string;
   merchantCnpj: string;
   dateRange?: string;
@@ -133,10 +135,13 @@ export default function PriceHistoryModal({ isOpen, onClose, productId, productN
 
       // Calculate totals
       const totalQuantity = similar.reduce((sum, e) => sum + e.quantity, 0);
+      const totalPrice = similar.reduce((sum, e) => sum + e.unitPrice * e.quantity, 0);
       // Preço por kg = preço unitário dividido pela quantidade de cada item
       // Ex: Se comprou 0,7kg por R$ 7,00, o preço/kg é R$ 7,00 / 0,7 = R$ 10,00/kg
       // Usa a primeira entrada como referência (todas têm o mesmo preço unitário)
       const pricePerKg = entry.quantity > 0 ? entry.unitPrice / entry.quantity : entry.unitPrice;
+
+      const uniqueInvoices = new Set(similar.map((e) => e.invoiceId || e.id));
 
       // Date range if multiple purchases
       let dateRange: string | undefined;
@@ -155,7 +160,8 @@ export default function PriceHistoryModal({ isOpen, onClose, productId, productN
         unitPrice: entry.unitPrice,
         pricePerKg,
         totalQuantity,
-        purchaseCount: similar.length,
+        purchaseCount: uniqueInvoices.size,
+        totalPrice,
         merchantName: entry.merchantName,
         merchantCnpj: entry.merchantCnpj,
         dateRange,
@@ -163,6 +169,12 @@ export default function PriceHistoryModal({ isOpen, onClose, productId, productN
     });
 
     return groups;
+  }, [priceHistory]);
+
+  const uniqueInvoiceCount = useMemo(() => {
+    if (priceHistory.length === 0) return 0;
+    const invoiceIds = new Set(priceHistory.map((entry) => entry.invoiceId || entry.id));
+    return invoiceIds.size;
   }, [priceHistory]);
 
   // Calculate statistics with useMemo
@@ -184,7 +196,7 @@ export default function PriceHistoryModal({ isOpen, onClose, productId, productN
     const cheapestPerKg = groupedHistory.find(e => e.pricePerKg === minPricePerKg)!;
 
     return {
-      totalPurchases: priceHistory.length,
+      totalPurchases: uniqueInvoiceCount,
       groupedPurchases: groupedHistory.length,
       minPrice,
       maxPrice,
@@ -208,7 +220,7 @@ export default function PriceHistoryModal({ isOpen, onClose, productId, productN
         date: formatDate(cheapestPerKg.purchaseDate),
       },
     };
-  }, [groupedHistory, priceHistory]);
+  }, [groupedHistory, uniqueInvoiceCount]);
 
   // Prepare chart data - últimos 12 preços únicos
   const chartData = useMemo(() => {
@@ -315,19 +327,19 @@ export default function PriceHistoryModal({ isOpen, onClose, productId, productN
                   <h3 className="text-lg font-medium text-on-surface mb-4">Evolução de Preços (Últimos 12)</h3>
                   <ResponsiveContainer width="100%" height={350}>
                     <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-outline opacity-20" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
                       <XAxis 
                         dataKey="date" 
-                        stroke="currentColor"
+                        stroke="var(--chart-axis)"
                         className="text-on-surface-variant"
                         style={{ fontSize: '12px' }}
-                        tick={{ fill: 'hsl(var(--on-surface-variant))' }}
+                        tick={{ fill: 'var(--chart-axis)' }}
                       />
                       <YAxis 
-                        stroke="currentColor"
+                        stroke="var(--chart-axis)"
                         className="text-on-surface-variant"
                         style={{ fontSize: '12px' }}
-                        tick={{ fill: 'hsl(var(--on-surface-variant))' }}
+                        tick={{ fill: 'var(--chart-axis)' }}
                         tickFormatter={(value) => `R$ ${value.toFixed(2)}`}
                       />
                       <ChartTooltip 
@@ -339,9 +351,9 @@ export default function PriceHistoryModal({ isOpen, onClose, productId, productN
                           return label;
                         }}
                         contentStyle={{
-                          backgroundColor: 'hsl(var(--surface))',
-                          color: 'hsl(var(--on-surface))',
-                          border: '1px solid hsl(var(--outline))',
+                          backgroundColor: 'var(--chart-tooltip-bg)',
+                          color: 'var(--chart-tooltip-text)',
+                          border: '1px solid var(--chart-tooltip-border)',
                           borderRadius: '8px',
                           padding: '12px',
                           boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
@@ -354,18 +366,18 @@ export default function PriceHistoryModal({ isOpen, onClose, productId, productN
                       <Line 
                         type="monotone" 
                         dataKey="price" 
-                        stroke="hsl(var(--primary))" 
+                        stroke="var(--chart-1)" 
                         strokeWidth={3}
                         dot={{ 
-                          fill: 'hsl(var(--primary))', 
-                          stroke: 'hsl(var(--surface))',
+                          fill: 'var(--chart-1)', 
+                          stroke: 'var(--surface)',
                           strokeWidth: 2,
                           r: 5 
                         }}
                         activeDot={{ 
                           r: 7,
-                          fill: 'hsl(var(--primary))',
-                          stroke: 'hsl(var(--surface))',
+                          fill: 'var(--chart-1)',
+                          stroke: 'var(--surface)',
                           strokeWidth: 2,
                         }}
                         name="Preço"
@@ -383,42 +395,49 @@ export default function PriceHistoryModal({ isOpen, onClose, productId, productN
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-medium text-on-surface">Histórico Completo</h3>
                   <div className="text-xs text-on-surface-variant bg-surface-variant/20 px-3 py-1.5 rounded-full">
-                    {groupedHistory.length} {groupedHistory.length === 1 ? 'compra agrupada' : 'compras agrupadas'} de {priceHistory.length} {priceHistory.length === 1 ? 'registro' : 'registros'}
+                    {groupedHistory.length} {groupedHistory.length === 1 ? 'compra agrupada' : 'compras agrupadas'} de {uniqueInvoiceCount} {uniqueInvoiceCount === 1 ? 'nota fiscal' : 'notas fiscais'}
                   </div>
                 </div>
                 <div className="overflow-x-auto rounded-lg border border-outline">
-                  <table className="w-full">
+                  <table className="w-full table-fixed">
+                    <colgroup>
+                      <col className="w-[150px]" />
+                      <col />
+                      <col className="w-[90px]" />
+                      <col className="w-[120px]" />
+                      <col className="w-[130px]" />
+                    </colgroup>
                     <thead>
                       <tr className="border-b border-outline bg-surface-variant/20">
-                        <th className="text-left py-3 px-4 text-sm font-medium text-on-surface-variant">Data</th>
+                        <th className="w-[150px] whitespace-nowrap text-left py-3 px-4 text-sm font-medium text-on-surface-variant">Data</th>
                         <th className="text-left py-3 px-4 text-sm font-medium text-on-surface-variant">Estabelecimento</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-on-surface-variant">Qtd Total</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-on-surface-variant">Preço Unit.</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-on-surface-variant">Preço/Kg</th>
+                        <th className="w-[90px] whitespace-nowrap text-right py-3 px-4 text-sm font-medium text-on-surface-variant">Qtd</th>
+                        <th className="w-[120px] whitespace-nowrap text-right py-3 px-4 text-sm font-medium text-on-surface-variant">Preço Unit.</th>
+                        <th className="w-[130px] whitespace-nowrap text-right py-3 px-4 text-sm font-medium text-on-surface-variant">Preço Total</th>
                       </tr>
                     </thead>
                     <tbody>
                       {groupedHistory.map((entry) => (
                         <tr key={entry.id} className="border-b border-outline/50 hover:bg-surface-variant/10 dark:hover:bg-surface-variant/20">
-                          <td className="py-3 px-4 text-sm text-on-surface">
+                          <td className="w-[150px] whitespace-nowrap py-3 px-4 text-sm text-on-surface">
                             <div>
                               {entry.dateRange || formatDate(entry.purchaseDate)}
                             </div>
                             {entry.purchaseCount > 1 && (
                               <div className="text-xs text-on-surface-variant mt-0.5">
-                                {entry.purchaseCount} compras
+                                {entry.purchaseCount} {entry.purchaseCount === 1 ? 'nota' : 'notas'}
                               </div>
                             )}
                           </td>
-                          <td className="py-3 px-4 text-sm text-on-surface">{entry.merchantName}</td>
-                          <td className="py-3 px-4 text-sm text-on-surface text-right">
+                          <td className="py-3 px-4 text-sm text-on-surface align-top">{entry.merchantName}</td>
+                          <td className="w-[90px] whitespace-nowrap py-3 px-4 text-sm text-on-surface text-right">
                             {entry.totalQuantity.toFixed(3)}
                           </td>
-                          <td className="py-3 px-4 text-sm text-on-surface text-right font-medium">
+                          <td className="w-[120px] whitespace-nowrap py-3 px-4 text-sm text-on-surface text-right font-medium">
                             {formatCurrency(entry.unitPrice)}
                           </td>
-                          <td className="py-3 px-4 text-sm text-right font-medium text-primary">
-                            {formatCurrency(entry.pricePerKg)}
+                          <td className="w-[130px] whitespace-nowrap py-3 px-4 text-sm text-right font-medium text-primary">
+                            {formatCurrency(entry.totalPrice)}
                           </td>
                         </tr>
                       ))}
@@ -431,7 +450,7 @@ export default function PriceHistoryModal({ isOpen, onClose, productId, productN
                   <div className="mt-6 space-y-4">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-surface-variant/10 rounded-lg">
                       <div className="text-center">
-                        <p className="text-xs text-on-surface-variant mb-1">Total de Compras</p>
+                        <p className="text-xs text-on-surface-variant mb-1">Notas Fiscais</p>
                         <p className="text-lg font-semibold text-on-surface">{stats.totalPurchases}x</p>
                       </div>
                       <div className="text-center">

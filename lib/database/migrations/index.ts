@@ -37,6 +37,7 @@ import { migration as expandAccountsDataColumn } from './20251111_000033_expand_
 import { migration as expandTransactionsDataColumn } from './20251111_000034_expand_transactions_data_column';
 import { migration as addDirectionToTransactions } from './20251111_000035_add_direction_to_transactions';
 import { migration as populateDirectionColumn } from './20251111_000036_populate_direction_column';
+import { migration as removeProductsStatsColumns } from './20251114_000037_remove_products_stats_columns';
 import { Migration } from './migration.interface';
 
 /**
@@ -80,4 +81,5 @@ export const migrations: Migration[] = [
   expandTransactionsDataColumn,
   addDirectionToTransactions,
   populateDirectionColumn,
+  removeProductsStatsColumns,
 ];

@@ -54,11 +54,11 @@ export const INVOICE_KEY_PATTERNS = {
  * Can be overridden via environment variables
  */
 export const DEFAULT_CRAWLER_CONFIG: CrawlerConfig = {
-  timeout: parseInt(process.env.CRAWLER_TIMEOUT || '30000', 10), // 30 seconds default
-  maxRedirects: parseInt(process.env.CRAWLER_MAX_REDIRECTS || '5', 10),
+  timeout: parseInt(process.env.CRAWLER_TIMEOUT || '15000', 10), // Reduced to 15 seconds for faster failures
+  maxRedirects: parseInt(process.env.CRAWLER_MAX_REDIRECTS || '3', 10), // Reduced redirects
   userAgent: 'Mozilla/5.0 (compatible; InvoiceParser/1.0)',
-  retryAttempts: parseInt(process.env.CRAWLER_RETRY_ATTEMPTS || '2', 10),
-  retryDelay: parseInt(process.env.CRAWLER_RETRY_DELAY || '1000', 10), // 1 second default
+  retryAttempts: parseInt(process.env.CRAWLER_RETRY_ATTEMPTS || '1', 10), // Reduced to 1 retry
+  retryDelay: parseInt(process.env.CRAWLER_RETRY_DELAY || '500', 10), // Reduced delay to 500ms
 };
 
 /**

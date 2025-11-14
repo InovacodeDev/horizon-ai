@@ -108,6 +108,25 @@
   --blue-info-bg: #e3f2fd;
   --blue-info-text: #1565c0;
   --blue-info-border: #64b5f6;
+
+  /* Chart Palette - Ensures contrast-aware series colors */
+  --chart-1: #1d4ed8;
+  --chart-2: #0f766e;
+  --chart-3: #b45309;
+  --chart-4: #b91c1c;
+  --chart-5: #7c3aed;
+  --chart-6: #be185d;
+  --chart-7: #0e7490;
+  --chart-8: #166534;
+  --chart-9: #047857;
+  --chart-10: #9d174d;
+  --chart-11: #1e40af;
+  --chart-12: #c2410c;
+  --chart-grid: rgba(116, 119, 127, 0.35);
+  --chart-axis: #44474f;
+  --chart-tooltip-bg: #ffffff;
+  --chart-tooltip-border: rgba(116, 119, 127, 0.5);
+  --chart-tooltip-text: #1a1c1e;
 }
 
 /* ============================================
@@ -195,6 +214,25 @@
   --blue-info-bg: #1f2937;
   --blue-info-text: #93c5fd;
   --blue-info-border: #60a5fa;
+
+  /* Chart Palette - Dark Theme Variants */
+  --chart-1: #93c5fd;
+  --chart-2: #6ee7b7;
+  --chart-3: #fcd34d;
+  --chart-4: #fca5a5;
+  --chart-5: #c4b5fd;
+  --chart-6: #f9a8d4;
+  --chart-7: #67e8f9;
+  --chart-8: #bef264;
+  --chart-9: #34d399;
+  --chart-10: #f472b6;
+  --chart-11: #a5b4fc;
+  --chart-12: #fdba74;
+  --chart-grid: rgba(142, 144, 153, 0.4);
+  --chart-axis: #c4c6d0;
+  --chart-tooltip-bg: #1a1f26;
+  --chart-tooltip-border: rgba(142, 144, 153, 0.5);
+  --chart-tooltip-text: #e5e7eb;
 }
 
 body {

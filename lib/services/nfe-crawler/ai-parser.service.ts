@@ -5,11 +5,12 @@
  * fiscal invoices into structured data. Optimized for prompt caching by
  * placing static instructions first and variable HTML content last.
  *
- * Note: TOON format is NOT used here because:
- * 1. The AI needs to OUTPUT structured JSON, not parse TOON input
- * 2. HTML input is already compact and doesn't benefit from TOON encoding
- * 3. JSON schema validation requires JSON output format
+ * Token Optimization Strategy:
+ * - INPUT: HTML is sent in TOON format to reduce input tokens (~40% savings)
+ * - OUTPUT: AI returns standard JSON for reliable parsing and validation
+ * - This hybrid approach balances token efficiency with parsing reliability
  */
+import { encodeToToon } from '@/lib/utils/toon';
 import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
@@ -75,8 +76,30 @@ export class AIParserService implements IAIParserServiceExtended {
         model: this.config.model,
       });
 
-      // Build optimized prompt with caching
-      const prompt = this.buildPrompt(html);
+      // Optimize HTML before sending to AI
+      const optimizedHtml = this.optimizeHtml(html);
+
+      loggerService.info('ai-parser', 'parse-html', 'HTML optimized', {
+        invoiceKey,
+        originalSize: html.length,
+        optimizedSize: optimizedHtml.length,
+        reduction: `${(((html.length - optimizedHtml.length) / html.length) * 100).toFixed(1)}%`,
+      });
+
+      // Build optimized prompt with caching (HTML in TOON format for input efficiency)
+      const prompt = this.buildPrompt(optimizedHtml);
+
+      // Estimate input tokens and cost before making the API call
+      const estimatedInputTokens = this.estimateTokenCount(prompt);
+      const estimatedInputCost = this.estimateInputCost(this.config.model, estimatedInputTokens);
+
+      loggerService.info('ai-parser', 'parse-html', 'Sending prompt to AI', {
+        invoiceKey,
+        estimatedInputTokens,
+        estimatedInputCost: `$${estimatedInputCost.toFixed(6)}`,
+        model: this.config.model,
+        promptLength: prompt.length,
+      });
 
       // Call AI based on provider
       let responseText: string;
@@ -95,6 +118,18 @@ export class AIParserService implements IAIParserServiceExtended {
 
       // Parse JSON response
       const parsedData = this.parseAIResponse(responseText);
+
+      // Estimate output tokens and cost
+      const estimatedOutputTokens = this.estimateTokenCount(responseText);
+      const estimatedOutputCost = this.estimateOutputCost(this.config.model, estimatedOutputTokens);
+
+      loggerService.info('ai-parser', 'parse-html', 'Received AI response', {
+        invoiceKey,
+        estimatedOutputTokens,
+        estimatedOutputCost: `$${estimatedOutputCost.toFixed(6)}`,
+        responseLength: responseText.length,
+        itemsExtracted: parsedData.items?.length || 0,
+      });
 
       // Validate response structure
       if (!this.validateAIResponse(parsedData)) {
@@ -152,37 +187,39 @@ export class AIParserService implements IAIParserServiceExtended {
   getStaticPromptSection(): string {
     return `You are an expert at extracting structured data from Brazilian fiscal invoices (NFe/NFCe).
 
-Your task is to extract invoice information from HTML content and return it in the following JSON format:
+Your task is to extract invoice information from HTML content and return it as a JSON object.
+
+Expected JSON structure:
 
 {
   "merchant": {
-    "cnpj": "string (14 digits, numbers only)",
-    "name": "string",
-    "tradeName": "string (optional)",
-    "address": "string",
-    "city": "string",
-    "state": "string (2 letters)"
+    "cnpj": "<string: 14 digits, numbers only>",
+    "name": "<string>",
+    "tradeName": "<string or null>",
+    "address": "<string>",
+    "city": "<string>",
+    "state": "<string: 2 letters>"
   },
   "invoice": {
-    "number": "string",
-    "series": "string",
-    "issueDate": "string (ISO 8601 format: YYYY-MM-DDTHH:mm:ss or YYYY-MM-DD)"
+    "number": "<string>",
+    "series": "<string>",
+    "issueDate": "<string: ISO 8601 format>"
   },
   "items": [
     {
-      "description": "string",
-      "productCode": "string (optional)",
-      "quantity": number,
-      "unitPrice": number,
-      "totalPrice": number,
-      "discountAmount": number
+      "description": "<string>",
+      "productCode": "<string or null>",
+      "quantity": <number>,
+      "unitPrice": <number>,
+      "totalPrice": <number>,
+      "discountAmount": <number>
     }
   ],
   "totals": {
-    "subtotal": number,
-    "discount": number,
-    "tax": number,
-    "total": number
+    "subtotal": <number>,
+    "discount": <number>,
+    "tax": <number>,
+    "total": <number>
   }
 }
 
@@ -194,12 +231,21 @@ IMPORTANT RULES:
 5. Remove all formatting from CNPJ (dots, slashes, hyphens)
 6. If a field is not found, use null for optional fields or empty string for required fields
 7. Ensure all numeric calculations are correct
-8. Return ONLY valid JSON, no additional text or explanation
+8. Return ONLY valid TOON format (tab-separated), no additional text or explanation
 9. For items without explicit quantity, assume quantity is 1
 10. If discount is not shown, use 0
 11. If tax is not shown separately, use 0
 12. Subtotal should be the sum of all item totalPrice values
 13. Total should equal subtotal - discount + tax
+
+DISCOUNT AND TAX EXTRACTION RULES:
+- Look for "Desconto", "Descontos R$", "Desconto R$" to extract discount value
+- Look for "Valor total R$" for subtotal (before discount)
+- Look for "Valor a pagar R$" for final total (after discount)
+- Look for "Informação dos Tributos" or "Tributos Totais Incidentes" for tax value
+- Common patterns: "Descontos R$: 1,00" or "Valor total R$: 107,81"
+- If "Valor a pagar" is less than "Valor total", the difference is the discount
+- Tax information may appear in footer sections with "Lei Federal 12.741/2012"
 
 EXAMPLE INPUT:
 <html>
@@ -215,7 +261,7 @@ EXAMPLE INPUT:
   <div>Valor total R$: 25,90</div>
 </html>
 
-EXAMPLE OUTPUT:
+EXAMPLE OUTPUT (JSON):
 {
   "merchant": {
     "cnpj": "12345678000190",
@@ -262,7 +308,7 @@ Example 2 - Multiple items with quantities:
   <div>Total: R$ 29,30</div>
 </html>
 
-Expected output:
+Expected output (JSON):
 {
   "merchant": {
     "cnpj": "98765432000110",
@@ -319,7 +365,7 @@ Example 3 - With discount and full address:
   <div>Total: R$ 161,82</div>
 </html>
 
-Expected output:
+Expected output (JSON):
 {
   "merchant": {
     "cnpj": "11222333000144",
@@ -360,19 +406,88 @@ Expected output:
   }
 }
 
+Example 4 - NFe format with discount and taxes (common format):
+<html>
+  <div>MUNDIAL MIX COMERCIO DE ALIMENTOS LTDA</div>
+  <div>CNPJ: 82.956.160/0042-41</div>
+  <div>Número: 4376 Série: 196 Emissão: 07/09/2025</div>
+  <table id="tabResult">
+    <tr><td>ALHO SAO FRANCISCO 1kg</td><td>Qtd: 1</td><td>Vl. Unit.: 11,88</td><td>Vl. Total: 11,88</td></tr>
+    <tr><td>COOKIES NESTLE 60G</td><td>Qtd: 2</td><td>Vl. Unit.: 2,79</td><td>Vl. Total: 5,58</td></tr>
+    <tr><td>BISC GAROTO 78G</td><td>Qtd: 1</td><td>Vl. Unit.: 3,99</td><td>Vl. Total: 3,99</td></tr>
+  </table>
+  <div>Qtd. total de itens: 13</div>
+  <div>Valor total R$: 107,81</div>
+  <div>Descontos R$: 1,00</div>
+  <div>Valor a pagar R$: 106,81</div>
+  <div>Informação dos Tributos Totais Incidentes (Lei Federal 12.741/2012) R$ 22,94</div>
+</html>
+
+Expected output (JSON):
+{
+  "merchant": {
+    "cnpj": "82956160004241",
+    "name": "MUNDIAL MIX COMERCIO DE ALIMENTOS LTDA",
+    "tradeName": null,
+    "address": "",
+    "city": "",
+    "state": ""
+  },
+  "invoice": {
+    "number": "4376",
+    "series": "196",
+    "issueDate": "2025-09-07"
+  },
+  "items": [
+    {
+      "description": "ALHO SAO FRANCISCO 1kg",
+      "productCode": null,
+      "quantity": 1,
+      "unitPrice": 11.88,
+      "totalPrice": 11.88,
+      "discountAmount": 0
+    },
+    {
+      "description": "COOKIES NESTLE 60G",
+      "productCode": null,
+      "quantity": 2,
+      "unitPrice": 2.79,
+      "totalPrice": 5.58,
+      "discountAmount": 0
+    },
+    {
+      "description": "BISC GAROTO 78G",
+      "productCode": null,
+      "quantity": 1,
+      "unitPrice": 3.99,
+      "totalPrice": 3.99,
+      "discountAmount": 0
+    }
+  ],
+  "totals": {
+    "subtotal": 107.81,
+    "discount": 1.00,
+    "tax": 22.94,
+    "total": 106.81
+  }
+}
+
 `;
   }
 
   /**
-   * Get variable prompt section (HTML content)
+   * Get variable prompt section (HTML content in TOON format)
    * Requirement 7.2, 7.4
    */
   getVariablePromptSection(html: string): string {
-    return `Now extract data from this HTML:
+    // Convert HTML to TOON for token efficiency (reduces input tokens)
+    const htmlToon = encodeToToon({ html });
 
-${html}
+    return `Now extract data from this HTML (provided in TOON format for efficiency):
 
-CRITICAL: Return ONLY the raw JSON object with no markdown formatting, no code blocks, no explanations, and no additional text before or after the JSON. Start your response with { and end with }.`;
+${htmlToon}
+
+CRITICAL: Return ONLY valid JSON in the exact structure shown above. No markdown formatting, no code blocks, no explanations, and no additional text before or after the JSON object. Start directly with the opening brace {.`;
   }
 
   /**
@@ -410,6 +525,14 @@ CRITICAL: Return ONLY the raw JSON object with no markdown formatting, no code b
         usage.output_tokens,
         (usage as any).cache_read_input_tokens || 0,
       );
+
+      // Check if response was truncated due to max_tokens limit
+      if (response.stop_reason === 'max_tokens') {
+        loggerService.warn('ai-parser', 'call-anthropic', 'Response truncated at max_tokens limit', {
+          maxTokens: this.config.maxTokens,
+          outputTokens: usage.output_tokens,
+        });
+      }
 
       // Extract text from response
       const content = response.content[0];
@@ -454,31 +577,15 @@ CRITICAL: Return ONLY the raw JSON object with no markdown formatting, no code b
           model: modelName,
         });
 
-        // Try with JSON mime type first, fallback to text if it fails
-        let result;
-        try {
-          result = await model.generateContent({
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            generationConfig: {
-              temperature: this.config.temperature,
-              maxOutputTokens: this.config.maxTokens,
-              responseMimeType: 'application/json', // Force JSON response
-            },
-          });
-        } catch (jsonError) {
-          // Fallback: try without JSON mime type
-          loggerService.warn('ai-parser', 'call-gemini', 'JSON mime type failed, retrying without it', {
-            error: jsonError instanceof Error ? jsonError.message : String(jsonError),
-          });
-
-          result = await model.generateContent({
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            generationConfig: {
-              temperature: this.config.temperature,
-              maxOutputTokens: this.config.maxTokens,
-            },
-          });
-        }
+        // Use application/json mime type to force JSON response
+        const result = await model.generateContent({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: this.config.temperature,
+            maxOutputTokens: this.config.maxTokens,
+            responseMimeType: 'application/json',
+          },
+        });
 
         const response = result.response;
 
@@ -504,8 +611,24 @@ CRITICAL: Return ONLY the raw JSON object with no markdown formatting, no code b
 
         const candidate = response.candidates[0];
 
-        // Check if content was blocked
+        // Check if content was blocked or truncated
         if (candidate.finishReason && candidate.finishReason !== 'STOP') {
+          // Special handling for MAX_TOKENS truncation
+          if (candidate.finishReason === 'MAX_TOKENS') {
+            loggerService.error('ai-parser', 'call-gemini', 'Response truncated at max tokens', {
+              finishReason: candidate.finishReason,
+              maxTokens: this.config.maxTokens,
+              outputTokens: response.usageMetadata?.candidatesTokenCount || 0,
+            });
+            throw new AIParseError(
+              'Gemini response was truncated due to max token limit. Increase maxTokens or reduce input size.',
+              {
+                finishReason: candidate.finishReason,
+                maxTokens: this.config.maxTokens,
+              },
+            );
+          }
+
           loggerService.error('ai-parser', 'call-gemini', 'Response blocked or incomplete', {
             finishReason: candidate.finishReason,
             safetyRatings: candidate.safetyRatings,
@@ -573,39 +696,59 @@ CRITICAL: Return ONLY the raw JSON object with no markdown formatting, no code b
   }
 
   /**
-   * Parse AI response text into JSON
+   * Parse AI response text as JSON
    * Handles cases where AI might include markdown code blocks or extra text
    */
   private parseAIResponse(responseText: string): any {
     try {
       let cleanedText = responseText.trim();
 
-      // Strategy 1: Try to parse as-is
+      // Check if response appears to be truncated
+      const responseLength = responseText.length;
+      const possiblyTruncated = responseLength > 100 && !cleanedText.endsWith('}');
+
+      if (possiblyTruncated) {
+        loggerService.warn('ai-parser', 'parse-response', 'Response may be truncated', {
+          responseLength,
+          last50Chars: responseText.substring(responseLength - 50),
+        });
+      }
+
+      // Strategy 1: Try direct JSON parse
       try {
-        return JSON.parse(cleanedText);
-      } catch {
-        // Continue to other strategies
+        const parsed = JSON.parse(cleanedText);
+        loggerService.info('ai-parser', 'parse-response', 'Successfully parsed JSON response', {
+          hasData: !!parsed,
+        });
+        return parsed;
+      } catch (jsonError) {
+        loggerService.warn('ai-parser', 'parse-response', 'Direct JSON parse failed, trying cleanup strategies', {
+          error: jsonError instanceof Error ? jsonError.message : String(jsonError),
+          responsePreview: cleanedText.substring(0, 200),
+        });
       }
 
       // Strategy 2: Remove markdown code blocks
       if (cleanedText.includes('```')) {
-        // Remove ```json or ``` markers
         cleanedText = cleanedText.replace(/```json\s*/g, '').replace(/```\s*/g, '');
         try {
-          return JSON.parse(cleanedText.trim());
+          const parsed = JSON.parse(cleanedText.trim());
+          loggerService.info('ai-parser', 'parse-response', 'Parsed JSON after removing markdown', {});
+          return parsed;
         } catch {
           // Continue to other strategies
         }
       }
 
-      // Strategy 3: Extract JSON object using regex
-      // Look for content between first { and last }
+      // Strategy 3: Extract JSON object from text
       const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         try {
-          return JSON.parse(jsonMatch[0]);
+          const parsed = JSON.parse(jsonMatch[0]);
+          loggerService.info('ai-parser', 'parse-response', 'Extracted and parsed JSON from text', {});
+          return parsed;
         } catch {
-          // Continue to other strategies
+          // Continue
         }
       }
 
@@ -617,13 +760,17 @@ CRITICAL: Return ONLY the raw JSON object with no markdown formatting, no code b
         if (index !== -1) {
           const afterPrefix = cleanedText.substring(index + prefix.length).trim();
           try {
-            return JSON.parse(afterPrefix);
+            const parsed = JSON.parse(afterPrefix);
+            loggerService.info('ai-parser', 'parse-response', 'Parsed JSON after removing prefix', { prefix });
+            return parsed;
           } catch {
-            // Try extracting JSON object from after prefix
+            // Try to extract JSON object from the text after prefix
             const jsonMatch = afterPrefix.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
               try {
-                return JSON.parse(jsonMatch[0]);
+                const parsed = JSON.parse(jsonMatch[0]);
+                loggerService.info('ai-parser', 'parse-response', 'Extracted JSON after prefix', { prefix });
+                return parsed;
               } catch {
                 // Continue
               }
@@ -635,8 +782,18 @@ CRITICAL: Return ONLY the raw JSON object with no markdown formatting, no code b
       // If all strategies fail, throw error with debug info
       throw new Error('Could not extract valid JSON from response');
     } catch (error) {
+      // Log full response for debugging truncation issues
+      loggerService.error('ai-parser', 'parse-response', 'Failed to parse AI response as JSON', {
+        responseLength: responseText.length,
+        first200: responseText.substring(0, 200),
+        last200: responseText.substring(Math.max(0, responseText.length - 200)),
+        parseError: error instanceof Error ? error.message : String(error),
+      });
+
       throw new AIParseError('Failed to parse AI response as JSON', {
         responseText: responseText.substring(0, 500), // First 500 chars for debugging
+        responseLength: responseText.length,
+        last100: responseText.substring(Math.max(0, responseText.length - 100)),
         parseError: error instanceof Error ? error.message : String(error),
       });
     }
@@ -742,12 +899,99 @@ CRITICAL: Return ONLY the raw JSON object with no markdown formatting, no code b
         total: aiResponse.totals.total,
       },
       xmlData: html, // Store original HTML for reference
-      metadata: {
-        parsedAt: new Date(),
-        fromCache: false,
-        parsingMethod: 'ai' as const,
-      },
     };
+  }
+
+  /**
+   * Optimize HTML before sending to AI to reduce tokens and cost
+   * Removes unnecessary whitespace, scripts, styles, and comments
+   */
+  private optimizeHtml(html: string): string {
+    let optimized = html;
+
+    // Remove HTML comments
+    optimized = optimized.replace(/<!--[\s\S]*?-->/g, '');
+
+    // Remove script tags and their content
+    optimized = optimized.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+
+    // Remove style tags and their content
+    optimized = optimized.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+
+    // Remove inline styles
+    optimized = optimized.replace(/\s+style\s*=\s*["'][^"']*["']/gi, '');
+
+    // Remove class attributes (keep IDs for structure)
+    optimized = optimized.replace(/\s+class\s*=\s*["'][^"']*["']/gi, '');
+
+    // Remove empty attributes
+    optimized = optimized.replace(/\s+\w+\s*=\s*[""']\s*[""']/gi, '');
+
+    // Collapse multiple spaces into single space
+    optimized = optimized.replace(/\s+/g, ' ');
+
+    // Remove spaces around tags
+    optimized = optimized.replace(/>\s+</g, '><');
+
+    // Trim
+    optimized = optimized.trim();
+
+    return optimized;
+  }
+
+  /**
+   * Estimate token count for a given text
+   * Uses approximation: ~4 characters per token for English/Portuguese text
+   * This is a rough estimate; actual tokenization may vary by model
+   */
+  private estimateTokenCount(text: string): number {
+    // Average characters per token for GPT-like models: ~4
+    // For safety, we use 3.5 to slightly overestimate
+    return Math.ceil(text.length / 3.5);
+  }
+
+  /**
+   * Estimate input cost based on model and token count
+   * Prices as of November 2024 (per million tokens)
+   */
+  private estimateInputCost(model: string, inputTokens: number): number {
+    const pricing: Record<string, { input: number }> = {
+      'claude-3-5-sonnet-20241022': { input: 3.0 },
+      'claude-3-5-sonnet-20240620': { input: 3.0 },
+      'claude-3-opus-20240229': { input: 15.0 },
+      'claude-3-sonnet-20240229': { input: 3.0 },
+      'claude-3-haiku-20240307': { input: 0.25 },
+      'gemini-2.0-flash-exp': { input: 0.0 }, // Free tier
+      'gemini-1.5-pro': { input: 1.25 },
+      'gemini-1.5-flash': { input: 0.075 },
+      'gemini-2.5-flash': { input: 0.0 }, // Assuming similar to 2.0-flash
+      'gemini-2.5-pro': { input: 1.25 },
+    };
+
+    const modelPricing = pricing[model] || pricing['claude-3-5-sonnet-20241022'];
+    return (inputTokens / 1_000_000) * modelPricing.input;
+  }
+
+  /**
+   * Estimate output cost based on model and token count
+   * Prices as of November 2024 (per million tokens)
+   */
+  private estimateOutputCost(model: string, outputTokens: number): number {
+    const pricing: Record<string, { output: number }> = {
+      'claude-3-5-sonnet-20241022': { output: 15.0 },
+      'claude-3-5-sonnet-20240620': { output: 15.0 },
+      'claude-3-opus-20240229': { output: 75.0 },
+      'claude-3-sonnet-20240229': { output: 15.0 },
+      'claude-3-haiku-20240307': { output: 1.25 },
+      'gemini-2.0-flash-exp': { output: 0.0 }, // Free tier
+      'gemini-1.5-pro': { output: 5.0 },
+      'gemini-1.5-flash': { output: 0.3 },
+      'gemini-2.5-flash': { output: 0.0 }, // Assuming similar to 2.0-flash
+      'gemini-2.5-pro': { output: 5.0 },
+    };
+
+    const modelPricing = pricing[model] || pricing['claude-3-5-sonnet-20241022'];
+    return (outputTokens / 1_000_000) * modelPricing.output;
   }
 }
 

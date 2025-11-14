@@ -111,23 +111,23 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 
-
-const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+const chartColor = (slot: number) => `var(--chart-${((slot % 12) + 1)})`;
+const CHART_COLORS = Array.from({ length: 12 }, (_, index) => chartColor(index));
 
 // Cores para cada mês (12 cores distintas)
 const MONTH_COLORS: Record<number, string> = {
-  1: '#3b82f6',  // Janeiro - Azul
-  2: '#ec4899',  // Fevereiro - Rosa
-  3: '#10b981',  // Março - Verde
-  4: '#f59e0b',  // Abril - Laranja
-  5: '#8b5cf6',  // Maio - Roxo
-  6: '#06b6d4',  // Junho - Ciano
-  7: '#ef4444',  // Julho - Vermelho
-  8: '#84cc16',  // Agosto - Lima
-  9: '#f97316',  // Setembro - Laranja escuro
-  10: '#14b8a6', // Outubro - Teal
-  11: '#a855f7', // Novembro - Roxo claro
-  12: '#0ea5e9', // Dezembro - Azul claro
+  1: chartColor(0),
+  2: chartColor(1),
+  3: chartColor(2),
+  4: chartColor(3),
+  5: chartColor(4),
+  6: chartColor(5),
+  7: chartColor(6),
+  8: chartColor(7),
+  9: chartColor(8),
+  10: chartColor(9),
+  11: chartColor(10),
+  12: chartColor(11),
 };
 
 // ============================================
@@ -533,10 +533,11 @@ export default function InsightsPage() {
   // ============================================
 
   // Pie chart data for category breakdown
-  const pieChartData = insights?.categoryBreakdown.map((cat) => ({
+  const pieChartData = insights?.categoryBreakdown.map((cat, index) => ({
     name: formatCategory(cat.category),
     value: cat.totalAmount,
     percentage: cat.percentage,
+    color: CHART_COLORS[index % CHART_COLORS.length],
   })) || [];
 
   // Line chart data for monthly trend
@@ -839,19 +840,19 @@ export default function InsightsPage() {
                       dataKey="value"
                     >
                       {pieChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                        <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
                     <Tooltip
                       formatter={(value: number) => formatCurrency(value)}
                       contentStyle={{
-                        backgroundColor: 'hsl(var(--surface))',
-                        color: 'hsl(var(--on-surface))',
-                        border: '1px solid hsl(var(--outline))',
+                        backgroundColor: 'var(--chart-tooltip-bg)',
+                        color: 'var(--chart-tooltip-text)',
+                        border: `1px solid var(--chart-tooltip-border)` ,
                         borderRadius: '8px',
                       }}
                       labelStyle={{
-                        color: 'hsl(var(--on-surface))',
+                        color: 'var(--chart-tooltip-text)',
                       }}
                     />
                   </PieChart>
@@ -863,7 +864,7 @@ export default function InsightsPage() {
                     <div key={index} className="flex items-start gap-3 py-3 px-3 rounded border-2 border-transparent hover:border-primary/30 transition-colors cursor-pointer">
                       <div
                         className="w-4 h-4 rounded-full flex-shrink-0 mt-0.5"
-                        style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
+                        style={{ backgroundColor: entry.color }}
                       />
                       <div className="flex-grow min-w-0">
                         <div className="text-sm font-medium text-on-surface mb-1">
@@ -896,33 +897,33 @@ export default function InsightsPage() {
           {lineChartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={lineChartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--outline))" opacity={0.3} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
                 <XAxis
                   dataKey="month"
-                  tick={{ fontSize: 12, fill: 'hsl(var(--on-surface))' }}
-                  stroke="hsl(var(--outline))"
+                  tick={{ fontSize: 12, fill: 'var(--chart-axis)' }}
+                  stroke="var(--chart-axis)"
                 />
                 <YAxis
-                  tick={{ fontSize: 12, fill: 'hsl(var(--on-surface))' }}
-                  stroke="hsl(var(--outline))"
+                  tick={{ fontSize: 12, fill: 'var(--chart-axis)' }}
+                  stroke="var(--chart-axis)"
                   tickFormatter={(value) => `R$ ${(value / 1000).toFixed(1)}k`}
                 />
                 <Tooltip
                   formatter={(value: number) => formatCurrency(value)}
                   contentStyle={{
-                    backgroundColor: 'hsl(var(--surface))',
-                    color: 'hsl(var(--on-surface))',
-                    border: '1px solid hsl(var(--outline))',
+                    backgroundColor: 'var(--chart-tooltip-bg)',
+                    color: 'var(--chart-tooltip-text)',
+                    border: `1px solid var(--chart-tooltip-border)` ,
                     borderRadius: '8px',
                   }}
                   labelStyle={{
-                    color: 'hsl(var(--on-surface))',
+                    color: 'var(--chart-tooltip-text)',
                   }}
                 />
                 <Line
                   type="monotone"
                   dataKey="total"
-                  stroke="hsl(var(--primary))"
+                  stroke="var(--chart-1)"
                   strokeWidth={2}
                   dot={(props: any) => {
                     const { cx, cy, payload, index } = props;
@@ -932,8 +933,8 @@ export default function InsightsPage() {
                         cx={cx}
                         cy={cy}
                         r={4}
-                        fill={payload.color || 'hsl(var(--primary))'}
-                        stroke="white"
+                        fill={payload.color || 'var(--chart-1)'}
+                        stroke="var(--surface)"
                         strokeWidth={2}
                       />
                     );
@@ -946,8 +947,8 @@ export default function InsightsPage() {
                         cx={cx}
                         cy={cy}
                         r={6}
-                        fill={payload.color || 'hsl(var(--primary))'}
-                        stroke="white"
+                        fill={payload.color || 'var(--chart-1)'}
+                        stroke="var(--surface)"
                         strokeWidth={2}
                       />
                     );
@@ -968,18 +969,18 @@ export default function InsightsPage() {
           {barChartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={barChartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--on-surface))" opacity={0.3} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
                 <XAxis
                   dataKey="name"
-                  tick={{ fontSize: 11, fill: 'hsl(var(--on-surface))' }}
-                  stroke="hsl(var(--on-surface))"
+                  tick={{ fontSize: 11, fill: 'var(--chart-axis)' }}
+                  stroke="var(--chart-axis)"
                   angle={-15}
                   textAnchor="end"
                   height={80}
                 />
                 <YAxis
-                  tick={{ fontSize: 12, fill: 'hsl(var(--on-surface))' }}
-                  stroke="hsl(var(--on-surface))"
+                  tick={{ fontSize: 12, fill: 'var(--chart-axis)' }}
+                  stroke="var(--chart-axis)"
                   tickFormatter={(value) => `R$ ${(value / 1000).toFixed(1)}k`}
                 />
                 <Tooltip
@@ -989,19 +990,19 @@ export default function InsightsPage() {
                     return [value, name];
                   }}
                   contentStyle={{
-                    backgroundColor: 'hsl(var(--surface))',
-                    color: 'hsl(var(--on-surface))',
-                    border: '1px solid hsl(var(--outline))',
+                    backgroundColor: 'var(--chart-tooltip-bg)',
+                    color: 'var(--chart-tooltip-text)',
+                    border: `1px solid var(--chart-tooltip-border)` ,
                     borderRadius: '8px',
                   }}
                   labelStyle={{
-                    color: 'hsl(var(--on-surface))',
+                    color: 'var(--chart-tooltip-text)',
                   }}
                 />
                 <Bar 
                   dataKey="totalSpent" 
                   radius={[8, 8, 0, 0]}
-                  fill="hsl(var(--primary))"
+                  fill="var(--chart-1)"
                 >
                   {barChartData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />

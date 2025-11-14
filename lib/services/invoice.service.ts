@@ -383,9 +383,6 @@ export class InvoiceService {
       // Delete invoice
       await this.dbAdapter.deleteDocument(DATABASE_ID, COLLECTIONS.INVOICES, invoiceId);
 
-      // Update product statistics (decrement purchase counts, recalculate averages)
-      await this.updateProductStatsAfterDeletion(userId, invoice.items);
-
       // Invalidate related caches
       invalidateCache.invoices(userId);
     } catch (error: any) {
@@ -630,8 +627,6 @@ export class InvoiceService {
       ncm_code: normalizedProduct.ncmCode,
       category: category,
       subcategory: subcategory || null,
-      total_purchases: 0,
-      average_price: 0,
       created_at: now,
       updated_at: now,
     };
@@ -660,76 +655,8 @@ export class InvoiceService {
     items: InvoiceItem[],
   ): Promise<void> {
     for (const item of items) {
-      // Update product statistics
-      await this.updateProductStats(item.product_id, item.unit_price, parsedInvoice.issueDate.toISOString());
-
       // Record price history
       await this.recordPriceHistory(userId, item, invoiceId, parsedInvoice);
-    }
-  }
-
-  /**
-   * Update product statistics (total purchases, average price, last purchase date)
-   */
-  private async updateProductStats(productId: string, unitPrice: number, purchaseDate: string): Promise<void> {
-    try {
-      const product = await this.dbAdapter.getDocument(DATABASE_ID, COLLECTIONS.PRODUCTS, productId);
-
-      const totalPurchases = product.total_purchases + 1;
-      const currentAverage = product.average_price || 0;
-      const newAverage = (currentAverage * product.total_purchases + unitPrice) / totalPurchases;
-
-      await this.dbAdapter.updateDocument(DATABASE_ID, COLLECTIONS.PRODUCTS, productId, {
-        total_purchases: totalPurchases,
-        average_price: newAverage,
-        last_purchase_date: purchaseDate,
-        updated_at: new Date().toISOString(),
-      });
-    } catch (error: any) {
-      console.error(`Failed to update product stats for ${productId}:`, error);
-      // Don't fail the invoice creation if stats update fails
-    }
-  }
-
-  /**
-   * Update product statistics after invoice deletion
-   */
-  private async updateProductStatsAfterDeletion(userId: string, items: InvoiceItem[]): Promise<void> {
-    for (const item of items) {
-      try {
-        const product = await this.dbAdapter.getDocument(DATABASE_ID, COLLECTIONS.PRODUCTS, item.product_id);
-
-        const totalPurchases = Math.max(0, product.total_purchases - 1);
-
-        // Recalculate average price from remaining price history
-        if (totalPurchases > 0) {
-          const priceHistoryResult = await this.dbAdapter.listDocuments(DATABASE_ID, COLLECTIONS.PRICE_HISTORY, [
-            Query.equal('product_id', item.product_id),
-            Query.notEqual('invoice_id', item.invoice_id),
-          ]);
-
-          const prices = priceHistoryResult.documents.map((doc: any) => doc.unit_price);
-          const newAverage =
-            prices.length > 0 ? prices.reduce((sum: number, p: number) => sum + p, 0) / prices.length : 0;
-
-          await this.dbAdapter.updateDocument(DATABASE_ID, COLLECTIONS.PRODUCTS, item.product_id, {
-            total_purchases: totalPurchases,
-            average_price: newAverage,
-            updated_at: new Date().toISOString(),
-          });
-        } else {
-          // No more purchases, reset stats
-          await this.dbAdapter.updateDocument(DATABASE_ID, COLLECTIONS.PRODUCTS, item.product_id, {
-            total_purchases: 0,
-            average_price: 0,
-            last_purchase_date: null,
-            updated_at: new Date().toISOString(),
-          });
-        }
-      } catch (error: any) {
-        console.error(`Failed to update product stats after deletion for ${item.product_id}:`, error);
-        // Continue with other items
-      }
     }
   }
 
@@ -831,9 +758,6 @@ export class InvoiceService {
       ncm_code: document.ncm_code,
       category: document.category,
       subcategory: document.subcategory,
-      total_purchases: document.total_purchases,
-      average_price: document.average_price,
-      last_purchase_date: document.last_purchase_date,
       created_at: document.created_at,
       updated_at: document.updated_at,
     };

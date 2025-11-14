@@ -312,23 +312,68 @@ export class AnalyticsService {
    */
   private async calculateFrequentProducts(userId: string, invoices: Invoice[]): Promise<ProductStats[]> {
     try {
-      // Get all products for the user
-      const productsResult = await this.dbAdapter.listDocuments(DATABASE_ID, COLLECTIONS.PRODUCTS, [
+      const priceHistoryEntries = await this.listAllDocuments<any>(COLLECTIONS.PRICE_HISTORY, [
         Query.equal('user_id', userId),
-        Query.orderDesc('total_purchases'),
-        Query.limit(10),
       ]);
 
-      const products: ProductStats[] = productsResult.documents.map((doc: any) => ({
-        productId: doc.$id,
-        productName: doc.name,
-        purchaseCount: doc.total_purchases,
-        totalSpent: doc.average_price * doc.total_purchases,
-        averagePrice: doc.average_price,
-        lastPurchase: doc.last_purchase_date || '',
-      }));
+      if (priceHistoryEntries.length === 0) {
+        return [];
+      }
 
-      return products;
+      const statsByProduct = new Map<
+        string,
+        { count: number; totalSpent: number; totalQuantity: number; lastPurchase?: string }
+      >();
+
+      for (const entry of priceHistoryEntries) {
+        const stats =
+          statsByProduct.get(entry.product_id) ||
+          ({ count: 0, totalSpent: 0, totalQuantity: 0 } as {
+            count: number;
+            totalSpent: number;
+            totalQuantity: number;
+            lastPurchase?: string;
+          });
+
+        stats.count += 1;
+        const quantity = typeof entry.quantity === 'number' ? entry.quantity : 1;
+        const unitPrice = typeof entry.unit_price === 'number' ? entry.unit_price : 0;
+        stats.totalQuantity += quantity;
+        stats.totalSpent += unitPrice * quantity;
+
+        if (!stats.lastPurchase || (entry.purchase_date && entry.purchase_date > stats.lastPurchase)) {
+          stats.lastPurchase = entry.purchase_date;
+        }
+
+        statsByProduct.set(entry.product_id, stats);
+      }
+
+      const productIds = Array.from(statsByProduct.keys());
+      const productDocs = await this.fetchRowsByIds<Product>(COLLECTIONS.PRODUCTS, productIds);
+      const nameById = new Map(productDocs.map((doc: any) => [doc.$id, doc.name]));
+
+      const products: ProductStats[] = Array.from(statsByProduct.entries()).map(([productId, stats]) => {
+        const averagePriceRaw =
+          stats.totalQuantity > 0 ? stats.totalSpent / stats.totalQuantity : stats.totalSpent / stats.count;
+
+        return {
+          productId,
+          productName: nameById.get(productId) || 'Produto desconhecido',
+          purchaseCount: stats.count,
+          totalSpent: Number(stats.totalSpent.toFixed(2)),
+          averagePrice: Number(averagePriceRaw.toFixed(2)),
+          lastPurchase: stats.lastPurchase || '',
+        };
+      });
+
+      return products
+        .sort((a, b) => {
+          if (b.purchaseCount !== a.purchaseCount) {
+            return b.purchaseCount - a.purchaseCount;
+          }
+          return b.totalSpent - a.totalSpent;
+        })
+        .slice(0, 10);
     } catch (error: any) {
       console.error('Failed to calculate frequent products:', error);
       return [];
@@ -408,6 +453,52 @@ export class AnalyticsService {
         error: error.message,
       });
     }
+  }
+
+  /**
+   * Fetch all documents for a table using pagination
+   */
+  private async listAllDocuments<T>(tableId: string, baseQueries: string[], batchSize: number = 100): Promise<T[]> {
+    const rows: T[] = [];
+    let offset = 0;
+
+    while (true) {
+      const queries = [...baseQueries, Query.limit(batchSize), Query.offset(offset)];
+      const response = await this.dbAdapter.listDocuments(DATABASE_ID, tableId, queries);
+      const documents = (response.documents || []) as T[];
+      rows.push(...documents);
+
+      if (documents.length < batchSize) {
+        break;
+      }
+
+      offset += batchSize;
+    }
+
+    return rows;
+  }
+
+  /**
+   * Fetch documents by ID chunks to avoid query limits
+   */
+  private async fetchRowsByIds<T>(tableId: string, ids: string[], chunkSize: number = 100): Promise<T[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const rows: T[] = [];
+
+    for (let i = 0; i < ids.length; i += chunkSize) {
+      const chunk = ids.slice(i, i + chunkSize);
+      const response = await this.dbAdapter.listDocuments(DATABASE_ID, tableId, [
+        Query.equal('$id', chunk),
+        Query.limit(chunk.length),
+      ]);
+
+      rows.push(...((response.documents || []) as T[]));
+    }
+
+    return rows;
   }
 
   /**

@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
 import ShoppingListBuilder from '@/components/invoices/ShoppingListBuilder';
 import PriceHistoryModal from '@/components/modals/PriceHistoryModal';
 import { CategoryChip, getCategoryLabel, type CategoryType } from '@/components/ui/CategoryChip';
+import MonthPicker from '@/components/ui/MonthPicker';
 import { useAppwriteRealtime } from '@/hooks/useAppwriteRealtime';
 
 interface Product {
@@ -25,79 +25,91 @@ interface Product {
   last_purchase_date?: string;
   created_at: string;
   updated_at: string;
-}
-
-interface ProductsResponse {
-  success: boolean;
-  data: Product[];
-  total: number;
-  limit: number;
-  offset: number;
+  total_spent?: number;
 }
 
 export default function ProductsPage() {
-  const router = useRouter();
-
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [purchaseMonthFilter, setPurchaseMonthFilter] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<{ $id: string; name: string } | null>(null);
   const [showShoppingList, setShowShoppingList] = useState(false);
   const [showPriceHistory, setShowPriceHistory] = useState(false);
 
-  // Fetch products
   const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Build query string
       const params = new URLSearchParams();
-      // Fetch directly from Appwrite using the browser client
-      const { getAppwriteBrowserDatabases } = await import('@/lib/appwrite/client-browser');
-      const { Query } = await import('appwrite');
-
-      const databases = getAppwriteBrowserDatabases();
-      const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || process.env.APPWRITE_DATABASE_ID;
-
-      if (!databaseId) {
-        throw new Error('Database ID not configured');
-      }
-
-      // Build queries - limite de 500 para garantir que todos os produtos sejam retornados
-      const queries: string[] = [];
-      
-      // Aumentar limite para retornar todos os produtos (máximo do Appwrite é 5000)
-      queries.push(Query.limit(500));
-      
-      if (searchQuery) {
-        queries.push(Query.search('name', searchQuery));
-      }
-      
       if (categoryFilter) {
-        queries.push(Query.equal('category', categoryFilter));
+        params.set('category', categoryFilter);
       }
 
-      // Default ordering by name
-      queries.push(Query.orderAsc('name'));
+      const response = await fetch(`/api/products${params.size ? `?${params.toString()}` : ''}`, {
+        credentials: 'include',
+      });
 
-      const result = await databases.listRows({databaseId, tableId: 'products', queries});
-      const productsData = result.rows as unknown as Product[];
-      
-      setProducts(productsData);
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.message || 'Falha ao carregar produtos');
+      }
+
+      setProducts((payload.data || []) as Product[]);
     } catch (err: any) {
       console.error('Error fetching products:', err);
       setError(err.message || 'Failed to load products');
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, categoryFilter]);
+  }, [categoryFilter]);
 
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
+
+  const filteredProducts = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    const hasMonthFilter = Boolean(purchaseMonthFilter);
+    const [filterYear, filterMonth] = purchaseMonthFilter.split('-').map((value) => parseInt(value, 10));
+
+    return products.filter((product) => {
+      const matchesSearch =
+        !normalizedQuery ||
+        product.name.toLowerCase().includes(normalizedQuery) ||
+        (product.product_code && product.product_code.toLowerCase().includes(normalizedQuery));
+
+      if (!matchesSearch) {
+        return false;
+      }
+
+      if (!hasMonthFilter) {
+        return true;
+      }
+
+      if (!product.last_purchase_date) {
+        return false;
+      }
+
+      const purchaseDate = new Date(product.last_purchase_date);
+      const purchaseMonth = purchaseDate.getMonth() + 1;
+      const purchaseYear = purchaseDate.getFullYear();
+
+      const matchesMonth =
+        !Number.isNaN(filterYear) &&
+        !Number.isNaN(filterMonth) &&
+        purchaseYear === filterYear &&
+        purchaseMonth === filterMonth;
+
+      return matchesMonth;
+    });
+  }, [products, searchQuery, purchaseMonthFilter]);
+
+  const hasActiveFilters = Boolean(searchQuery || categoryFilter || purchaseMonthFilter);
 
   // Real-time updates for products
   useAppwriteRealtime({
@@ -117,7 +129,6 @@ export default function ProductsPage() {
     },
   });
 
-  // Real-time updates for invoices (they affect product statistics)
   useAppwriteRealtime({
     channels: [`databases.${process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID}.collections.invoices.documents`],
     enabled: !loading,
@@ -135,7 +146,6 @@ export default function ProductsPage() {
     },
   });
 
-  // Format currency
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -143,7 +153,6 @@ export default function ProductsPage() {
     }).format(amount);
   };
 
-  // Format date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return new Intl.DateTimeFormat('pt-BR', {
@@ -153,7 +162,6 @@ export default function ProductsPage() {
     }).format(date);
   };
 
-  // Handle product click - open price history modal
   const handleProductClick = (productId: string, productName: string) => {
     setSelectedProduct({ $id: productId, name: productName });
     setShowPriceHistory(true);
@@ -166,9 +174,9 @@ export default function ProductsPage() {
           <h1 className="text-3xl font-normal text-on-surface">Produtos</h1>
           <p className="text-base text-on-surface-variant mt-1">
             Acompanhe preços e histórico de compras dos seus produtos
-            {!loading && products.length > 0 && (
+            {!loading && filteredProducts.length > 0 && (
               <span className="ml-2 text-primary font-medium">
-                ({products.length} {products.length === 1 ? 'produto' : 'produtos'})
+                ({filteredProducts.length} {filteredProducts.length === 1 ? 'produto' : 'produtos'})
               </span>
             )}
           </p>
@@ -185,52 +193,68 @@ export default function ProductsPage() {
 
       {/* Search and Filters */}
       {!showShoppingList && (
-      <Card className="p-4 mb-6">
-        <div className="space-y-4">
-          {/* Search Bar */}
-          <div className="flex gap-2">
-            <div className="flex-grow relative">
-              <input
-                type="text"
-                placeholder="Buscar produtos..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-2 pl-10 border border-outline rounded-lg bg-surface text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary dark:bg-surface-variant/20 dark:border-outline-variant"
-              />
-              <svg
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-on-surface-variant"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+        <Card className="p-4 mb-6">
+          <div className="space-y-4">
+            <div className="flex flex-col gap-2 md:flex-row">
+              <div className="flex-grow relative">
+                <input
+                  type="text"
+                  placeholder="Buscar por nome ou código..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-2 pl-10 border border-outline rounded-lg bg-surface text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary dark:bg-surface-variant/20 dark:border-outline-variant"
                 />
-              </svg>
-            </div>
+                <svg
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-on-surface-variant"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+                {searchQuery && (
+                  <button
+                    type="button"
+                    aria-label="Limpar busca"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors"
+                    onClick={() => setSearchQuery('')}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
 
-            {/* Category Filter */}
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="px-4 py-2 border border-outline rounded-lg bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary dark:bg-surface-variant/20 dark:border-outline-variant"
-            >
-              <option value="">Todas as categorias</option>
-              <option value="pharmacy">{getCategoryLabel('pharmacy')}</option>
-              <option value="groceries">{getCategoryLabel('groceries')}</option>
-              <option value="supermarket">{getCategoryLabel('supermarket')}</option>
-              <option value="restaurant">{getCategoryLabel('restaurant')}</option>
-              <option value="fuel">{getCategoryLabel('fuel')}</option>
-              <option value="retail">{getCategoryLabel('retail')}</option>
-              <option value="services">{getCategoryLabel('services')}</option>
-              <option value="other">{getCategoryLabel('other')}</option>
-            </select>
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="px-4 py-2 border border-outline rounded-lg bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary dark:bg-surface-variant/20 dark:border-outline-variant"
+              >
+                <option value="">Todas as categorias</option>
+                <option value="pharmacy">{getCategoryLabel('pharmacy')}</option>
+                <option value="groceries">{getCategoryLabel('groceries')}</option>
+                <option value="supermarket">{getCategoryLabel('supermarket')}</option>
+                <option value="restaurant">{getCategoryLabel('restaurant')}</option>
+                <option value="fuel">{getCategoryLabel('fuel')}</option>
+                <option value="retail">{getCategoryLabel('retail')}</option>
+                <option value="services">{getCategoryLabel('services')}</option>
+                <option value="other">{getCategoryLabel('other')}</option>
+              </select>
+
+              <div className="w-full md:w-64">
+                <MonthPicker
+                  value={purchaseMonthFilter}
+                  onChange={setPurchaseMonthFilter}
+                  placeholder="Mês da compra"
+                />
+              </div>
+            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
       )}
 
       {/* Error State */}
@@ -261,7 +285,7 @@ export default function ProductsPage() {
       )}
 
       {/* Empty State */}
-      {!loading && !error && products.length === 0 && (
+      {!loading && !error && filteredProducts.length === 0 && (
         <Card className="py-12 text-center flex flex-col items-center border-2 border-dashed border-outline bg-surface shadow-none">
           <svg
             className="w-16 h-16 text-on-surface-variant mb-4"
@@ -278,7 +302,7 @@ export default function ProductsPage() {
           </svg>
           <h3 className="text-lg font-medium text-on-surface">Nenhum Produto Encontrado</h3>
           <p className="text-on-surface-variant text-sm mt-2 max-w-sm">
-            {searchQuery || categoryFilter
+            {hasActiveFilters
               ? 'Tente ajustar os filtros de busca.'
               : 'Adicione notas fiscais para começar a rastrear produtos e preços.'}
           </p>
@@ -286,9 +310,9 @@ export default function ProductsPage() {
       )}
 
       {/* Products Grid */}
-      {!showShoppingList && !loading && !error && products.length > 0 && (
+      {!showShoppingList && !loading && !error && filteredProducts.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {products.map((product) => (
+          {filteredProducts.map((product) => (
             <Card
               key={product.$id}
               className="p-4 hover:shadow-md transition-shadow cursor-pointer"
@@ -298,9 +322,13 @@ export default function ProductsPage() {
               <div className="mb-3">
                 <h3 className="font-medium text-on-surface line-clamp-2 mb-2">{product.name}</h3>
                 <div className="flex items-center gap-2 flex-wrap">
-                  {product.category && (
+                  {product.subcategory ? (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                      {product.subcategory}
+                    </span>
+                  ) : product.category ? (
                     <CategoryChip category={product.category as CategoryType} />
-                  )}
+                  ) : null}
                   {product.product_code && (
                     <span className="text-xs text-on-surface-variant">Cód: {product.product_code}</span>
                   )}
