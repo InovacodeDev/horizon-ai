@@ -8,6 +8,7 @@ import Skeleton from '@/components/ui/Skeleton';
 import Button from '@/components/ui/Button';
 import { useCreditCardsWithCache } from '@/hooks/useCreditCardsWithCache';
 import { useCreditCardTransactions } from '@/hooks/useCreditCardTransactions';
+import { useCreditCardBills } from '@/hooks/useCreditCardBills';
 import { getCategoryById } from '@/lib/constants/categories';
 import CreateTransactionModal from './CreateTransactionModal';
 import EditTransactionModal from './EditTransactionModal';
@@ -118,6 +119,16 @@ const CreditCardBillsPage: React.FC = () => {
     enableRealtime: true,
   });
 
+  // Buscar bills do banco de dados com realtime
+  const {
+    bills: dbBills,
+    loading: loadingBills,
+    refetch: refetchBills,
+  } = useCreditCardBills({
+    creditCardId: selectedCardId || undefined,
+    enableRealtime: true,
+  });
+
   // Mapeia as transações para o formato esperado
   const transactions = useMemo(() => {
     return rawTransactions.map((t: any) => ({
@@ -204,6 +215,8 @@ const CreditCardBillsPage: React.FC = () => {
   };
 
   // Calculate bills based on transactions and card settings
+  // TODO: Migrar para usar apenas dbBills (bills do banco de dados)
+  // Por enquanto mantemos o cálculo manual para compatibilidade
   const bills = useMemo(() => {
     if (!selectedCard || transactions.length === 0) return [];
 

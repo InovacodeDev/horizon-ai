@@ -1,5 +1,6 @@
 'use client';
 
+import { useUser } from '@/lib/contexts/UserContext';
 import type { CreateCreditCardDto, CreditCard, UpdateCreditCardDto } from '@/lib/types';
 import { cacheManager, getCacheKey, invalidateCache } from '@/lib/utils/cache';
 import { useCallback, useEffect, useOptimistic, useState, useTransition } from 'react';
@@ -17,6 +18,7 @@ interface UseCreditCardsOptions {
  */
 export function useCreditCards(options: UseCreditCardsOptions = {}) {
   const { accountId, initialCreditCards, enableRealtime = true } = options;
+  const { user } = useUser();
   const [creditCards, setCreditCards] = useState<CreditCard[]>(initialCreditCards || []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,21 +44,16 @@ export function useCreditCards(options: UseCreditCardsOptions = {}) {
 
   const fetchCreditCards = useCallback(
     async (skipCache = false) => {
-      if (!accountId) {
-        setCreditCards([]);
-        setLoading(false);
-        setInitialized(true);
-        return;
-      }
-
       try {
         // Check cache first
         if (!skipCache) {
-          const cacheKey = getCacheKey.creditCards('user');
+          const cacheKey = getCacheKey.creditCards(user.$id);
           const cached = cacheManager.get<CreditCard[]>(cacheKey);
 
           if (cached) {
-            setCreditCards(cached);
+            // Filter by accountId if provided
+            const filteredCards = accountId ? cached.filter((c) => c.account_id === accountId) : cached;
+            setCreditCards(filteredCards);
             setLoading(false);
             setInitialized(true);
             return;
@@ -66,30 +63,41 @@ export function useCreditCards(options: UseCreditCardsOptions = {}) {
         setLoading(true);
         setError(null);
 
-        const response = await fetch(`/api/credit-cards/account/${accountId}`, {
-          credentials: 'include',
-        });
+        // Fetch directly from Appwrite
+        const { getAppwriteBrowserDatabases } = await import('@/lib/appwrite/client-browser');
+        const { Query } = await import('appwrite');
 
-        if (!response.ok) {
-          throw new Error('Failed to fetch credit cards');
+        const databases = getAppwriteBrowserDatabases();
+        const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || process.env.APPWRITE_DATABASE_ID;
+
+        if (!databaseId) {
+          throw new Error('Database ID not configured');
         }
 
-        const data = await response.json();
-        setCreditCards(data);
+        // Build queries - if accountId is provided, filter by it
+        const queries = accountId
+          ? [Query.equal('account_id', accountId), Query.orderDesc('created_at')]
+          : [Query.orderDesc('created_at')];
 
-        // Cache the result
-        const cacheKey = getCacheKey.creditCards('user');
-        cacheManager.set(cacheKey, data);
+        const result = await databases.listDocuments(databaseId, 'credit_cards', queries);
+
+        const cardsData = result.documents as unknown as CreditCard[];
+        setCreditCards(cardsData);
+
+        // Cache the result (cache all cards, filter happens on retrieval)
+        const cacheKey = getCacheKey.creditCards(user.$id);
+        cacheManager.set(cacheKey, cardsData);
         setInitialized(true);
       } catch (err: any) {
         console.error('Error fetching credit cards:', err);
         setError(err.message || 'Failed to fetch credit cards');
+        setCreditCards([]);
         setInitialized(true);
       } finally {
         setLoading(false);
       }
     },
-    [accountId],
+    [accountId, user.$id],
   );
 
   // Auto-fetch on mount
@@ -109,17 +117,17 @@ export function useCreditCards(options: UseCreditCardsOptions = {}) {
         if (prev.some((c) => c.$id === payload.$id)) return prev;
         return [...prev, payload];
       });
-      invalidateCache.creditCards('user');
+      invalidateCache.creditCards(user.$id);
     },
     onUpdate: (payload: CreditCard) => {
       console.log('📡 Realtime: credit card updated', payload.$id);
       setCreditCards((prev) => prev.map((c) => (c.$id === payload.$id ? payload : c)));
-      invalidateCache.creditCards('user');
+      invalidateCache.creditCards(user.$id);
     },
     onDelete: (payload: CreditCard) => {
       console.log('📡 Realtime: credit card deleted', payload.$id);
       setCreditCards((prev) => prev.filter((c) => c.$id !== payload.$id));
-      invalidateCache.creditCards('user');
+      invalidateCache.creditCards(user.$id);
     },
   });
 
@@ -169,7 +177,7 @@ export function useCreditCards(options: UseCreditCardsOptions = {}) {
         setCreditCards((prev) => [...prev.filter((c) => c.$id !== tempId), newCard]);
 
         // Invalidate cache
-        invalidateCache.creditCards('user');
+        invalidateCache.creditCards(user.$id);
 
         return newCard;
       } catch (err: any) {
@@ -180,7 +188,7 @@ export function useCreditCards(options: UseCreditCardsOptions = {}) {
         throw err;
       }
     },
-    [addOptimisticUpdate, startTransition],
+    [addOptimisticUpdate, startTransition, user.$id],
   );
 
   const updateCreditCard = useCallback(
@@ -222,7 +230,7 @@ export function useCreditCards(options: UseCreditCardsOptions = {}) {
         setCreditCards((prev) => prev.map((c) => (c.$id === creditCardId ? updatedCard : c)));
 
         // Invalidate cache
-        invalidateCache.creditCards('user');
+        invalidateCache.creditCards(user.$id);
 
         return updatedCard;
       } catch (err: any) {
@@ -233,7 +241,7 @@ export function useCreditCards(options: UseCreditCardsOptions = {}) {
         throw err;
       }
     },
-    [creditCards, addOptimisticUpdate, startTransition],
+    [creditCards, addOptimisticUpdate, startTransition, user.$id],
   );
 
   const deleteCreditCard = useCallback(
@@ -261,7 +269,7 @@ export function useCreditCards(options: UseCreditCardsOptions = {}) {
         setCreditCards((prev) => prev.filter((c) => c.$id !== creditCardId));
 
         // Invalidate cache
-        invalidateCache.creditCards('user');
+        invalidateCache.creditCards(user.$id);
       } catch (err: any) {
         console.error('Error deleting credit card:', err);
         setError(err.message || 'Failed to delete credit card');
@@ -314,7 +322,7 @@ export function useCreditCards(options: UseCreditCardsOptions = {}) {
         setCreditCards((prev) => prev.map((c) => (c.$id === creditCardId ? updatedCard : c)));
 
         // Invalidate cache
-        invalidateCache.creditCards('user');
+        invalidateCache.creditCards(user.$id);
 
         return updatedCard;
       } catch (err: any) {
@@ -325,7 +333,7 @@ export function useCreditCards(options: UseCreditCardsOptions = {}) {
         throw err;
       }
     },
-    [creditCards, addOptimisticUpdate, startTransition],
+    [creditCards, addOptimisticUpdate, startTransition, user.$id],
   );
 
   return {

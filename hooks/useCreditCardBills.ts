@@ -28,20 +28,31 @@ export function useCreditCardBills(options: UseCreditCardBillsOptions = {}) {
       setLoading(true);
       setError(null);
 
-      const params = new URLSearchParams();
-      if (options.creditCardId) params.append('creditCardId', options.creditCardId);
-      if (options.status) params.append('status', options.status);
-      if (options.startDate) params.append('startDate', options.startDate);
-      if (options.endDate) params.append('endDate', options.endDate);
+      // Fetch directly from Appwrite using the browser client
+      const { getAppwriteBrowserDatabases } = await import('@/lib/appwrite/client-browser');
+      const { Query } = await import('appwrite');
 
-      const response = await fetch(`/api/credit-cards/bills?${params.toString()}`);
+      const databases = getAppwriteBrowserDatabases();
+      const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || process.env.APPWRITE_DATABASE_ID;
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch credit card bills');
+      if (!databaseId) {
+        throw new Error('Database ID not configured');
       }
 
-      const data = await response.json();
-      setBills(data.bills || []);
+      // Build queries
+      const queries = [];
+      if (options.creditCardId) queries.push(Query.equal('credit_card_id', options.creditCardId));
+      if (options.status) queries.push(Query.equal('status', options.status));
+      if (options.startDate) queries.push(Query.greaterThanEqual('due_date', options.startDate));
+      if (options.endDate) queries.push(Query.lessThanEqual('due_date', options.endDate));
+
+      // Default ordering by due date descending
+      queries.push(Query.orderDesc('due_date'));
+
+      const result = await databases.listDocuments(databaseId, 'credit_card_bills', queries);
+
+      const billsData = result.documents as unknown as CreditCardBill[];
+      setBills(billsData);
       setInitialized(true);
     } catch (err) {
       console.error('Error fetching credit card bills:', err);

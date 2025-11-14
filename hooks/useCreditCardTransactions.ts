@@ -57,19 +57,34 @@ export function useCreditCardTransactions(options: UseCreditCardTransactionsOpti
       setLoading(true);
       setError(null);
 
-      const start = startDate || new Date(Date.now() - 6 * 30 * 24 * 60 * 60 * 1000); // 6 meses
-      const url = `/api/credit-cards/transactions?credit_card_id=${creditCardId}&start_date=${start.toISOString()}`;
+      // Fetch directly from Appwrite using the browser client
+      const { getAppwriteBrowserDatabases } = await import('@/lib/appwrite/client-browser');
+      const { Query } = await import('appwrite');
 
-      const response = await fetch(url, {
-        credentials: 'include',
-      });
+      const databases = getAppwriteBrowserDatabases();
+      const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || process.env.APPWRITE_DATABASE_ID;
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch credit card transactions');
+      if (!databaseId) {
+        throw new Error('Database ID not configured');
       }
 
-      const result = await response.json();
-      const transactionsData = result.data || [];
+      // Build queries
+      const queries = [Query.equal('credit_card_id', creditCardId)];
+
+      // Filter by start date if provided
+      if (startDate) {
+        queries.push(Query.greaterThanEqual('purchase_date', startDate.toISOString()));
+      } else {
+        // Default: últimos 6 meses
+        const sixMonthsAgo = new Date(Date.now() - 6 * 30 * 24 * 60 * 60 * 1000);
+        queries.push(Query.greaterThanEqual('purchase_date', sixMonthsAgo.toISOString()));
+      }
+
+      // Order by purchase date descending
+      queries.push(Query.orderDesc('purchase_date'));
+
+      const result = await databases.listDocuments(databaseId, 'credit_card_transactions', queries);
+      const transactionsData = result.documents as unknown as Transaction[];
 
       setTransactions(transactionsData);
 

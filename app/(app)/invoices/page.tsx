@@ -10,7 +10,9 @@ import { AddInvoiceModal, CreateInvoiceInput } from '@/components/modals/AddInvo
 import { ExportInvoicesModal, ExportOptions } from '@/components/modals/ExportInvoicesModal';
 import { AddTransactionModal } from '@/components/modals/AddTransactionModal';
 import InvoiceCard from '@/components/invoices/InvoiceCard';
+import { getCategoryLabel } from '@/components/ui/CategoryChip';
 import type { Invoice as InvoiceType } from '@/lib/appwrite/schema';
+import { useAppwriteRealtime } from '@/hooks/useAppwriteRealtime';
 
 interface InvoiceSummary {
   totalSpent: number;
@@ -82,32 +84,42 @@ export default function InvoicesPage() {
       setError(null);
 
       // Build query string from filters
-      const params = new URLSearchParams();
-      params.set('limit', '50');
+      // Fetch directly from Appwrite using the browser client
+      const { getAppwriteBrowserDatabases } = await import('@/lib/appwrite/client-browser');
+      const { Query } = await import('appwrite');
 
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value) {
-          params.set(key, value);
-        }
-      });
+      const databases = getAppwriteBrowserDatabases();
+      const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || process.env.APPWRITE_DATABASE_ID;
 
-      const response = await fetch(`/api/invoices?${params.toString()}`, {
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch invoices');
+      if (!databaseId) {
+        throw new Error('Database ID not configured');
       }
 
-      const result = await response.json();
-      setInvoices(result.data || []);
+      // Build queries based on filters
+      const queries = [Query.limit(50)];
+      
+      if (filters.category) queries.push(Query.equal('category', filters.category));
+      if (filters.merchant) queries.push(Query.search('merchant_name', filters.merchant));
+      if (filters.startDate) queries.push(Query.greaterThanEqual('issue_date', filters.startDate));
+      if (filters.endDate) queries.push(Query.lessThanEqual('issue_date', filters.endDate));
+      if (filters.minAmount) queries.push(Query.greaterThanEqual('total_amount', parseFloat(filters.minAmount)));
+      if (filters.maxAmount) queries.push(Query.lessThanEqual('total_amount', parseFloat(filters.maxAmount)));
+      if (filters.search) queries.push(Query.search('merchant_name', filters.search));
+
+      // Default ordering by issue date descending
+      queries.push(Query.orderDesc('issue_date'));
+
+      const result = await databases.listDocuments(databaseId, 'invoices', queries);
+      const invoicesData = result.documents as unknown as InvoiceType[];
+      
+      setInvoices(invoicesData);
 
       // Calculate summary
-      if (result.data && result.data.length > 0) {
-        const total = result.data.reduce((sum: number, inv: InvoiceType) => sum + inv.total_amount, 0);
+      if (invoicesData && invoicesData.length > 0) {
+        const total = invoicesData.reduce((sum: number, inv: InvoiceType) => sum + inv.total_amount, 0);
         const categoryCount: Record<string, number> = {};
 
-        result.data.forEach((inv: InvoiceType) => {
+        invoicesData.forEach((inv: InvoiceType) => {
           categoryCount[inv.category] = (categoryCount[inv.category] || 0) + 1;
         });
 
@@ -115,7 +127,7 @@ export default function InvoicesPage() {
 
         setSummary({
           totalSpent: total,
-          invoiceCount: result.data.length,
+          invoiceCount: invoicesData.length,
           topCategory: topCat ? topCat[0] : '-',
         });
       } else {
@@ -137,39 +149,23 @@ export default function InvoicesPage() {
     fetchInvoices();
   }, [fetchInvoices]);
 
-  // Real-time updates for invoices
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const { Client, Databases } = require('appwrite');
-    
-    const client = new Client()
-      .setEndpoint(process.env.APPWRITE_ENDPOINT || '')
-      .setProject(process.env.APPWRITE_PROJECT_ID || '');
-
-    const databases = new Databases(client);
-    const databaseId = process.env.APPWRITE_DATABASE_ID || 'horizon_ai_db';
-    const collectionId = 'invoices';
-
-    // Subscribe to invoice changes
-    const unsubscribe = client.subscribe(
-      `databases.${databaseId}.collections.${collectionId}.documents`,
-      (response: any) => {
-        const eventType = response.events[0];
-        
-        if (eventType.includes('create') || eventType.includes('update') || eventType.includes('delete')) {
-          // Refresh invoices list
-          fetchInvoices();
-        }
-      }
-    );
-
-    return () => {
-      if (unsubscribe && typeof unsubscribe === 'function') {
-        unsubscribe();
-      }
-    };
-  }, [fetchInvoices]);
+  // Real-time updates for invoices using the hook
+  useAppwriteRealtime({
+    channels: [`databases.${process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID}.collections.invoices.documents`],
+    enabled: !loading,
+    onCreate: () => {
+      console.log('📡 Realtime: invoice created');
+      fetchInvoices();
+    },
+    onUpdate: () => {
+      console.log('📡 Realtime: invoice updated');
+      fetchInvoices();
+    },
+    onDelete: () => {
+      console.log('📡 Realtime: invoice deleted');
+      fetchInvoices();
+    },
+  });
 
   // Handle filter changes
   const handleFilterChange = (key: keyof InvoiceFilters, value: string) => {
@@ -245,17 +241,7 @@ export default function InvoicesPage() {
 
   // Format category label
   const formatCategory = (category: string) => {
-    const labels: Record<string, string> = {
-      pharmacy: 'Farmácia',
-      groceries: 'Hortifruti',
-      supermarket: 'Supermercado',
-      restaurant: 'Restaurante',
-      fuel: 'Combustível',
-      retail: 'Varejo',
-      services: 'Serviços',
-      other: 'Outro',
-    };
-    return labels[category] || category;
+    return getCategoryLabel(category as any) || category;
   };
 
   // Handle export
@@ -427,14 +413,14 @@ export default function InvoicesPage() {
                     className="w-full px-3 py-2 border border-outline bg-surface text-on-surface rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:border-outline-variant dark:bg-surface-variant/20"
                   >
                     <option value="">Todas as categorias</option>
-                    <option value="pharmacy">Farmácia</option>
-                    <option value="groceries">Hortifruti</option>
-                    <option value="supermarket">Supermercado</option>
-                    <option value="restaurant">Restaurante</option>
-                    <option value="fuel">Combustível</option>
-                    <option value="retail">Varejo</option>
-                    <option value="services">Serviços</option>
-                    <option value="other">Outro</option>
+                    <option value="pharmacy">{getCategoryLabel('pharmacy')}</option>
+                    <option value="groceries">{getCategoryLabel('groceries')}</option>
+                    <option value="supermarket">{getCategoryLabel('supermarket')}</option>
+                    <option value="restaurant">{getCategoryLabel('restaurant')}</option>
+                    <option value="fuel">{getCategoryLabel('fuel')}</option>
+                    <option value="retail">{getCategoryLabel('retail')}</option>
+                    <option value="services">{getCategoryLabel('services')}</option>
+                    <option value="other">{getCategoryLabel('other')}</option>
                   </select>
                 </div>
 

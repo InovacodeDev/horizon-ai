@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { CategoryChip, type CategoryType } from '@/components/ui/CategoryChip';
 import type { Invoice } from '@/lib/appwrite/schema';
 import InvoiceDetailsModal from '@/components/modals/InvoiceDetailsModal';
 
@@ -13,28 +14,6 @@ interface InvoiceCardProps {
   onCreateTransaction?: (invoice: any) => void;
   currentUserId?: string;
 }
-
-const CATEGORY_LABELS: Record<string, string> = {
-  pharmacy: 'Farmácia',
-  groceries: 'Hortifruti',
-  supermarket: 'Supermercado',
-  restaurant: 'Restaurante',
-  fuel: 'Combustível',
-  retail: 'Varejo',
-  services: 'Serviços',
-  other: 'Outro',
-};
-
-const CATEGORY_COLORS: Record<string, 'success' | 'warning' | 'error' | 'info' | 'neutral'> = {
-  pharmacy: 'error',
-  groceries: 'success',
-  supermarket: 'info',
-  restaurant: 'warning',
-  fuel: 'neutral',
-  retail: 'info',
-  services: 'success',
-  other: 'neutral',
-};
 
 export default function InvoiceCard({ invoice, onDelete, onCreateTransaction, currentUserId }: InvoiceCardProps) {
   const [showDetails, setShowDetails] = useState(false);
@@ -63,15 +42,7 @@ export default function InvoiceCard({ invoice, onDelete, onCreateTransaction, cu
     }).format(amount);
   };
 
-  // Get category label
-  const getCategoryLabel = (category: string) => {
-    return CATEGORY_LABELS[category] || category;
-  };
 
-  // Get category color
-  const getCategoryColor = (category: string) => {
-    return CATEGORY_COLORS[category] || 'neutral';
-  };
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -126,7 +97,7 @@ export default function InvoiceCard({ invoice, onDelete, onCreateTransaction, cu
           <div className="flex-grow min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <h3 className="font-medium text-on-surface truncate">{invoice.merchant_name}</h3>
-              <Badge variant={getCategoryColor(invoice.category)}>{getCategoryLabel(invoice.category)}</Badge>
+              <CategoryChip category={invoice.category as CategoryType} />
             </div>
             <div className="flex items-center gap-3 text-sm text-on-surface-variant">
               <span className="flex items-center gap-1">
@@ -255,9 +226,7 @@ export default function InvoiceCard({ invoice, onDelete, onCreateTransaction, cu
               {getMerchantIcon()}
               <div className="flex-1 min-w-0">
                 <h3 className="font-medium text-on-surface truncate mb-1">{invoice.merchant_name}</h3>
-                <Badge variant={getCategoryColor(invoice.category)} className="text-xs">
-                  {getCategoryLabel(invoice.category)}
-                </Badge>
+                <CategoryChip category={invoice.category as CategoryType} className="text-xs" />
               </div>
             </div>
             <p className="text-lg font-semibold text-on-surface flex-shrink-0">{formatCurrency(invoice.total_amount)}</p>

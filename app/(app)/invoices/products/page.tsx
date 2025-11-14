@@ -7,21 +7,24 @@ import { Button } from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
 import ShoppingListBuilder from '@/components/invoices/ShoppingListBuilder';
 import PriceHistoryModal from '@/components/modals/PriceHistoryModal';
+import { CategoryChip, getCategoryLabel, type CategoryType } from '@/components/ui/CategoryChip';
+import { useAppwriteRealtime } from '@/hooks/useAppwriteRealtime';
 
 interface Product {
-  id: string;
+  $id: string;
+  $createdAt: string;
+  $updatedAt: string;
+  user_id: string;
   name: string;
-  productCode?: string;
-  ncmCode?: string;
+  product_code?: string;
+  ncm_code?: string;
   category: string;
   subcategory?: string;
-  statistics: {
-    purchaseCount: number;
-    averagePrice: number;
-    lastPurchaseDate: string;
-  };
-  createdAt: string;
-  updatedAt: string;
+  total_purchases: number;
+  average_price: number;
+  last_purchase_date?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface ProductsResponse {
@@ -40,7 +43,7 @@ export default function ProductsPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
-  const [selectedProduct, setSelectedProduct] = useState<{ id: string; name: string } | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<{ $id: string; name: string } | null>(null);
   const [showShoppingList, setShowShoppingList] = useState(false);
   const [showPriceHistory, setShowPriceHistory] = useState(false);
 
@@ -52,26 +55,38 @@ export default function ProductsPage() {
 
       // Build query string
       const params = new URLSearchParams();
-      params.set('limit', '50');
+      // Fetch directly from Appwrite using the browser client
+      const { getAppwriteBrowserDatabases } = await import('@/lib/appwrite/client-browser');
+      const { Query } = await import('appwrite');
 
+      const databases = getAppwriteBrowserDatabases();
+      const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || process.env.APPWRITE_DATABASE_ID;
+
+      if (!databaseId) {
+        throw new Error('Database ID not configured');
+      }
+
+      // Build queries - limite de 500 para garantir que todos os produtos sejam retornados
+      const queries: string[] = [];
+      
+      // Aumentar limite para retornar todos os produtos (máximo do Appwrite é 5000)
+      queries.push(Query.limit(500));
+      
       if (searchQuery) {
-        params.set('search', searchQuery);
+        queries.push(Query.search('name', searchQuery));
       }
-
+      
       if (categoryFilter) {
-        params.set('category', categoryFilter);
+        queries.push(Query.equal('category', categoryFilter));
       }
 
-      const response = await fetch(`/api/products?${params.toString()}`, {
-        credentials: 'include',
-      });
+      // Default ordering by name
+      queries.push(Query.orderAsc('name'));
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch products');
-      }
-
-      const result: ProductsResponse = await response.json();
-      setProducts(result.data || []);
+      const result = await databases.listDocuments(databaseId, 'products', queries);
+      const productsData = result.documents as unknown as Product[];
+      
+      setProducts(productsData);
     } catch (err: any) {
       console.error('Error fetching products:', err);
       setError(err.message || 'Failed to load products');
@@ -84,42 +99,41 @@ export default function ProductsPage() {
     fetchProducts();
   }, [fetchProducts]);
 
-  // Real-time updates for products (refresh when invoices change as they affect products)
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
+  // Real-time updates for products
+  useAppwriteRealtime({
+    channels: [`databases.${process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID}.collections.products.documents`],
+    enabled: !loading,
+    onCreate: () => {
+      console.log('📡 Realtime: product created');
+      fetchProducts();
+    },
+    onUpdate: () => {
+      console.log('📡 Realtime: product updated');
+      fetchProducts();
+    },
+    onDelete: () => {
+      console.log('📡 Realtime: product deleted');
+      fetchProducts();
+    },
+  });
 
-    const { Client } = require('appwrite');
-    
-    const client = new Client()
-      .setEndpoint(process.env.APPWRITE_ENDPOINT || '')
-      .setProject(process.env.APPWRITE_PROJECT_ID || '');
-
-    const databaseId = process.env.APPWRITE_DATABASE_ID || 'horizon_ai_db';
-
-    // Subscribe to both products and invoices changes
-    const unsubscribeProducts = client.subscribe(
-      `databases.${databaseId}.collections.products.documents`,
-      (response: any) => {
-        fetchProducts();
-      }
-    );
-
-    const unsubscribeInvoices = client.subscribe(
-      `databases.${databaseId}.collections.invoices.documents`,
-      (response: any) => {
-        fetchProducts();
-      }
-    );
-
-    return () => {
-      if (unsubscribeProducts && typeof unsubscribeProducts === 'function') {
-        unsubscribeProducts();
-      }
-      if (unsubscribeInvoices && typeof unsubscribeInvoices === 'function') {
-        unsubscribeInvoices();
-      }
-    };
-  }, [fetchProducts]);
+  // Real-time updates for invoices (they affect product statistics)
+  useAppwriteRealtime({
+    channels: [`databases.${process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID}.collections.invoices.documents`],
+    enabled: !loading,
+    onCreate: () => {
+      console.log('📡 Realtime: invoice created, refreshing products');
+      fetchProducts();
+    },
+    onUpdate: () => {
+      console.log('📡 Realtime: invoice updated, refreshing products');
+      fetchProducts();
+    },
+    onDelete: () => {
+      console.log('📡 Realtime: invoice deleted, refreshing products');
+      fetchProducts();
+    },
+  });
 
   // Format currency
   const formatCurrency = (amount: number) => {
@@ -141,7 +155,7 @@ export default function ProductsPage() {
 
   // Handle product click - open price history modal
   const handleProductClick = (productId: string, productName: string) => {
-    setSelectedProduct({ id: productId, name: productName });
+    setSelectedProduct({ $id: productId, name: productName });
     setShowPriceHistory(true);
   };
 
@@ -152,6 +166,11 @@ export default function ProductsPage() {
           <h1 className="text-3xl font-normal text-on-surface">Produtos</h1>
           <p className="text-base text-on-surface-variant mt-1">
             Acompanhe preços e histórico de compras dos seus produtos
+            {!loading && products.length > 0 && (
+              <span className="ml-2 text-primary font-medium">
+                ({products.length} {products.length === 1 ? 'produto' : 'produtos'})
+              </span>
+            )}
           </p>
         </div>
         <Button onClick={() => setShowShoppingList(!showShoppingList)}>
@@ -200,14 +219,14 @@ export default function ProductsPage() {
               className="px-4 py-2 border border-outline rounded-lg bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary dark:bg-surface-variant/20 dark:border-outline-variant"
             >
               <option value="">Todas as categorias</option>
-              <option value="pharmacy">Farmácia</option>
-              <option value="groceries">Hortifruti</option>
-              <option value="supermarket">Supermercado</option>
-              <option value="restaurant">Restaurante</option>
-              <option value="fuel">Combustível</option>
-              <option value="retail">Varejo</option>
-              <option value="services">Serviços</option>
-              <option value="other">Outro</option>
+              <option value="pharmacy">{getCategoryLabel('pharmacy')}</option>
+              <option value="groceries">{getCategoryLabel('groceries')}</option>
+              <option value="supermarket">{getCategoryLabel('supermarket')}</option>
+              <option value="restaurant">{getCategoryLabel('restaurant')}</option>
+              <option value="fuel">{getCategoryLabel('fuel')}</option>
+              <option value="retail">{getCategoryLabel('retail')}</option>
+              <option value="services">{getCategoryLabel('services')}</option>
+              <option value="other">{getCategoryLabel('other')}</option>
             </select>
           </div>
         </div>
@@ -271,31 +290,19 @@ export default function ProductsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {products.map((product) => (
             <Card
-              key={product.id}
+              key={product.$id}
               className="p-4 hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => handleProductClick(product.id, product.name)}
+              onClick={() => handleProductClick(product.$id, product.name)}
             >
-              {/* Product Icon */}
-              <div className="flex items-start gap-3 mb-3">
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <svg
-                    className="w-6 h-6 text-primary"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                    />
-                  </svg>
-                </div>
-                <div className="flex-grow min-w-0">
-                  <h3 className="font-medium text-on-surface line-clamp-2">{product.name}</h3>
-                  {product.productCode && (
-                    <p className="text-xs text-on-surface-variant mt-1">Código: {product.productCode}</p>
+              {/* Product Header */}
+              <div className="mb-3">
+                <h3 className="font-medium text-on-surface line-clamp-2 mb-2">{product.name}</h3>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {product.category && (
+                    <CategoryChip category={product.category as CategoryType} />
+                  )}
+                  {product.product_code && (
+                    <span className="text-xs text-on-surface-variant">Cód: {product.product_code}</span>
                   )}
                 </div>
               </div>
@@ -305,21 +312,21 @@ export default function ProductsPage() {
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-on-surface-variant">Preço Médio</span>
                   <span className="text-sm font-medium text-on-surface">
-                    {formatCurrency(product.statistics.averagePrice)}
+                    {formatCurrency(product.average_price)}
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-on-surface-variant">Compras</span>
                   <span className="text-sm font-medium text-on-surface">
-                    {product.statistics.purchaseCount}x
+                    {product.total_purchases}x
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-on-surface-variant">Última Compra</span>
                   <span className="text-sm font-medium text-on-surface">
-                    {formatDate(product.statistics.lastPurchaseDate)}
+                    {product.last_purchase_date ? formatDate(product.last_purchase_date) : 'N/A'}
                   </span>
                 </div>
               </div>
@@ -330,7 +337,7 @@ export default function ProductsPage() {
                   className="w-full text-sm text-primary hover:text-primary-dark font-medium flex items-center justify-center gap-1"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleProductClick(product.id, product.name);
+                    handleProductClick(product.$id, product.name);
                   }}
                 >
                   Ver Histórico de Preços
@@ -362,7 +369,7 @@ export default function ProductsPage() {
             setShowPriceHistory(false);
             setSelectedProduct(null);
           }}
-          productId={selectedProduct.id}
+          productId={selectedProduct.$id}
           productName={selectedProduct.name}
         />
       )}

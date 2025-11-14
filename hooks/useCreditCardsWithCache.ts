@@ -83,30 +83,27 @@ export function useCreditCardsWithCache(options: UseCreditCardsOptions = {}) {
           if (!silent && mountedRef.current) setLoading(true);
           setError(null);
 
-          // Sempre busca TODOS os cartões de uma vez
-          let url = '/api/credit-cards';
+          // Fetch directly from Appwrite
+          const { getAppwriteBrowserDatabases } = await import('@/lib/appwrite/client-browser');
+          const { Query } = await import('appwrite');
+
+          const databases = getAppwriteBrowserDatabases();
+          const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || process.env.APPWRITE_DATABASE_ID;
+
+          if (!databaseId) {
+            throw new Error('Database ID not configured');
+          }
+
+          // Build queries - if we have accounts, filter by them
+          const queries = [Query.orderDesc('created_at')];
+
           if (accounts && accounts.length > 0) {
-            url = `/api/credit-cards?account_ids=${accounts.map((a) => a.$id).join(',')}`;
+            const accountIds = accounts.map((a) => a.$id);
+            queries.unshift(Query.equal('account_id', accountIds));
           }
 
-          const response = await fetch(url, {
-            credentials: 'include',
-            cache: 'no-store',
-          });
-
-          if (!response.ok) {
-            console.warn('Credit cards API not available or returned error');
-            const emptyData: CreditCard[] = [];
-            saveToCache(emptyData);
-            if (mountedRef.current) {
-              setCreditCards(emptyData);
-              setInitialized(true);
-            }
-            return emptyData;
-          }
-
-          const data = await response.json();
-          const cardsData = Array.isArray(data) ? data : data.data || [];
+          const result = await databases.listDocuments(databaseId, 'credit_cards', queries);
+          const cardsData = result.documents as unknown as CreditCard[];
 
           saveToCache(cardsData);
 

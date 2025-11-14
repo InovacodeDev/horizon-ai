@@ -1,5 +1,6 @@
 'use client';
 
+import { useUser } from '@/lib/contexts/UserContext';
 import type {
   CreateTransactionDto,
   Transaction,
@@ -39,7 +40,9 @@ interface TransactionResponse {
  * Hook for managing transactions with React 19.2 optimistic updates
  */
 export function useTransactions(options: UseTransactionsOptions = {}) {
-  const { userId, initialTransactions, initialTotal } = options;
+  const { user } = useUser();
+  const userId = user.$id;
+  const { initialTransactions, initialTotal } = options;
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions || []);
   const [total, setTotal] = useState(initialTotal || 0);
   const [loading, setLoading] = useState(false);
@@ -89,37 +92,40 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
       setError(null);
 
       try {
-        const params = new URLSearchParams();
-        params.append('userId', userId);
+        // Fetch directly from Appwrite using the browser client
+        const { getAppwriteBrowserDatabases } = await import('@/lib/appwrite/client-browser');
+        const { Query } = await import('appwrite');
 
-        if (filters?.type) params.append('type', filters.type);
-        if (filters?.status) params.append('status', filters.status);
-        if (filters?.category) params.append('category', filters.category);
-        if (filters?.startDate) params.append('startDate', filters.startDate);
-        if (filters?.endDate) params.append('endDate', filters.endDate);
-        if (filters?.limit) params.append('limit', filters.limit.toString());
-        if (filters?.offset) params.append('offset', filters.offset.toString());
+        const databases = getAppwriteBrowserDatabases();
 
-        const response = await fetch(`/api/transactions?${params.toString()}`, {
-          credentials: 'include',
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch transactions');
+        const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || process.env.APPWRITE_DATABASE_ID;
+        if (!databaseId) {
+          throw new Error('Database ID not configured');
         }
 
-        const data: TransactionResponse = await response.json();
+        // Build queries
+        const queries = [Query.equal('user_id', userId)];
 
-        if (data.success) {
-          setTransactions(data.data);
-          setTotal(data.total);
+        if (filters?.type) queries.push(Query.equal('type', filters.type));
+        if (filters?.status) queries.push(Query.equal('status', filters.status));
+        if (filters?.category) queries.push(Query.equal('category', filters.category));
+        if (filters?.startDate) queries.push(Query.greaterThanEqual('date', filters.startDate));
+        if (filters?.endDate) queries.push(Query.lessThanEqual('date', filters.endDate));
+        if (filters?.limit) queries.push(Query.limit(filters.limit));
+        if (filters?.offset) queries.push(Query.offset(filters.offset));
 
-          // Cache the result
-          const cacheKey = getCacheKey.transactions(userId);
-          cacheManager.set(cacheKey, { data: data.data, total: data.total });
-        } else {
-          throw new Error('API returned unsuccessful response');
-        }
+        // Default ordering by date descending
+        queries.push(Query.orderDesc('date'));
+
+        const result = await databases.listDocuments(databaseId, 'transactions', queries);
+
+        const transactionsData = result.documents as unknown as Transaction[];
+        setTransactions(transactionsData);
+        setTotal(result.total);
+
+        // Cache the result
+        const cacheKey = getCacheKey.transactions(userId);
+        cacheManager.set(cacheKey, { data: transactionsData, total: result.total });
       } catch (err: any) {
         console.error('Error fetching transactions:', err);
         setError(err.message || 'Failed to fetch transactions');

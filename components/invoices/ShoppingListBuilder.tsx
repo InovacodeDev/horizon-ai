@@ -5,11 +5,9 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 
 interface Product {
-  id: string;
+  $id: string;
   name: string;
-  statistics: {
-    averagePrice: number;
-  };
+  average_price: number;
 }
 
 interface ShoppingListItem {
@@ -60,6 +58,9 @@ export default function ShoppingListBuilder({ availableProducts }: ShoppingListB
   const [error, setError] = useState<string | null>(null);
   const [showResults, setShowResults] = useState(false);
 
+  // Debug: log products structure
+  console.log('ShoppingListBuilder received products:', availableProducts?.length, availableProducts?.[0]);
+
   // Format currency
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -70,16 +71,21 @@ export default function ShoppingListBuilder({ availableProducts }: ShoppingListB
 
   // Toggle product selection
   const toggleProduct = (product: Product) => {
+    if (!product || !product.$id) {
+      console.error('Invalid product:', product);
+      return;
+    }
+    
     const newSelected = new Map(selectedProducts);
     
-    if (newSelected.has(product.id)) {
-      newSelected.delete(product.id);
+    if (newSelected.has(product.$id)) {
+      newSelected.delete(product.$id);
     } else {
-      newSelected.set(product.id, {
-        productId: product.id,
+      newSelected.set(product.$id, {
+        productId: product.$id,
         productName: product.name,
         quantity: 1,
-        estimatedPrice: product.statistics.averagePrice,
+        estimatedPrice: product.average_price || 0,
       });
     }
     
@@ -219,7 +225,7 @@ export default function ShoppingListBuilder({ availableProducts }: ShoppingListB
                         {formatCurrency((item.estimatedPrice || 0) * item.quantity)}
                       </span>
                       <button
-                        onClick={() => toggleProduct(availableProducts.find((p) => p.id === item.productId)!)}
+                        onClick={() => toggleProduct(availableProducts.find((p) => p.$id === item.productId)!)}
                         className="text-error hover:text-error/80"
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -251,12 +257,12 @@ export default function ShoppingListBuilder({ availableProducts }: ShoppingListB
 
           {/* Product Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {availableProducts.map((product) => {
-              const isSelected = selectedProducts.has(product.id);
+            {availableProducts.filter(p => p && p.$id).map((product) => {
+              const isSelected = selectedProducts.has(product.$id);
               
               return (
                 <div
-                  key={product.id}
+                  key={product.$id}
                   onClick={() => toggleProduct(product)}
                   className={`p-3 border-2 rounded-lg cursor-pointer transition-all ${
                     isSelected
@@ -277,7 +283,7 @@ export default function ShoppingListBuilder({ availableProducts }: ShoppingListB
                     <div className="flex-grow min-w-0">
                       <p className="text-sm font-medium text-on-surface line-clamp-2">{product.name}</p>
                       <p className="text-xs text-on-surface-variant mt-1">
-                        Média: {formatCurrency(product.statistics.averagePrice)}
+                        Média: {formatCurrency(product.average_price)}
                       </p>
                     </div>
                   </div>
