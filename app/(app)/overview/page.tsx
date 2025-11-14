@@ -18,7 +18,7 @@ import { useFinancialInsights } from "@/hooks/useFinancialInsights";
 import { useTotalBalance } from "@/hooks/useTotalBalance";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useCreditCardTransactions } from "@/hooks/useCreditCardTransactions";
-import { useCreditCardsWithCache } from "@/hooks/useCreditCardsWithCache";
+import { useAllCreditCards } from "@/hooks/useAllCreditCards";
 import { useCreditCardBills } from "@/hooks/useCreditCardBills";
 import { useAccountsWithSharing } from "@/hooks/useAccountsWithSharing";
 import { useTransactionsWithSharing } from "@/hooks/useTransactionsWithSharing";
@@ -423,7 +423,7 @@ export default function OverviewPage() {
     const loadingAccounts = showSharedData ? loadingSharedAccounts : loadingOwnAccounts;
     const refetch = showSharedData ? () => {} : refetchOwnTransactions;
     
-    const { creditCards } = useCreditCardsWithCache();
+    const { creditCards } = useAllCreditCards();
     
     // Get current month date range for credit card transactions
     const currentMonthStart = useMemo(() => {

@@ -59,7 +59,7 @@ export function useTransactionsWithSharing(options: UseTransactionsWithSharingOp
       // Default ordering by date descending
       queries.push(Query.orderDesc('date'));
 
-      const result = await databases.listDocuments(databaseId, 'transactions', queries);
+      const result = await databases.listRows({databaseId, tableId: 'transactions', queries});
 
       // Note: This simplified version doesn't include sharing logic
       // For full sharing support, you would need to:
@@ -67,7 +67,7 @@ export function useTransactionsWithSharing(options: UseTransactionsWithSharingOp
       // 2. Fetch sharing relationships
       // 3. Fetch shared transactions from related users
       // 4. Merge and deduplicate results
-      const transactionsData = result.documents.map((doc: any) => ({
+      const transactionsData = result.rows.map((doc: any) => ({
         ...doc,
         isOwner: true, // Simplified - all are owner's transactions
         ownerName: 'You',

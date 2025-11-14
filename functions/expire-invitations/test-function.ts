@@ -15,7 +15,7 @@
  *   APPWRITE_API_KEY
  *   APPWRITE_DATABASE_ID
  */
-import { Client, Databases, ID, Query } from 'node-appwrite';
+import { Client, ID, Query, TablesDB } from 'node-appwrite';
 
 const DATABASE_ID = process.env.APPWRITE_DATABASE_ID || 'horizon_ai_db';
 const COLLECTION_ID = 'sharing_invitations';
@@ -36,11 +36,11 @@ async function initializeClient() {
     .setProject(process.env.APPWRITE_PROJECT_ID || '')
     .setKey(process.env.APPWRITE_API_KEY || '');
 
-  const databases = new Databases(client);
+  const databases = new TablesDB(client);
   return { client, databases };
 }
 
-async function createTestInvitations(databases: Databases, count: number = 5): Promise<string[]> {
+async function createTestInvitations(databases: TablesDB, count: number = 5): Promise<string[]> {
   console.log(`\n📝 Creating ${count} test invitations with past expiration dates...`);
 
   const pastDate = new Date('2024-01-01T00:00:00.000Z').toISOString();
@@ -58,7 +58,12 @@ async function createTestInvitations(databases: Databases, count: number = 5): P
     };
 
     try {
-      const doc = await databases.createDocument(DATABASE_ID, COLLECTION_ID, ID.unique(), invitation);
+      const doc = await databases.createRow({
+        databaseId: DATABASE_ID,
+        tableId: COLLECTION_ID,
+        rowId: ID.unique(),
+        data: invitation,
+      });
       invitationIds.push(doc.$id);
       console.log(`  ✓ Created invitation ${i}/${count}: ${doc.$id}`);
     } catch (error: any) {
@@ -70,7 +75,7 @@ async function createTestInvitations(databases: Databases, count: number = 5): P
   return invitationIds;
 }
 
-async function verifyInvitations(databases: Databases, invitationIds: string[]): Promise<void> {
+async function verifyInvitations(databases: TablesDB, invitationIds: string[]): Promise<void> {
   console.log(`\n🔍 Verifying invitation statuses...`);
 
   let expiredCount = 0;
@@ -78,7 +83,7 @@ async function verifyInvitations(databases: Databases, invitationIds: string[]):
 
   for (const id of invitationIds) {
     try {
-      const doc = await databases.getDocument(DATABASE_ID, COLLECTION_ID, id);
+      const doc = await databases.getRow({ databaseId: DATABASE_ID, tableId: COLLECTION_ID, rowId: id });
       if (doc.status === 'expired') {
         expiredCount++;
         console.log(`  ✓ Invitation ${id}: expired`);
@@ -107,25 +112,26 @@ async function verifyInvitations(databases: Databases, invitationIds: string[]):
   }
 }
 
-async function cleanupTestInvitations(databases: Databases): Promise<void> {
+async function cleanupTestInvitations(databases: TablesDB): Promise<void> {
   console.log(`\n🧹 Cleaning up test invitations...`);
 
   try {
-    const result = await databases.listDocuments(DATABASE_ID, COLLECTION_ID, [
-      Query.startsWith('invited_email', 'test'),
-      Query.limit(100),
-    ]);
+    const result = await databases.listRows({
+      databaseId: DATABASE_ID,
+      tableId: COLLECTION_ID,
+      queries: [Query.startsWith('invited_email', 'test'), Query.limit(100)],
+    });
 
-    for (const doc of result.documents) {
+    for (const doc of result.rows) {
       try {
-        await databases.deleteDocument(DATABASE_ID, COLLECTION_ID, doc.$id);
+        await databases.deleteRow({ databaseId: DATABASE_ID, tableId: COLLECTION_ID, rowId: doc.$id });
         console.log(`  ✓ Deleted invitation: ${doc.$id}`);
       } catch (error: any) {
         console.error(`  ✗ Failed to delete ${doc.$id}:`, error.message);
       }
     }
 
-    console.log(`✅ Cleaned up ${result.documents.length} test invitations\n`);
+    console.log(`✅ Cleaned up ${result.rows.length} test invitations\n`);
   } catch (error: any) {
     console.error(`✗ Cleanup failed:`, error.message);
   }
@@ -164,11 +170,12 @@ async function main() {
 
     case 'verify':
       console.log('\n⚠️  Note: This will verify ALL test invitations in the database');
-      const allInvitations = await databases.listDocuments(DATABASE_ID, COLLECTION_ID, [
-        Query.startsWith('invited_email', 'test'),
-        Query.limit(100),
-      ]);
-      const ids = allInvitations.documents.map((doc) => doc.$id);
+      const allInvitations = await databases.listRows({
+        databaseId: DATABASE_ID,
+        tableId: COLLECTION_ID,
+        queries: [Query.startsWith('invited_email', 'test'), Query.limit(100)],
+      });
+      const ids = allInvitations.rows.map((doc) => doc.$id);
       if (ids.length === 0) {
         console.log('\n⚠️  No test invitations found. Run: ts-node test-function.ts create');
       } else {

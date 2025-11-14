@@ -1,23 +1,9 @@
 'use client';
 
-import { cacheManager, getCacheKey, invalidateCache as invalidateCacheUtil } from '@/lib/utils/cache';
+import { Transaction } from '@/lib/types';
 import { useCallback, useEffect, useState } from 'react';
 
 import { useAppwriteRealtime } from './useAppwriteRealtime';
-
-interface Transaction {
-  $id: string;
-  amount: number;
-  date: string;
-  category: string;
-  description?: string;
-  merchant?: string;
-  installment?: number;
-  installments?: number;
-  is_recurring?: boolean;
-  purchase_date?: string;
-  credit_card_id?: string;
-}
 
 interface UseCreditCardTransactionsOptions {
   creditCardId: string | undefined;
@@ -30,6 +16,8 @@ interface UseCreditCardTransactionsOptions {
  */
 export function useCreditCardTransactions(options: UseCreditCardTransactionsOptions) {
   const { creditCardId, startDate, enableRealtime = true } = options;
+  const { useUser } = require('@/lib/contexts/UserContext');
+  const { user } = useUser();
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
@@ -37,22 +25,8 @@ export function useCreditCardTransactions(options: UseCreditCardTransactionsOpti
   const [initialized, setInitialized] = useState(false);
 
   const fetchTransactions = useCallback(async () => {
-    if (!creditCardId) {
-      setTransactions([]);
-      setInitialized(true);
-      return;
-    }
-
     try {
-      // Check cache first
-      const cacheKey = getCacheKey.creditCardTransactions(creditCardId);
-      const cached = cacheManager.get<Transaction[]>(cacheKey);
-
-      if (cached) {
-        setTransactions(cached);
-        setInitialized(true);
-        return;
-      }
+      console.log('🔍 useCreditCardTransactions: Fetching for card:', creditCardId);
 
       setLoading(true);
       setError(null);
@@ -68,92 +42,134 @@ export function useCreditCardTransactions(options: UseCreditCardTransactionsOpti
         throw new Error('Database ID not configured');
       }
 
+      console.log('🔍 useCreditCardTransactions: Database ID:', databaseId);
+
+      // Se creditCardId foi fornecido, validar propriedade primeiro
+      if (creditCardId) {
+        const cardResult = await databases.getRow({
+          databaseId,
+          tableId: 'credit_cards',
+          rowId: creditCardId,
+        });
+
+        const card = cardResult as any;
+
+        // Verificar se a conta do cartão pertence ao usuário ou é compartilhada
+        const accountResult = await databases.getRow({
+          databaseId,
+          tableId: 'accounts',
+          rowId: card.account_id,
+        });
+
+        const account = accountResult as any;
+
+        // Verificar propriedade direta
+        const isOwner = account.user_id === user.$id;
+
+        // Verificar compartilhamento
+        let isShared = false;
+        if (!isOwner) {
+          const sharingResult = await databases.listRows({
+            databaseId,
+            tableId: 'sharing_relationships',
+            queries: [
+              Query.equal('member_user_id', user.$id),
+              Query.equal('responsible_user_id', account.user_id),
+              Query.equal('status', 'active'),
+            ],
+          });
+          isShared = sharingResult.rows.length > 0;
+        }
+
+        if (!isOwner && !isShared) {
+          throw new Error('Unauthorized: Credit card does not belong to user');
+        }
+      }
+
       // Build queries
-      const queries = [Query.equal('credit_card_id', creditCardId)];
+      const queries = [];
+
+      // Adicionar filtro por creditCardId se fornecido
+      if (creditCardId) {
+        queries.push(Query.equal('credit_card_id', creditCardId));
+      }
 
       // Filter by start date if provided
       if (startDate) {
         queries.push(Query.greaterThanEqual('purchase_date', startDate.toISOString()));
+        console.log('🔍 useCreditCardTransactions: Filtering from date:', startDate.toISOString());
       } else {
         // Default: últimos 6 meses
         const sixMonthsAgo = new Date(Date.now() - 6 * 30 * 24 * 60 * 60 * 1000);
         queries.push(Query.greaterThanEqual('purchase_date', sixMonthsAgo.toISOString()));
+        console.log('🔍 useCreditCardTransactions: Filtering from 6 months ago:', sixMonthsAgo.toISOString());
       }
 
+      queries.push(Query.limit(1000));
       // Order by purchase date descending
       queries.push(Query.orderDesc('purchase_date'));
 
-      const result = await databases.listDocuments(databaseId, 'credit_card_transactions', queries);
-      const transactionsData = result.documents as unknown as Transaction[];
+      console.log('🔍 useCreditCardTransactions: Executing query...');
+      const result = await databases.listRows({ databaseId, tableId: 'credit_card_transactions', queries });
+      const transactionsData = result.rows as unknown as Transaction[];
 
+      console.log('✅ useCreditCardTransactions: Found', transactionsData.length, 'transactions');
       setTransactions(transactionsData);
-
-      // Cache the result
-      cacheManager.set(cacheKey, transactionsData);
       setInitialized(true);
     } catch (err: any) {
-      console.error('Error fetching credit card transactions:', err);
+      console.error('❌ useCreditCardTransactions: Error fetching transactions:', err);
+      console.error('   Message:', err.message);
+      console.error('   Code:', err.code);
       setError(err.message || 'Failed to fetch transactions');
       setTransactions([]);
       setInitialized(true);
     } finally {
       setLoading(false);
     }
-  }, [creditCardId, startDate]);
+  }, [creditCardId, startDate, user.$id]);
 
   // Initial fetch
   useEffect(() => {
-    if (!initialized) {
-      fetchTransactions();
-    }
-  }, [initialized, fetchTransactions]);
+    console.log('🔄 useCreditCardTransactions: useEffect triggered, initialized');
+    // if (!initialized) {
+    console.log('🚀 useCreditCardTransactions: Starting initial fetch...');
+    fetchTransactions();
+    // }
+  }, [fetchTransactions]);
 
   // Setup realtime subscription
   useAppwriteRealtime({
-    channels: [`databases.${process.env.APPWRITE_DATABASE_ID}.collections.credit_card_transactions.documents`],
+    channels: [
+      `databases.${process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID}.collections.credit_card_transactions.documents`,
+    ],
     enabled: enableRealtime && initialized && !!creditCardId,
     onCreate: (payload: Transaction) => {
       if (payload.credit_card_id === creditCardId) {
         console.log('📡 Realtime: transaction created for card', creditCardId);
-        setTransactions((prev) => {
-          if (prev.some((t) => t.$id === payload.$id)) return prev;
-          return [payload, ...prev];
-        });
-        if (creditCardId) {
-          invalidateCacheUtil.creditCardTransactions();
-        }
+        // Refazer busca para garantir segurança
+        fetchTransactions();
       }
     },
     onUpdate: (payload: Transaction) => {
       if (payload.credit_card_id === creditCardId) {
         console.log('📡 Realtime: transaction updated for card', creditCardId);
-        setTransactions((prev) => prev.map((t) => (t.$id === payload.$id ? payload : t)));
-        if (creditCardId) {
-          invalidateCacheUtil.creditCardTransactions();
-        }
+        // Refazer busca para garantir segurança
+        fetchTransactions();
       }
     },
     onDelete: (payload: Transaction) => {
       if (payload.credit_card_id === creditCardId) {
         console.log('📡 Realtime: transaction deleted for card', creditCardId);
-        setTransactions((prev) => prev.filter((t) => t.$id !== payload.$id));
-        if (creditCardId) {
-          invalidateCacheUtil.creditCardTransactions();
-        }
+        // Refazer busca para garantir segurança
+        fetchTransactions();
       }
     },
   });
-
-  const invalidateCache = useCallback(() => {
-    invalidateCacheUtil.creditCardTransactions();
-    fetchTransactions();
-  }, [fetchTransactions]);
 
   return {
     transactions,
     loading,
     error,
     fetchTransactions,
-    invalidateCache,
   };
 }

@@ -6,26 +6,14 @@ import { CreditCardIcon, CalendarIcon, DollarSignIcon, PlusIcon, EditIcon, Chevr
 import Card from '@/components/ui/Card';
 import Skeleton from '@/components/ui/Skeleton';
 import Button from '@/components/ui/Button';
-import { useCreditCardsWithCache } from '@/hooks/useCreditCardsWithCache';
+import { useAllCreditCards } from '@/hooks/useAllCreditCards';
 import { useCreditCardTransactions } from '@/hooks/useCreditCardTransactions';
 import { useCreditCardBills } from '@/hooks/useCreditCardBills';
 import { getCategoryById } from '@/lib/constants/categories';
 import CreateTransactionModal from './CreateTransactionModal';
 import EditTransactionModal from './EditTransactionModal';
 import PayBillModal from './PayBillModal';
-
-interface Transaction {
-  id: string;
-  amount: number;
-  date: string;
-  category: string;
-  description?: string;
-  merchant?: string;
-  installment?: number;
-  installments?: number;
-  is_recurring?: boolean;
-  credit_card_transaction_created_at?: string;
-}
+import { Transaction } from '@/lib/types';
 
 interface Bill {
   month: string;
@@ -39,7 +27,8 @@ interface Bill {
   isClosed?: boolean;
 }
 
-const TransactionCategoryBadge: React.FC<{ categoryId: string }> = ({ categoryId }) => {
+const TransactionCategoryBadge: React.FC<{ categoryId?: string }> = ({ categoryId }) => {
+  if (!categoryId) return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-800">Sem Categoria</span>;
   const category = getCategoryById(categoryId);
   if (!category) return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-800">Sem Categoria</span>;
   
@@ -81,7 +70,8 @@ const TransactionCategoryBadge: React.FC<{ categoryId: string }> = ({ categoryId
 
 const CreditCardBillsPage: React.FC = () => {
   const searchParams = useSearchParams();
-  const { creditCards, loading } = useCreditCardsWithCache();
+  const { creditCards, loading } = useAllCreditCards();
+
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [selectedBillMonth, setSelectedBillMonth] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -109,41 +99,24 @@ const CreditCardBillsPage: React.FC = () => {
     return date;
   }, []);
 
+  useEffect(() => console.log("selectedCardId:", selectedCardId), [selectedCardId]);
+
   const {
     transactions: rawTransactions,
     loading: loadingTransactions,
-    invalidateCache: invalidateTransactionsCache,
   } = useCreditCardTransactions({
     creditCardId: selectedCardId || undefined,
     startDate,
     enableRealtime: true,
   });
 
-  // Buscar bills do banco de dados com realtime
-  const {
-    bills: dbBills,
-    loading: loadingBills,
-    refetch: refetchBills,
-  } = useCreditCardBills({
-    creditCardId: selectedCardId || undefined,
-    enableRealtime: true,
-  });
-
   // Mapeia as transações para o formato esperado
   const transactions = useMemo(() => {
-    return rawTransactions.map((t: any) => ({
-      id: t.$id,
-      amount: t.amount,
-      date: t.date,
-      category: t.category,
-      description: t.description,
-      merchant: t.merchant,
-      installment: t.installment,
-      installments: t.installments,
-      is_recurring: t.is_recurring,
-      credit_card_transaction_created_at: t.purchase_date,
-    }));
-  }, [rawTransactions]);
+    if (!selectedCardId) {
+      return [];
+    }
+    return rawTransactions.filter((t) => t.credit_card_id === selectedCardId);
+  }, [rawTransactions, selectedCardId]);
 
   // Check URL params for cardId and select it
   useEffect(() => {
@@ -161,7 +134,8 @@ const CreditCardBillsPage: React.FC = () => {
   }, [creditCards, searchParams, selectedCardId]);
 
   const selectedCard = useMemo(() => {
-    return creditCards.find((card) => card.$id === selectedCardId);
+    const card = creditCards.find((card) => card.$id === selectedCardId);
+    return card;
   }, [creditCards, selectedCardId]);
 
   const formatCurrency = (value: number) => {
@@ -218,7 +192,9 @@ const CreditCardBillsPage: React.FC = () => {
   // TODO: Migrar para usar apenas dbBills (bills do banco de dados)
   // Por enquanto mantemos o cálculo manual para compatibilidade
   const bills = useMemo(() => {
-    if (!selectedCard || transactions.length === 0) return [];
+    if (!selectedCard || transactions.length === 0) {
+      return [];
+    }
 
     const settings = getCardSettings(selectedCard);
     const billsMap = new Map<string, Bill>();
@@ -350,7 +326,7 @@ const CreditCardBillsPage: React.FC = () => {
 
   const handleTransactionCreated = () => {
     // Invalida o cache e recarrega as transações
-    invalidateTransactionsCache();
+    // invalidateTransactionsCache();
   };
 
   if (loading) {
@@ -616,7 +592,7 @@ const CreditCardBillsPage: React.FC = () => {
                     
                     return (
                       <tr
-                        key={transaction.id}
+                        key={transaction.$id}
                         className='border-b border-outline/50 hover:bg-surface-variant/20 transition-colors group'
                       >
                         <td className='py-3 px-4'>

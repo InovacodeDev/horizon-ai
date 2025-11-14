@@ -9,7 +9,7 @@ import { DropdownMenu, DropdownMenuItem } from "@/components/ui/DropdownMenu";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useAccountsWithSharing } from "@/hooks/useAccountsWithSharing";
 import { useTotalBalance } from "@/hooks/useTotalBalance";
-import { useCreditCardsWithCache } from "@/hooks/useCreditCardsWithCache";
+import { useAllCreditCards } from "@/hooks/useAllCreditCards";
 import { OwnershipBadge } from "@/components/ui/OwnershipBadge";
 import { AddAccountModal } from "@/components/modals/AddAccountModal";
 import { AddCreditCardModal } from "@/components/modals/AddCreditCardModal";
@@ -379,7 +379,7 @@ export default function AccountsPage() {
     const [localAccounts, setLocalAccounts] = useState<Account[]>(accounts);
     
     // Use cached credit cards hook
-    const { creditCards: allCreditCards, deleteCreditCard: deleteCreditCardFromHook, fetchCreditCards } = useCreditCardsWithCache();
+    const { creditCards: allCreditCards, deleteCreditCard: deleteCreditCardFromHook, refetch: fetchCreditCards } = useAllCreditCards();
     
     const [isAddAccountModalOpen, setIsAddAccountModalOpen] = useState(false);
     const [isAddCardModalOpen, setIsAddCardModalOpen] = useState(false);

@@ -18,6 +18,8 @@ interface TransactionFilters {
   category?: string;
   startDate?: string;
   endDate?: string;
+  creditCardId?: string;
+  accountId?: string;
   limit?: number;
   offset?: number;
 }
@@ -109,6 +111,8 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
         if (filters?.type) queries.push(Query.equal('type', filters.type));
         if (filters?.status) queries.push(Query.equal('status', filters.status));
         if (filters?.category) queries.push(Query.equal('category', filters.category));
+        if (filters?.creditCardId) queries.push(Query.equal('credit_card_id', filters.creditCardId));
+        if (filters?.accountId) queries.push(Query.equal('account_id', filters.accountId));
         if (filters?.startDate) queries.push(Query.greaterThanEqual('date', filters.startDate));
         if (filters?.endDate) queries.push(Query.lessThanEqual('date', filters.endDate));
         if (filters?.limit) queries.push(Query.limit(filters.limit));
@@ -117,9 +121,9 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
         // Default ordering by date descending
         queries.push(Query.orderDesc('date'));
 
-        const result = await databases.listDocuments(databaseId, 'transactions', queries);
+        const result = await databases.listRows({ databaseId, tableId: 'transactions', queries });
 
-        const transactionsData = result.documents as unknown as Transaction[];
+        const transactionsData = result.rows as unknown as Transaction[];
         setTransactions(transactionsData);
         setTotal(result.total);
 

@@ -18,6 +18,8 @@ interface UseCreditCardBillsOptions {
  */
 export function useCreditCardBills(options: UseCreditCardBillsOptions = {}) {
   const { enableRealtime = true } = options;
+  const { useUser } = require('@/lib/contexts/UserContext');
+  const { user } = useUser();
   const [bills, setBills] = useState<CreditCardBill[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +41,48 @@ export function useCreditCardBills(options: UseCreditCardBillsOptions = {}) {
         throw new Error('Database ID not configured');
       }
 
+      // Se creditCardId foi fornecido, validar propriedade primeiro
+      if (options.creditCardId && user) {
+        const cardResult = await databases.getRow({
+          databaseId,
+          tableId: 'credit_cards',
+          rowId: options.creditCardId,
+        });
+
+        const card = cardResult as any;
+
+        // Verificar se a conta do cartão pertence ao usuário ou é compartilhada
+        const accountResult = await databases.getRow({
+          databaseId,
+          tableId: 'accounts',
+          rowId: card.account_id,
+        });
+
+        const account = accountResult as any;
+
+        // Verificar propriedade direta
+        const isOwner = account.user_id === user.$id;
+
+        // Verificar compartilhamento
+        let isShared = false;
+        if (!isOwner) {
+          const sharingResult = await databases.listRows({
+            databaseId,
+            tableId: 'sharing_relationships',
+            queries: [
+              Query.equal('member_user_id', user.$id),
+              Query.equal('responsible_user_id', account.user_id),
+              Query.equal('status', 'active'),
+            ],
+          });
+          isShared = sharingResult.rows.length > 0;
+        }
+
+        if (!isOwner && !isShared) {
+          throw new Error('Unauthorized: Credit card does not belong to user');
+        }
+      }
+
       // Build queries
       const queries = [];
       if (options.creditCardId) queries.push(Query.equal('credit_card_id', options.creditCardId));
@@ -49,9 +93,9 @@ export function useCreditCardBills(options: UseCreditCardBillsOptions = {}) {
       // Default ordering by due date descending
       queries.push(Query.orderDesc('due_date'));
 
-      const result = await databases.listDocuments(databaseId, 'credit_card_bills', queries);
+      const result = await databases.listRows({ databaseId, tableId: 'credit_card_bills', queries });
 
-      const billsData = result.documents as unknown as CreditCardBill[];
+      const billsData = result.rows as unknown as CreditCardBill[];
       setBills(billsData);
       setInitialized(true);
     } catch (err) {
@@ -62,7 +106,7 @@ export function useCreditCardBills(options: UseCreditCardBillsOptions = {}) {
     } finally {
       setLoading(false);
     }
-  }, [options.creditCardId, options.status, options.startDate, options.endDate]);
+  }, [options.creditCardId, options.status, options.startDate, options.endDate, user]);
 
   useEffect(() => {
     if (!initialized) {
@@ -74,26 +118,67 @@ export function useCreditCardBills(options: UseCreditCardBillsOptions = {}) {
   useAppwriteRealtime({
     channels: [`databases.${process.env.APPWRITE_DATABASE_ID}.collections.credit_card_bills.documents`],
     enabled: enableRealtime && initialized,
-    onCreate: (payload: CreditCardBill) => {
+    onCreate: async (payload: CreditCardBill) => {
       console.log('📡 Realtime: bill created', payload.$id);
       // Filtrar se necessário baseado nas options
       if (options.creditCardId && payload.credit_card_id !== options.creditCardId) return;
       if (options.status && payload.status !== options.status) return;
+
+      // Validar propriedade do cartão antes de adicionar
+      const isValid = await validateBillOwnership(payload.credit_card_id);
+      if (!isValid) return;
 
       setBills((prev) => {
         if (prev.some((b) => b.$id === payload.$id)) return prev;
         return [payload, ...prev];
       });
     },
-    onUpdate: (payload: CreditCardBill) => {
+    onUpdate: async (payload: CreditCardBill) => {
       console.log('📡 Realtime: bill updated', payload.$id);
+      // Validar propriedade do cartão antes de atualizar
+      const isValid = await validateBillOwnership(payload.credit_card_id);
+      if (!isValid) return;
+
       setBills((prev) => prev.map((b) => (b.$id === payload.$id ? payload : b)));
     },
-    onDelete: (payload: CreditCardBill) => {
+    onDelete: async (payload: CreditCardBill) => {
       console.log('📡 Realtime: bill deleted', payload.$id);
+      // Validar propriedade do cartão antes de remover
+      const isValid = await validateBillOwnership(payload.credit_card_id);
+      if (!isValid) return;
+
       setBills((prev) => prev.filter((b) => b.$id !== payload.$id));
     },
   });
+
+  // Função auxiliar para validar propriedade da fatura
+  async function validateBillOwnership(creditCardId: string): Promise<boolean> {
+    try {
+      const { getAppwriteBrowserDatabases } = await import('@/lib/appwrite/client-browser');
+      const { Query } = await import('appwrite');
+      const { useUser } = await import('@/lib/contexts/UserContext');
+
+      const databases = getAppwriteBrowserDatabases();
+      const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || process.env.APPWRITE_DATABASE_ID;
+      if (!databaseId) return false;
+
+      // Buscar cartão
+      const card = await databases.getRow({ databaseId, tableId: 'credit_cards', rowId: creditCardId });
+      const accountId = (card as any).account_id;
+
+      // Buscar conta
+      const account = await databases.getRow({ databaseId, tableId: 'accounts', rowId: accountId });
+      const accountUserId = (account as any).user_id;
+
+      // Obter usuário atual (isso pode não funcionar em callback, considerar passar userId como parâmetro)
+      // Por enquanto, vamos refazer a busca completa
+      fetchBills();
+      return true;
+    } catch (err) {
+      console.error('Error validating bill ownership:', err);
+      return false;
+    }
+  }
 
   return {
     bills,

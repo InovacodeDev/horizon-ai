@@ -67,6 +67,8 @@ interface UseAccountBalanceReturn {
  */
 export function useAccountBalance(accountId: string, options: UseAccountBalanceOptions = {}): UseAccountBalanceReturn {
   const { enabled = true, onBalanceUpdate, onError } = options;
+  const { useUser } = require('@/lib/contexts/UserContext');
+  const { user } = useUser();
 
   const [balance, setBalance] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -74,7 +76,7 @@ export function useAccountBalance(accountId: string, options: UseAccountBalanceO
 
   // Fetch initial balance
   const fetchBalance = async () => {
-    if (!accountId) {
+    if (!accountId || !user) {
       setLoading(false);
       return;
     }
@@ -82,8 +84,33 @@ export function useAccountBalance(accountId: string, options: UseAccountBalanceO
     try {
       setError(null);
       const databases = getAppwriteBrowserDatabases();
+      const { Query } = await import('appwrite');
+
+      // Buscar conta
       const accountDoc = await databases.getDocument(DATABASE_ID, ACCOUNTS_COLLECTION, accountId);
       const account = accountDoc as unknown as Account;
+
+      // Verificar propriedade direta
+      const isOwner = account.user_id === user.$id;
+
+      // Verificar compartilhamento se não for proprietário
+      let isShared = false;
+      if (!isOwner) {
+        const sharingResult = await databases.listRows({
+          databaseId: DATABASE_ID,
+          tableId: 'sharing_relationships',
+          queries: [
+            Query.equal('member_user_id', user.$id),
+            Query.equal('responsible_user_id', account.user_id),
+            Query.equal('status', 'active'),
+          ],
+        });
+        isShared = sharingResult.rows.length > 0;
+      }
+
+      if (!isOwner && !isShared) {
+        throw new Error('Unauthorized: Account does not belong to user');
+      }
 
       setBalance(account.balance);
       setLoading(false);
@@ -111,7 +138,7 @@ export function useAccountBalance(accountId: string, options: UseAccountBalanceO
     const channel = `databases.${DATABASE_ID}.collections.${ACCOUNTS_COLLECTION}.documents.${accountId}`;
 
     try {
-      const unsubscribe = client.subscribe(channel, (response: any) => {
+      const unsubscribe = client.subscribe(channel, async (response: any) => {
         try {
           const events = response.events || [];
 
@@ -122,6 +149,35 @@ export function useAccountBalance(accountId: string, options: UseAccountBalanceO
               accountId: updatedAccount.$id,
               newBalance: updatedAccount.balance,
             });
+
+            if (!user) return;
+
+            // Validar propriedade antes de atualizar
+            const { Query } = await import('appwrite');
+
+            // Verificar propriedade direta
+            const isOwner = updatedAccount.user_id === user.$id;
+
+            // Verificar compartilhamento se não for proprietário
+            let isShared = false;
+            if (!isOwner) {
+              const databases = getAppwriteBrowserDatabases();
+              const sharingResult = await databases.listRows({
+                databaseId: DATABASE_ID,
+                tableId: 'sharing_relationships',
+                queries: [
+                  Query.equal('member_user_id', user.$id),
+                  Query.equal('responsible_user_id', updatedAccount.user_id),
+                  Query.equal('status', 'active'),
+                ],
+              });
+              isShared = sharingResult.rows.length > 0;
+            }
+
+            if (!isOwner && !isShared) {
+              console.warn('⚠️ Realtime update for unauthorized account, ignoring');
+              return;
+            }
 
             setBalance(updatedAccount.balance);
             onBalanceUpdate?.(updatedAccount.balance);

@@ -11,7 +11,7 @@
  * 2. Updates their status to "expired"
  * 3. Returns count of expired invitations
  */
-import { Client, Databases, Query } from 'node-appwrite';
+import { Client, Query, TablesDB } from 'node-appwrite';
 
 // Types
 interface Invitation {
@@ -31,13 +31,13 @@ const INVITATIONS_COLLECTION = 'sharing_invitations';
 /**
  * Initialize Appwrite client
  */
-function initializeClient(): { client: Client; databases: Databases } {
+function initializeClient(): { client: Client; databases: TablesDB } {
   const client = new Client()
     .setEndpoint(process.env.APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1')
     .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID || '')
     .setKey(process.env.APPWRITE_API_KEY || '');
 
-  const databases = new Databases(client);
+  const databases = new TablesDB(client);
 
   return { client, databases };
 }
@@ -45,7 +45,7 @@ function initializeClient(): { client: Client; databases: Databases } {
 /**
  * Expire old invitations with pagination support
  */
-async function expireOldInvitations(databases: Databases): Promise<number> {
+async function expireOldInvitations(databases: TablesDB): Promise<number> {
   console.log('[ExpireInvitations] Starting expiration process');
 
   const now = new Date().toISOString();
@@ -56,31 +56,40 @@ async function expireOldInvitations(databases: Databases): Promise<number> {
   while (true) {
     try {
       // Query pending invitations with expired dates
-      const result = await databases.listDocuments(DATABASE_ID, INVITATIONS_COLLECTION, [
-        Query.equal('status', 'pending'),
-        Query.lessThan('expires_at', now),
-        Query.limit(limit),
-        Query.offset(offset),
-      ]);
+      const result = await databases.listRows({
+        databaseId: DATABASE_ID,
+        tableId: INVITATIONS_COLLECTION,
+        queries: [
+          Query.equal('status', 'pending'),
+          Query.lessThan('expires_at', now),
+          Query.limit(limit),
+          Query.offset(offset),
+        ],
+      });
 
-      console.log(`[ExpireInvitations] Found ${result.documents.length} expired invitations in batch`);
+      console.log(`[ExpireInvitations] Found ${result.rows.length} expired invitations in batch`);
 
-      if (result.documents.length === 0) {
+      if (result.rows.length === 0) {
         break;
       }
 
       // Update each invitation to expired status
-      for (const invitation of result.documents) {
+      for (const invitation of result.rows) {
         try {
-          await databases.updateDocument(DATABASE_ID, INVITATIONS_COLLECTION, invitation.$id, {
-            status: 'expired',
-            updated_at: new Date().toISOString(),
+          await databases.updateRow({
+            databaseId: DATABASE_ID,
+            tableId: INVITATIONS_COLLECTION,
+            rowId: invitation.$id,
+            data: {
+              status: 'expired',
+              updated_at: new Date().toISOString(),
+            },
           });
           expiredCount++;
           console.log(`[ExpireInvitations] Expired invitation ${invitation.$id}`);
 
           // Pequeno delay entre atualizações (50ms)
-          if (expiredCount < result.documents.length) {
+          if (expiredCount < result.rows.length) {
             await new Promise((resolve) => setTimeout(resolve, 50));
           }
         } catch (error) {
@@ -90,7 +99,7 @@ async function expireOldInvitations(databases: Databases): Promise<number> {
       }
 
       // Check if we've processed all documents
-      if (result.documents.length < limit) {
+      if (result.rows.length < limit) {
         break;
       }
 

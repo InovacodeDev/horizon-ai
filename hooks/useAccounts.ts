@@ -2,7 +2,6 @@
 
 import { useUser } from '@/lib/contexts/UserContext';
 import type { Account, CreateAccountDto, UpdateAccountDto } from '@/lib/types';
-import { cacheManager, getCacheKey, invalidateCache } from '@/lib/utils/cache';
 import { useCallback, useEffect, useState, useTransition } from 'react';
 
 import { useAppwriteRealtime } from './useAppwriteRealtime';
@@ -27,58 +26,39 @@ export function useAccounts(options: UseAccountsOptions = {}) {
   const [isPending, startTransition] = useTransition();
   const [initialized, setInitialized] = useState(false);
 
-  const fetchAccounts = useCallback(
-    async (skipCache = false) => {
-      try {
-        // Check cache first
-        if (!skipCache) {
-          const cacheKey = getCacheKey.accounts('user');
-          const cached = cacheManager.get<Account[]>(cacheKey);
+  const fetchAccounts = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-          if (cached) {
-            setAccounts(cached);
-            setInitialized(true);
-            return;
-          }
-        }
+      // Fetch directly from Appwrite using the browser client
+      const { getAppwriteBrowserDatabases } = await import('@/lib/appwrite/client-browser');
+      const { Query } = await import('appwrite');
 
-        setLoading(true);
-        setError(null);
+      const databases = getAppwriteBrowserDatabases();
 
-        // Fetch directly from Appwrite using the browser client
-        const { getAppwriteBrowserDatabases } = await import('@/lib/appwrite/client-browser');
-        const { Query } = await import('appwrite');
-
-        const databases = getAppwriteBrowserDatabases();
-
-        const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || process.env.APPWRITE_DATABASE_ID;
-        if (!databaseId) {
-          throw new Error('Database ID not configured');
-        }
-
-        const result = await databases.listDocuments(databaseId, 'accounts', [
-          Query.equal('user_id', user.$id),
-          Query.orderDesc('created_at'),
-        ]);
-
-        const accountsData = result.documents as unknown as Account[];
-        setAccounts(accountsData);
-
-        // Cache the result
-        const cacheKey = getCacheKey.accounts(user.$id);
-        cacheManager.set(cacheKey, accountsData);
-
-        setInitialized(true);
-      } catch (err: any) {
-        console.error('Error fetching accounts:', err);
-        setError(err.message || 'Failed to fetch accounts');
-        setInitialized(true);
-      } finally {
-        setLoading(false);
+      const databaseId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || process.env.APPWRITE_DATABASE_ID;
+      if (!databaseId) {
+        throw new Error('Database ID not configured');
       }
-    },
-    [user.$id],
-  );
+
+      const result = await databases.listRows({
+        databaseId,
+        tableId: 'accounts',
+        queries: [Query.equal('user_id', user.$id), Query.orderDesc('created_at')],
+      });
+
+      const accountsData = result.rows as unknown as Account[];
+      setAccounts(accountsData);
+      setInitialized(true);
+    } catch (err: any) {
+      console.error('Error fetching accounts:', err);
+      setError(err.message || 'Failed to fetch accounts');
+      setInitialized(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [user.$id]);
 
   useEffect(() => {
     if (!initialized && !options.initialAccounts) {
@@ -129,9 +109,6 @@ export function useAccounts(options: UseAccountsOptions = {}) {
           const currentAccounts = Array.isArray(prev) ? prev : [];
           return [...currentAccounts.filter((a) => a.$id !== tempId), newAccount.data];
         });
-
-        // Invalidate cache
-        invalidateCache.accounts(user.$id);
 
         return newAccount;
       } catch (err: any) {
@@ -191,9 +168,6 @@ export function useAccounts(options: UseAccountsOptions = {}) {
         // Update with real data
         setAccounts((prev) => prev.map((a) => (a.$id === accountId ? updatedAccount : a)));
 
-        // Invalidate cache
-        invalidateCache.accounts(user.$id);
-
         return updatedAccount;
       } catch (err: any) {
         console.error('Error updating account:', err);
@@ -227,9 +201,6 @@ export function useAccounts(options: UseAccountsOptions = {}) {
           const errorData = await response.json();
           throw new Error(errorData.message || 'Failed to delete account');
         }
-
-        // Invalidate cache
-        invalidateCache.accounts(user.$id);
       } catch (err: any) {
         console.error('Error deleting account:', err);
         setError(err.message || 'Failed to delete account');
@@ -267,6 +238,11 @@ export function useAccounts(options: UseAccountsOptions = {}) {
     enabled: enableRealtime && initialized,
     onUpdate: (payload: any) => {
       console.log('📡 Realtime: account updated', payload.$id);
+      // Validar se a conta pertence ao usuário antes de atualizar
+      if (payload.user_id !== user.$id) {
+        console.warn('⚠️ Realtime update for account not owned by user, ignoring');
+        return;
+      }
       // Update the account in the list
       setAccounts((prev) => {
         const index = prev.findIndex((a) => a.$id === payload.$id);
@@ -280,6 +256,11 @@ export function useAccounts(options: UseAccountsOptions = {}) {
     },
     onCreate: (payload: any) => {
       console.log('📡 Realtime: account created', payload.$id);
+      // Validar se a conta pertence ao usuário antes de adicionar
+      if (payload.user_id !== user.$id) {
+        console.warn('⚠️ Realtime create for account not owned by user, ignoring');
+        return;
+      }
       // Add new account to the list
       setAccounts((prev) => {
         // Check if account already exists (avoid duplicates)
@@ -291,6 +272,11 @@ export function useAccounts(options: UseAccountsOptions = {}) {
     },
     onDelete: (payload: any) => {
       console.log('📡 Realtime: account deleted', payload.$id);
+      // Validar se a conta pertence ao usuário antes de remover
+      if (payload.user_id !== user.$id) {
+        console.warn('⚠️ Realtime delete for account not owned by user, ignoring');
+        return;
+      }
       // Remove account from the list
       setAccounts((prev) => prev.filter((a) => a.$id !== payload.$id));
     },

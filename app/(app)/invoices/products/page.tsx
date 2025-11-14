@@ -83,8 +83,8 @@ export default function ProductsPage() {
       // Default ordering by name
       queries.push(Query.orderAsc('name'));
 
-      const result = await databases.listDocuments(databaseId, 'products', queries);
-      const productsData = result.documents as unknown as Product[];
+      const result = await databases.listRows({databaseId, tableId: 'products', queries});
+      const productsData = result.rows as unknown as Product[];
       
       setProducts(productsData);
     } catch (err: any) {

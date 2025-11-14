@@ -59,7 +59,7 @@ export function useInvoicesWithSharing(options: UseInvoicesWithSharingOptions = 
       // Default ordering by issue date descending
       queries.push(Query.orderDesc('issue_date'));
 
-      const result = await databases.listDocuments(databaseId, 'invoices', queries);
+      const result = await databases.listRows({ databaseId, tableId: 'invoices', queries });
 
       // Note: This simplified version doesn't include sharing logic
       // For full sharing support, you would need to:
@@ -67,7 +67,7 @@ export function useInvoicesWithSharing(options: UseInvoicesWithSharingOptions = 
       // 2. Fetch sharing relationships
       // 3. Fetch shared invoices from related users
       // 4. Merge and deduplicate results
-      const invoicesData = result.documents.map((doc: any) => ({
+      const invoicesData = result.rows.map((doc: any) => ({
         ...doc,
         isOwner: true, // Simplified - all are owner's invoices
         ownerName: 'You',

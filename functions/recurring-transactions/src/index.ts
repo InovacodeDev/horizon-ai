@@ -9,7 +9,7 @@
  * 2. Cria novas transações para o mês atual mantendo o mesmo dia
  * 3. Atualiza os valores e mantém todas as propriedades da transação original
  */
-import { Client, Databases, ID, Query } from 'node-appwrite';
+import { Client, ID, Query, TablesDB } from 'node-appwrite';
 
 // Tipos
 interface RecurringTransaction {
@@ -35,13 +35,13 @@ const TRANSACTIONS_COLLECTION = 'transactions';
 /**
  * Inicializa o cliente Appwrite
  */
-function initializeClient(): { client: Client; databases: Databases } {
+function initializeClient(): { client: Client; databases: TablesDB } {
   const client = new Client()
     .setEndpoint(process.env.APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1')
     .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID || '')
     .setKey(process.env.APPWRITE_API_KEY || '');
 
-  const databases = new Databases(client);
+  const databases = new TablesDB(client);
 
   return { client, databases };
 }
@@ -49,20 +49,20 @@ function initializeClient(): { client: Client; databases: Databases } {
 /**
  * Busca todas as transações recorrentes
  */
-async function getRecurringTransactions(databases: Databases): Promise<RecurringTransaction[]> {
+async function getRecurringTransactions(databases: TablesDB): Promise<RecurringTransaction[]> {
   const allTransactions: RecurringTransaction[] = [];
   let offset = 0;
   const limit = 100;
 
   while (true) {
     try {
-      const result = await databases.listDocuments(DATABASE_ID, TRANSACTIONS_COLLECTION, [
-        Query.equal('is_recurring', true),
-        Query.limit(limit),
-        Query.offset(offset),
-      ]);
+      const result = await databases.listRows({
+        databaseId: DATABASE_ID,
+        tableId: TRANSACTIONS_COLLECTION,
+        queries: [Query.equal('is_recurring', true), Query.limit(limit), Query.offset(offset)],
+      });
 
-      const transactions = result.documents as unknown as RecurringTransaction[];
+      const transactions = result.rows as unknown as RecurringTransaction[];
       allTransactions.push(...transactions);
 
       if (transactions.length === 0 || transactions.length < limit) {
@@ -107,19 +107,20 @@ function getNextRecurringDate(originalDate: string): string {
  * Verifica se já existe uma transação recorrente para este mês
  */
 async function transactionExistsForMonth(
-  databases: Databases,
+  databases: TablesDB,
   originalTransactionId: string,
   targetMonth: number,
   targetYear: number,
 ): Promise<boolean> {
   // Buscar transações que referenciam a transação original
-  const result = await databases.listDocuments(DATABASE_ID, TRANSACTIONS_COLLECTION, [
-    Query.equal('recurring_parent_id', originalTransactionId),
-    Query.limit(100),
-  ]);
+  const result = await databases.listRows({
+    databaseId: DATABASE_ID,
+    tableId: TRANSACTIONS_COLLECTION,
+    queries: [Query.equal('recurring_parent_id', originalTransactionId), Query.limit(100)],
+  });
 
   // Verificar se alguma é do mês/ano alvo
-  for (const doc of result.documents) {
+  for (const doc of result.rows) {
     const transactionDate = new Date(doc.date as string);
     if (transactionDate.getMonth() === targetMonth && transactionDate.getFullYear() === targetYear) {
       return true;
@@ -133,7 +134,7 @@ async function transactionExistsForMonth(
  * Cria uma nova transação recorrente
  */
 async function createRecurringTransaction(
-  databases: Databases,
+  databases: TablesDB,
   original: RecurringTransaction,
   newDate: string,
 ): Promise<void> {
@@ -167,7 +168,12 @@ async function createRecurringTransaction(
   if (original.description) newTransaction.description = original.description;
 
   // Criar a nova transação
-  await databases.createDocument(DATABASE_ID, TRANSACTIONS_COLLECTION, ID.unique(), newTransaction);
+  await databases.createRow({
+    databaseId: DATABASE_ID,
+    tableId: TRANSACTIONS_COLLECTION,
+    rowId: ID.unique(),
+    data: newTransaction,
+  });
 
   console.log(`Created recurring transaction for ${original.$id} on ${newDate}`);
 }
@@ -175,7 +181,7 @@ async function createRecurringTransaction(
 /**
  * Processa todas as transações recorrentes
  */
-async function processRecurringTransactions(databases: Databases): Promise<number> {
+async function processRecurringTransactions(databases: TablesDB): Promise<number> {
   console.log('[RecurringTransactions] Starting processing');
 
   const recurringTransactions = await getRecurringTransactions(databases);

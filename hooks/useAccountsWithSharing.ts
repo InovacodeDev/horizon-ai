@@ -40,39 +40,41 @@ export function useAccountsWithSharing(options: UseAccountsWithSharingOptions = 
       }
 
       // Fetch user's own accounts
-      const ownAccountsResult = await databases.listDocuments(databaseId, 'accounts', [
-        Query.equal('user_id', user.$id),
-        Query.orderDesc('created_at'),
-      ]);
+      const ownAccountsResult = await databases.listRows({
+        databaseId,
+        tableId: 'accounts',
+        queries: [Query.equal('user_id', user.$id), Query.orderDesc('created_at')],
+      });
 
-      const ownAccounts: AccountWithOwnership[] = (ownAccountsResult.documents as unknown as Account[]).map(
-        (account) => ({
-          ...account,
-          ownerId: user.$id,
-          ownerName: user.name,
-          isOwn: true,
-        }),
-      );
+      const ownAccounts: AccountWithOwnership[] = (ownAccountsResult.rows as unknown as Account[]).map((account) => ({
+        ...account,
+        ownerId: user.$id,
+        ownerName: user.name,
+        isOwn: true,
+      }));
 
       // Fetch sharing relationships where user is a member
-      const sharingResult = await databases.listDocuments(databaseId, 'sharing_relationships', [
-        Query.equal('member_user_id', user.$id),
-        Query.equal('status', 'active'),
-      ]);
+      const sharingResult = await databases.listRows({
+        databaseId,
+        tableId: 'sharing_relationships',
+        queries: [Query.equal('member_user_id', user.$id), Query.equal('status', 'active')],
+      });
 
       // For each sharing relationship, fetch the responsible user's accounts
       let sharedAccounts: AccountWithOwnership[] = [];
 
-      if (sharingResult.documents.length > 0) {
-        const responsibleUserIds = sharingResult.documents.map((rel: any) => rel.responsible_user_id);
+      if (sharingResult.rows.length > 0) {
+        const responsibleUserIds = sharingResult.rows.map((rel: any) => rel.responsible_user_id);
 
         // Fetch accounts owned by responsible users
-        const sharedAccountsResult = await databases.listDocuments(databaseId, 'accounts', [
-          Query.equal('user_id', responsibleUserIds),
-        ]);
+        const sharedAccountsResult = await databases.listRows({
+          databaseId,
+          tableId: 'accounts',
+          queries: [Query.equal('user_id', responsibleUserIds)],
+        });
 
-        sharedAccounts = (sharedAccountsResult.documents as unknown as Account[]).map((account) => {
-          const sharingRel = sharingResult.documents.find((rel: any) => rel.responsible_user_id === account.user_id);
+        sharedAccounts = (sharedAccountsResult.rows as unknown as Account[]).map((account) => {
+          const sharingRel = sharingResult.rows.find((rel: any) => rel.responsible_user_id === account.user_id);
           return {
             ...account,
             ownerId: account.user_id,

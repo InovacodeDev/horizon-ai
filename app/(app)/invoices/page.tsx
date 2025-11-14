@@ -109,8 +109,8 @@ export default function InvoicesPage() {
       // Default ordering by issue date descending
       queries.push(Query.orderDesc('issue_date'));
 
-      const result = await databases.listDocuments(databaseId, 'invoices', queries);
-      const invoicesData = result.documents as unknown as InvoiceType[];
+      const result = await databases.listRows({databaseId, tableId: 'invoices', queries});
+      const invoicesData = result.rows as unknown as InvoiceType[];
       
       setInvoices(invoicesData);
 

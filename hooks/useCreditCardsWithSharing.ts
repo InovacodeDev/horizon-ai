@@ -37,7 +37,11 @@ export function useCreditCardsWithSharing(options: UseCreditCardsWithSharingOpti
       }
 
       // Fetch all credit cards (simplified - no sharing logic for now)
-      const result = await databases.listDocuments(databaseId, 'credit_cards', [Query.orderDesc('created_at')]);
+      const result = await databases.listRows({
+        databaseId,
+        tableId: 'credit_cards',
+        queries: [Query.orderDesc('created_at')],
+      });
 
       // Note: This simplified version doesn't include sharing logic
       // For full sharing support, you would need to:
@@ -45,7 +49,7 @@ export function useCreditCardsWithSharing(options: UseCreditCardsWithSharingOpti
       // 2. Fetch sharing relationships
       // 3. Fetch shared credit cards from related users
       // 4. Merge and deduplicate results
-      const cardsData = result.documents.map((doc: any) => ({
+      const cardsData = result.rows.map((doc: any) => ({
         ...doc,
         isOwner: true, // Simplified - all are owner's cards
         ownerName: 'You',

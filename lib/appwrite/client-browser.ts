@@ -1,7 +1,7 @@
-import { Client, Databases } from 'appwrite';
+import { Client, Databases, TablesDB } from 'appwrite';
 
 let client: Client | null = null;
-let databases: Databases | null = null;
+let databases: TablesDB | null = null;
 
 /**
  * Initialize Appwrite client for browser (client-side)
@@ -23,7 +23,7 @@ export function initializeAppwriteBrowser() {
   client = new Client();
   client.setEndpoint(endpoint).setProject(projectId);
 
-  databases = new Databases(client);
+  databases = new TablesDB(client);
 
   return { client, databases };
 }
@@ -44,7 +44,7 @@ export function getAppwriteBrowserClient(): Client {
 /**
  * Get Appwrite Databases service for browser
  */
-export function getAppwriteBrowserDatabases(): Databases {
+export function getAppwriteBrowserDatabases(): TablesDB {
   if (!databases) {
     initializeAppwriteBrowser();
   }
