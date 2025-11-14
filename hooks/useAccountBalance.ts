@@ -87,7 +87,7 @@ export function useAccountBalance(accountId: string, options: UseAccountBalanceO
       const { Query } = await import('appwrite');
 
       // Buscar conta
-      const accountDoc = await databases.getDocument(DATABASE_ID, ACCOUNTS_COLLECTION, accountId);
+      const accountDoc = await databases.getRow({ databaseId: DATABASE_ID, tableId: ACCOUNTS_COLLECTION, rowId: accountId});
       const account = accountDoc as unknown as Account;
 
       // Verificar propriedade direta
