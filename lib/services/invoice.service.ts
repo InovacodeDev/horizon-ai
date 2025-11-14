@@ -18,6 +18,7 @@ import { invalidateCache } from '@/lib/utils/cache';
 import { ID, Query } from 'node-appwrite';
 
 import { InvoiceParserError, ParsedInvoice } from './invoice-parser.service';
+import { ProductToCategorize, getProductCategorizationService } from './product-categorization.service';
 import { NormalizedProduct, productNormalizationService } from './product-normalization.service';
 
 // ============================================
@@ -447,8 +448,38 @@ export class InvoiceService {
       productNormalizationService.normalizeProduct(item.description, item.productCode, item.ncmCode),
     );
 
+    // Categorizar produtos com IA antes de criar
+    const categorizationService = getProductCategorizationService();
+    const productsToCategor: ProductToCategorize[] = parsedInvoice.items.map((item) => ({
+      description: item.description,
+      product_code: item.productCode,
+      ncm_code: item.ncmCode,
+      quantity: item.quantity,
+      unit_price: item.unitPrice,
+    }));
+
+    let categorizedProducts;
+    try {
+      categorizedProducts = await categorizationService.categorizeProducts(productsToCategor);
+    } catch (error) {
+      console.error('Erro ao categorizar produtos, usando fallback:', error);
+      // Fallback: usar categoria da nota fiscal
+      categorizedProducts = productsToCategor.map((p) => ({
+        description: p.description,
+        category: parsedInvoice.category || 'outros',
+        unit_type: 'un',
+        unit_quantity: undefined,
+        price_per_kg: undefined,
+      }));
+    }
+
     // Find or create products and get their IDs
-    const productIds = await this.findOrCreateProducts(userId, normalizedProducts, parsedInvoice.category || 'other');
+    const productIds = await this.findOrCreateProducts(
+      userId,
+      normalizedProducts,
+      categorizedProducts,
+      parsedInvoice.category || 'other',
+    );
 
     // Create invoice items
     for (let i = 0; i < parsedInvoice.items.length; i++) {
@@ -489,19 +520,40 @@ export class InvoiceService {
   private async findOrCreateProducts(
     userId: string,
     normalizedProducts: NormalizedProduct[],
-    category: string,
+    categorizedProducts: any[],
+    fallbackCategory: string,
   ): Promise<string[]> {
     const productIds: string[] = [];
 
-    for (const normalizedProduct of normalizedProducts) {
+    for (let i = 0; i < normalizedProducts.length; i++) {
+      const normalizedProduct = normalizedProducts[i];
+      const categorized = categorizedProducts[i];
+
       // Try to find existing product
       const existingProduct = await this.findExistingProduct(userId, normalizedProduct);
 
       if (existingProduct) {
+        // Atualizar categoria se o produto já existe mas não tem categoria definida
+        if (existingProduct.category === 'other' || existingProduct.category === 'outros') {
+          try {
+            await this.dbAdapter.updateDocument(DATABASE_ID, COLLECTIONS.PRODUCTS, existingProduct.$id, {
+              category: categorized.category,
+              subcategory: categorized.subcategory || null,
+              updated_at: new Date().toISOString(),
+            });
+          } catch (error) {
+            console.error(`Erro ao atualizar categoria do produto ${existingProduct.$id}:`, error);
+          }
+        }
         productIds.push(existingProduct.$id);
       } else {
-        // Create new product
-        const newProduct = await this.createProduct(userId, normalizedProduct, category);
+        // Create new product with categorization
+        const newProduct = await this.createProduct(
+          userId,
+          normalizedProduct,
+          categorized.category || fallbackCategory,
+          categorized.subcategory,
+        );
         productIds.push(newProduct.$id);
       }
     }
@@ -567,6 +619,7 @@ export class InvoiceService {
     userId: string,
     normalizedProduct: NormalizedProduct,
     category: string,
+    subcategory?: string,
   ): Promise<Product> {
     const now = new Date().toISOString();
 
@@ -576,6 +629,7 @@ export class InvoiceService {
       product_code: normalizedProduct.productCode,
       ncm_code: normalizedProduct.ncmCode,
       category: category,
+      subcategory: subcategory || null,
       total_purchases: 0,
       average_price: 0,
       created_at: now,
