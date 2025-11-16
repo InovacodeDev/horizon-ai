@@ -38,6 +38,11 @@ import { migration as expandTransactionsDataColumn } from './20251111_000034_exp
 import { migration as addDirectionToTransactions } from './20251111_000035_add_direction_to_transactions';
 import { migration as populateDirectionColumn } from './20251111_000036_populate_direction_column';
 import { migration as removeProductsStatsColumns } from './20251114_000037_remove_products_stats_columns';
+import { migration as createShoppingListsTable } from './20251114_000038_create_shopping_lists_table';
+import { migration as createShoppingListItemsTable } from './20251114_000039_create_shopping_list_items_table';
+import { migration as createShoppingListRequestsTable } from './20251114_000040_create_shopping_list_requests_table';
+import { migration as createNotificationsTable } from './20251114_000041_create_notifications_table';
+import { migration as addBrandPromotionToProducts } from './20251115_000042_add_brand_promotion_to_products';
 import { Migration } from './migration.interface';
 
 /**
@@ -82,4 +87,9 @@ export const migrations: Migration[] = [
   addDirectionToTransactions,
   populateDirectionColumn,
   removeProductsStatsColumns,
+  createShoppingListsTable,
+  createShoppingListItemsTable,
+  createShoppingListRequestsTable,
+  createNotificationsTable,
+  addBrandPromotionToProducts,
 ];

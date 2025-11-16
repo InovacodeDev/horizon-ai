@@ -43,9 +43,9 @@ export class ProductCategorizationService {
       throw new Error('GEMINI_API_KEY não configurada');
     }
     this.genAI = new GoogleGenerativeAI(apiKey);
-    // Usar gemini-1.5-flash que tem melhor suporte a cache e maior cota
+    // Usar gemini-2.5-flash que tem melhor suporte a cache e maior cota
     this.model = this.genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.5-flash',
       generationConfig: {
         temperature: 0.1, // Baixa temperatura para respostas mais consistentes
       },

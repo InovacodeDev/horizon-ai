@@ -46,6 +46,10 @@ function initializeGlobalSubscription() {
       `databases.${databaseId}.collections.transactions.documents`,
       `databases.${databaseId}.collections.invoices.documents`,
       `databases.${databaseId}.collections.sharing_relationships.documents`,
+      `databases.${databaseId}.collections.shopping_lists.documents`,
+      `databases.${databaseId}.collections.shopping_list_items.documents`,
+      `databases.${databaseId}.collections.shopping_list_requests.documents`,
+      `databases.${databaseId}.collections.notifications.documents`,
     ];
 
     const unsubscribe = client.subscribe(allChannels, (response: RealtimeMessage) => {

@@ -4,11 +4,11 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
-import ShoppingListBuilder from '@/components/invoices/ShoppingListBuilder';
 import PriceHistoryModal from '@/components/modals/PriceHistoryModal';
 import { CategoryChip, getCategoryLabel, type CategoryType } from '@/components/ui/CategoryChip';
 import MonthPicker from '@/components/ui/MonthPicker';
 import { useAppwriteRealtime } from '@/hooks/useAppwriteRealtime';
+import { useUser } from '@/lib/contexts/UserContext';
 
 interface Product {
   $id: string;
@@ -29,6 +29,8 @@ interface Product {
 }
 
 export default function ProductsPage() {
+  const { user } = useUser();
+
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +38,6 @@ export default function ProductsPage() {
   const [categoryFilter, setCategoryFilter] = useState('');
   const [purchaseMonthFilter, setPurchaseMonthFilter] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<{ $id: string; name: string } | null>(null);
-  const [showShoppingList, setShowShoppingList] = useState(false);
   const [showPriceHistory, setShowPriceHistory] = useState(false);
 
   const fetchProducts = useCallback(async () => {
@@ -181,19 +182,10 @@ export default function ProductsPage() {
             )}
           </p>
         </div>
-        <Button onClick={() => setShowShoppingList(!showShoppingList)}>
-          {showShoppingList ? 'Ver Produtos' : 'Criar Lista de Compras'}
-        </Button>
       </header>
 
-      {/* Shopping List Builder */}
-      {showShoppingList && !loading && !error && products.length > 0 && (
-        <ShoppingListBuilder availableProducts={products} />
-      )}
-
       {/* Search and Filters */}
-      {!showShoppingList && (
-        <Card className="p-4 mb-6">
+      <Card className="p-4 mb-6">
           <div className="space-y-4">
             <div className="flex flex-col gap-2 md:flex-row">
               <div className="flex-grow relative">
@@ -255,7 +247,6 @@ export default function ProductsPage() {
             </div>
           </div>
         </Card>
-      )}
 
       {/* Error State */}
       {error && (
@@ -310,7 +301,7 @@ export default function ProductsPage() {
       )}
 
       {/* Products Grid */}
-      {!showShoppingList && !loading && !error && filteredProducts.length > 0 && (
+      {!loading && !error && filteredProducts.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredProducts.map((product) => (
             <Card

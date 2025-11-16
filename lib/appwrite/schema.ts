@@ -20,6 +20,10 @@ export const COLLECTIONS = {
   INVOICE_ITEMS: 'invoice_items',
   PRODUCTS: 'products',
   PRICE_HISTORY: 'price_history',
+  SHOPPING_LISTS: 'shopping_lists',
+  SHOPPING_LIST_ITEMS: 'shopping_list_items',
+  SHOPPING_LIST_REQUESTS: 'shopping_list_requests',
+  NOTIFICATIONS: 'notifications',
   SHARING_RELATIONSHIPS: 'sharing_relationships',
   SHARING_INVITATIONS: 'sharing_invitations',
   SHARING_AUDIT_LOGS: 'sharing_audit_logs',
@@ -765,17 +769,17 @@ export const productsSchema = {
   attributes: [
     { key: 'user_id', type: 'string', size: 255, required: true, array: false },
     { key: 'name', type: 'string', size: 255, required: true, array: false },
-    { key: 'product_code', type: 'string', size: 50, required: false, array: false },
-    { key: 'ncm_code', type: 'string', size: 20, required: false, array: false },
     { key: 'category', type: 'string', size: 100, required: true, array: false },
     { key: 'subcategory', type: 'string', size: 100, required: false, array: false },
+    { key: 'brand', type: 'string', size: 100, required: false, array: false },
+    { key: 'is_promotion', type: 'boolean', required: false, default: false, array: false },
     { key: 'created_at', type: 'datetime', required: true },
     { key: 'updated_at', type: 'datetime', required: true },
   ],
   indexes: [
     { key: 'idx_user_id', type: 'key', attributes: ['user_id'], orders: ['ASC'] },
-    { key: 'idx_product_code', type: 'key', attributes: ['product_code'] },
     { key: 'idx_category', type: 'key', attributes: ['category'] },
+    { key: 'idx_brand', type: 'key', attributes: ['brand'] },
     // Compound indexes for common query patterns
     { key: 'idx_user_category', type: 'key', attributes: ['user_id', 'category'], orders: ['ASC', 'ASC'] },
     { key: 'idx_user_name', type: 'key', attributes: ['user_id', 'name'], orders: ['ASC', 'ASC'] },
@@ -788,10 +792,10 @@ export interface Product {
   $updatedAt: string;
   user_id: string;
   name: string;
-  product_code?: string;
-  ncm_code?: string;
   category: string;
   subcategory?: string;
+  brand?: string;
+  is_promotion?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -1277,4 +1281,232 @@ export interface ImportHistory {
   metadata?: string; // JSON string
   created_at: string;
   updated_at: string;
+}
+
+// ============================================
+// Collection: shopping_lists
+// ============================================
+export const shoppingListsSchema = {
+  collectionId: COLLECTIONS.SHOPPING_LISTS,
+  name: 'Shopping Lists',
+  permissions: ['read("any")', 'write("any")'],
+  rowSecurity: true,
+  attributes: [
+    { key: 'user_id', type: 'string', size: 255, required: true, array: false },
+    { key: 'title', type: 'string', size: 255, required: true, array: false },
+    {
+      key: 'category',
+      type: 'enum',
+      elements: ['pharmacy', 'groceries', 'supermarket', 'restaurant', 'fuel', 'retail', 'services', 'other'],
+      required: true,
+      array: false,
+    },
+    { key: 'generated_by_ai', type: 'boolean', required: true, default: false },
+    { key: 'estimated_total', type: 'float', required: false },
+    { key: 'actual_total', type: 'float', required: false },
+    { key: 'completed', type: 'boolean', required: true, default: false },
+    { key: 'completed_at', type: 'datetime', required: false },
+    { key: 'metadata', type: 'string', size: 4000, required: false, array: false }, // JSON field for AI generation params
+    { key: 'created_at', type: 'datetime', required: true },
+    { key: 'updated_at', type: 'datetime', required: true },
+  ],
+  indexes: [
+    { key: 'idx_user_id', type: 'key', attributes: ['user_id'], orders: ['ASC'] },
+    { key: 'idx_created_at', type: 'key', attributes: ['created_at'], orders: ['DESC'] },
+    { key: 'idx_category', type: 'key', attributes: ['category'] },
+    { key: 'idx_completed', type: 'key', attributes: ['completed'] },
+    { key: 'idx_user_category', type: 'key', attributes: ['user_id', 'category'], orders: ['ASC', 'ASC'] },
+    { key: 'idx_user_created', type: 'key', attributes: ['user_id', 'created_at'], orders: ['ASC', 'DESC'] },
+  ],
+};
+
+export interface ShoppingList {
+  $id: string;
+  $createdAt: string;
+  $updatedAt: string;
+  user_id: string;
+  title: string;
+  category: 'pharmacy' | 'groceries' | 'supermarket' | 'restaurant' | 'fuel' | 'retail' | 'services' | 'other';
+  generated_by_ai: boolean;
+  estimated_total?: number;
+  actual_total?: number;
+  completed: boolean;
+  completed_at?: string;
+  metadata?: string; // JSON string
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ShoppingListMetadata {
+  ai_generation_params?: {
+    historical_months: number;
+    category: string;
+    invoice_count: number;
+  };
+  best_merchant?: {
+    merchant_name: string;
+    merchant_cnpj: string;
+    estimated_cost: number;
+  };
+}
+
+// ============================================
+// Collection: shopping_list_items
+// ============================================
+export const shoppingListItemsSchema = {
+  collectionId: COLLECTIONS.SHOPPING_LIST_ITEMS,
+  name: 'Shopping List Items',
+  permissions: ['read("any")', 'write("any")'],
+  rowSecurity: true,
+  attributes: [
+    { key: 'shopping_list_id', type: 'string', size: 255, required: true, array: false },
+    { key: 'user_id', type: 'string', size: 255, required: true, array: false },
+    { key: 'product_name', type: 'string', size: 500, required: true, array: false },
+    { key: 'product_id', type: 'string', size: 255, required: false, array: false },
+    { key: 'quantity', type: 'float', required: true },
+    { key: 'unit', type: 'string', size: 50, required: false, array: false },
+    { key: 'estimated_price', type: 'float', required: false },
+    { key: 'actual_price', type: 'float', required: false },
+    { key: 'checked', type: 'boolean', required: true, default: false },
+    { key: 'category', type: 'string', size: 100, required: false, array: false },
+    { key: 'subcategory', type: 'string', size: 100, required: false, array: false },
+    { key: 'ai_confidence', type: 'float', required: false }, // Confidence score from AI (0-1)
+    { key: 'ai_reasoning', type: 'string', size: 1000, required: false, array: false }, // Why AI suggested this item
+    { key: 'created_at', type: 'datetime', required: true },
+  ],
+  indexes: [
+    { key: 'idx_shopping_list_id', type: 'key', attributes: ['shopping_list_id'], orders: ['ASC'] },
+    { key: 'idx_user_id', type: 'key', attributes: ['user_id'], orders: ['ASC'] },
+    { key: 'idx_product_id', type: 'key', attributes: ['product_id'], orders: ['ASC'] },
+    { key: 'idx_checked', type: 'key', attributes: ['checked'] },
+    { key: 'idx_list_checked', type: 'key', attributes: ['shopping_list_id', 'checked'], orders: ['ASC', 'ASC'] },
+  ],
+};
+
+export interface ShoppingListItem {
+  $id: string;
+  $createdAt: string;
+  $updatedAt: string;
+  shopping_list_id: string;
+  user_id: string;
+  product_name: string;
+  product_id?: string;
+  quantity: number;
+  unit?: string;
+  estimated_price?: number;
+  actual_price?: number;
+  checked: boolean;
+  category?: string;
+  subcategory?: string;
+  ai_confidence?: number;
+  ai_reasoning?: string;
+  created_at: string;
+}
+
+// ============================================
+// Collection: shopping_list_requests
+// ============================================
+export const shoppingListRequestsSchema = {
+  collectionId: COLLECTIONS.SHOPPING_LIST_REQUESTS,
+  name: 'Shopping List Requests',
+  permissions: ['read("any")', 'write("any")'],
+  rowSecurity: true,
+  attributes: [
+    { key: 'user_id', type: 'string', size: 255, required: true, array: false },
+    {
+      key: 'category',
+      type: 'enum',
+      elements: ['pharmacy', 'groceries', 'supermarket', 'restaurant', 'fuel', 'retail', 'services', 'other'],
+      required: true,
+      array: false,
+    },
+    {
+      key: 'status',
+      type: 'enum',
+      elements: ['pending', 'generating', 'completed', 'error'],
+      required: true,
+      array: false,
+    },
+    { key: 'historical_months', type: 'integer', required: true, default: 12 },
+    { key: 'shopping_list_id', type: 'string', size: 255, required: false, array: false },
+    { key: 'error_message', type: 'string', size: 1000, required: false, array: false },
+    { key: 'metadata', type: 'string', size: 4000, required: false, array: false },
+    { key: 'created_at', type: 'datetime', required: true },
+    { key: 'updated_at', type: 'datetime', required: true },
+    { key: 'completed_at', type: 'datetime', required: false },
+  ],
+  indexes: [
+    { key: 'idx_user_id', type: 'key', attributes: ['user_id'], orders: ['ASC'] },
+    { key: 'idx_status', type: 'key', attributes: ['status'] },
+    { key: 'idx_created_at', type: 'key', attributes: ['created_at'], orders: ['DESC'] },
+    { key: 'idx_user_status', type: 'key', attributes: ['user_id', 'status'], orders: ['ASC', 'ASC'] },
+    { key: 'idx_status_created', type: 'key', attributes: ['status', 'created_at'], orders: ['ASC', 'DESC'] },
+  ],
+};
+
+export interface ShoppingListRequest {
+  $id: string;
+  $createdAt: string;
+  $updatedAt: string;
+  user_id: string;
+  category: 'pharmacy' | 'groceries' | 'supermarket' | 'restaurant' | 'fuel' | 'retail' | 'services' | 'other';
+  status: 'pending' | 'generating' | 'completed' | 'error';
+  historical_months: number;
+  shopping_list_id?: string;
+  error_message?: string;
+  metadata?: string;
+  created_at: string;
+  updated_at: string;
+  completed_at?: string;
+}
+
+// ============================================
+// Collection: notifications
+// ============================================
+export const notificationsSchema = {
+  collectionId: COLLECTIONS.NOTIFICATIONS,
+  name: 'Notifications',
+  permissions: ['read("any")', 'write("any")'],
+  rowSecurity: true,
+  attributes: [
+    { key: 'user_id', type: 'string', size: 255, required: true, array: false },
+    {
+      key: 'type',
+      type: 'enum',
+      elements: ['shopping_list_completed', 'shopping_list_error', 'sharing_invitation', 'system'],
+      required: true,
+      array: false,
+    },
+    { key: 'title', type: 'string', size: 255, required: true, array: false },
+    { key: 'message', type: 'string', size: 1000, required: true, array: false },
+    { key: 'read', type: 'boolean', required: true, default: false },
+    { key: 'read_at', type: 'datetime', required: false },
+    { key: 'action_url', type: 'string', size: 500, required: false, array: false },
+    { key: 'related_id', type: 'string', size: 255, required: false, array: false }, // shopping_list_id, invitation_id, etc
+    { key: 'metadata', type: 'string', size: 2000, required: false, array: false },
+    { key: 'created_at', type: 'datetime', required: true },
+  ],
+  indexes: [
+    { key: 'idx_user_id', type: 'key', attributes: ['user_id'], orders: ['ASC'] },
+    { key: 'idx_read', type: 'key', attributes: ['read'] },
+    { key: 'idx_created_at', type: 'key', attributes: ['created_at'], orders: ['DESC'] },
+    { key: 'idx_user_read', type: 'key', attributes: ['user_id', 'read'], orders: ['ASC', 'ASC'] },
+    { key: 'idx_user_created', type: 'key', attributes: ['user_id', 'created_at'], orders: ['ASC', 'DESC'] },
+  ],
+};
+
+export interface Notification {
+  $id: string;
+  $createdAt: string;
+  $updatedAt: string;
+  user_id: string;
+  type: 'shopping_list_completed' | 'shopping_list_error' | 'sharing_invitation' | 'system';
+  title: string;
+  message: string;
+  read: boolean;
+  read_at?: string;
+  action_url?: string;
+  related_id?: string;
+  metadata?: string;
+  created_at: string;
 }

@@ -627,6 +627,8 @@ export class InvoiceService {
       ncm_code: normalizedProduct.ncmCode,
       category: category,
       subcategory: subcategory || null,
+      brand: normalizedProduct.brand || null,
+      is_promotion: normalizedProduct.isPromotion || false,
       created_at: now,
       updated_at: now,
     };

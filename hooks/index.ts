@@ -16,6 +16,8 @@ export { useFinancialInsights } from './useFinancialInsights';
 export { useTotalBalance } from './useTotalBalance';
 export { useFormSubmit, SubmitButton } from './useFormSubmit';
 export { useInvitations } from './useInvitations';
+export { useNotifications } from './useNotifications';
+export { useAppwriteRealtime } from './useAppwriteRealtime';
 
 // Re-export types for convenience
 export type {

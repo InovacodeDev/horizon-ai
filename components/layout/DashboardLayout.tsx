@@ -19,6 +19,7 @@ import {
   CreditCardIcon,
   TrendingUpIcon,
   UsersIcon,
+  ListIcon,
 } from '@/components/assets/Icons';
 import Modal from '@/components/ui/Modal';
 import Tooltip from '@/components/ui/Tooltip';
@@ -177,6 +178,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, user }) => 
     submenu: [
       { href: '/invoices/insights', label: 'Insights', icon: <TrendingUpIcon className="w-4 h-4" /> },
       { href: '/invoices/products', label: 'Produtos', icon: <ShoppingCartIcon className="w-4 h-4" /> },
+      { href: '/invoices/lists', label: 'Listas', icon: <ListIcon className="w-4 h-4" /> },
     ],
   };
 

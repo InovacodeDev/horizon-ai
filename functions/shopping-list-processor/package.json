@@ -1,0 +1,17 @@
+{
+  "name": "shopping-list-processor",
+  "version": "1.0.0",
+  "description": "Async queue processor for AI shopping list generation",
+  "main": "src/index.ts",
+  "scripts": {
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "node-appwrite": "^20.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.7",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3"
+  }
+}

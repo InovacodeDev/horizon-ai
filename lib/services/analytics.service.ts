@@ -1106,6 +1106,7 @@ export class AnalyticsService {
         Query.equal('user_id', userId),
         Query.greaterThanEqual('issue_date', startDate),
         Query.lessThanEqual('issue_date', endDate),
+        Query.orderDesc('issue_date'),
         Query.limit(1000),
       ]);
 

@@ -1,5 +1,4 @@
 import { getSession } from '@/lib/auth/session';
-import { getCurrentUser } from '@/lib/services/auth.service';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -15,21 +14,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
     }
 
-    // Get complete user data from database
-    const userData = await getCurrentUser(session.user.sub);
-
-    // Return user data
+    // Return user ID from session
     return NextResponse.json({
       success: true,
+      userId: session.user.sub,
       user: {
-        id: userData.auth.$id,
-        email: userData.auth.email,
-        name: userData.auth.name,
-        emailVerification: userData.auth.emailVerification,
+        id: session.user.sub,
+        email: session.user.email,
+        name: session.user.name,
       },
-      profile: userData.profile,
-      preferences: userData.preferences,
-      settings: userData.settings,
     });
   } catch (error) {
     console.error('Get current user error:', error);

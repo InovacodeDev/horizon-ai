@@ -46,6 +46,8 @@
     "fast-xml-parser": "^5.3.1",
     "febraban-bank-holidays": "^1.2.0",
     "jose": "^6.1.0",
+    "jspdf": "^3.0.3",
+    "jspdf-autotable": "^5.0.2",
     "next": "^16.0.1",
     "node-appwrite": "^20.3.0",
     "papaparse": "^5.5.3",

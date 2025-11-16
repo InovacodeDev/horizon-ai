@@ -354,6 +354,345 @@ export class GoogleAIService {
       });
     }
   }
+
+  // ============================================
+  // AI Shopping List Generation
+  // ============================================
+
+  /**
+   * Generate intelligent shopping list based on purchase history
+   * Uses TOON format for token efficiency and analyzes consumption patterns
+   * @param invoiceHistory - Array of past invoices with items
+   * @param category - Category to filter (e.g., 'supermarket', 'pharmacy')
+   * @returns Array of shopping list items with quantities and reasoning
+   */
+  async generateIntelligentShoppingList(
+    invoiceHistory: Array<{
+      merchant_name: string;
+      issue_date: string;
+      total_amount: number;
+      items: Array<{
+        description: string;
+        quantity: number;
+        unit_price: number;
+        total_price: number;
+      }>;
+    }>,
+    category: string,
+  ): Promise<
+    Array<{
+      product_name: string;
+      quantity: number;
+      unit: string;
+      estimated_price: number;
+      category?: string;
+      subcategory?: string;
+      ai_confidence: number;
+      ai_reasoning: string;
+    }>
+  > {
+    try {
+      if (!Array.isArray(invoiceHistory) || invoiceHistory.length === 0) {
+        throw new GoogleAIServiceError('Invoice history cannot be empty', 'EMPTY_HISTORY');
+      }
+
+      // Format invoice history using TOON format for token efficiency
+      // Aggregate and analyze consumption patterns for each product
+      const aggregatedProducts = new Map<
+        string,
+        {
+          name: string;
+          totalQuantity: number;
+          totalSpent: number;
+          purchaseCount: number;
+          avgUnitPrice: number;
+          lastPurchaseDate: string;
+          purchaseDates: string[];
+          // New: consumption pattern fields
+          avgDaysBetweenPurchases: number;
+          avgQuantityPerPurchase: number;
+          daysSinceLastPurchase: number;
+        }
+      >();
+
+      const now = new Date();
+
+      invoiceHistory.forEach((invoice) => {
+        invoice.items.forEach((item) => {
+          const key = item.description.toLowerCase().trim();
+          const existing = aggregatedProducts.get(key);
+
+          if (existing) {
+            existing.totalQuantity += item.quantity;
+            existing.totalSpent += item.total_price;
+            existing.purchaseCount++;
+            existing.avgUnitPrice = existing.totalSpent / existing.totalQuantity;
+            existing.purchaseDates.push(invoice.issue_date);
+            if (invoice.issue_date > existing.lastPurchaseDate) {
+              existing.lastPurchaseDate = invoice.issue_date;
+            }
+          } else {
+            aggregatedProducts.set(key, {
+              name: item.description,
+              totalQuantity: item.quantity,
+              totalSpent: item.total_price,
+              purchaseCount: 1,
+              avgUnitPrice: item.unit_price,
+              lastPurchaseDate: invoice.issue_date,
+              purchaseDates: [invoice.issue_date],
+              avgDaysBetweenPurchases: 0,
+              avgQuantityPerPurchase: item.quantity,
+              daysSinceLastPurchase: 0,
+            });
+          }
+        });
+      });
+
+      // Calculate consumption patterns for each product
+      aggregatedProducts.forEach((product) => {
+        // Calculate average quantity per purchase
+        product.avgQuantityPerPurchase = product.totalQuantity / product.purchaseCount;
+
+        // Calculate days since last purchase
+        const lastPurchase = new Date(product.lastPurchaseDate);
+        product.daysSinceLastPurchase = Math.floor((now.getTime() - lastPurchase.getTime()) / (1000 * 60 * 60 * 24));
+
+        // Calculate average days between purchases (if multiple purchases)
+        if (product.purchaseDates.length > 1) {
+          const sortedDates = product.purchaseDates.map((d) => new Date(d).getTime()).sort();
+          const intervals: number[] = [];
+          for (let i = 1; i < sortedDates.length; i++) {
+            const daysDiff = (sortedDates[i] - sortedDates[i - 1]) / (1000 * 60 * 60 * 24);
+            intervals.push(daysDiff);
+          }
+          product.avgDaysBetweenPurchases = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+        } else {
+          // Single purchase: use days since last purchase as estimate
+          product.avgDaysBetweenPurchases = product.daysSinceLastPurchase;
+        }
+      });
+
+      // Convert to simplified format for AI with consumption metrics
+      const simplifiedHistory = Array.from(aggregatedProducts.values()).map((product) => ({
+        product: product.name,
+        total_qty: product.totalQuantity,
+        avg_price: product.avgUnitPrice,
+        times_purchased: product.purchaseCount,
+        last_purchase: product.lastPurchaseDate,
+        purchase_dates: product.purchaseDates.slice(-5), // Only last 5 dates
+        avg_days_between: Math.round(product.avgDaysBetweenPurchases),
+        avg_qty_per_purchase: product.avgQuantityPerPurchase,
+        days_since_last: product.daysSinceLastPurchase,
+      }));
+
+      console.log(`Aggregated ${simplifiedHistory.length} unique products from ${invoiceHistory.length} invoices`);
+
+      if (simplifiedHistory.length === 0) {
+        throw new GoogleAIServiceError('No products found in invoice history', 'EMPTY_HISTORY');
+      }
+
+      const formattedHistory = formatForAIPrompt({ products: simplifiedHistory }, 'Aggregated Products');
+
+      const prompt = `
+You are an AI shopping assistant that analyzes purchase history to predict future shopping needs using consumption pattern analysis.
+
+TASK: Generate an intelligent shopping list based on CONSUMPTION PATTERNS, not just summing quantities.
+
+CONSUMPTION PATTERN ANALYSIS:
+1. **Purchase Frequency**: Use "avg_days_between" to understand how often the product is bought
+2. **Time Since Last Purchase**: Use "days_since_last" to determine urgency
+3. **Consumption Rate**: Calculate daily consumption = avg_qty_per_purchase / avg_days_between
+4. **Replenishment Logic**: 
+   - If days_since_last ≥ avg_days_between * 0.8: SUGGEST (80% of typical cycle passed)
+   - Suggested quantity = avg_qty_per_purchase (rounded to nearest integer)
+   - If days_since_last < avg_days_between * 0.5: SKIP (still have supply)
+
+EXAMPLE REASONING:
+Product: "Leite Integral 1L"
+- avg_days_between: 30 days
+- avg_qty_per_purchase: 12 unidades
+- days_since_last: 25 days
+- Analysis: Compra a cada 30 dias. Última compra há 25 dias (83% do ciclo). Sugerindo 12 unidades para os próximos 30 dias.
+- Result: SUGGEST with quantity=12
+
+Product: "Arroz 5kg"
+- avg_days_between: 60 days
+- avg_qty_per_purchase: 2 pacotes
+- days_since_last: 20 days
+- Analysis: Compra a cada 60 dias. Última compra há apenas 20 dias (33% do ciclo). Ainda não precisa repor.
+- Result: SKIP
+
+QUANTITY CALCULATION RULES:
+1. Base quantity = avg_qty_per_purchase (NOT total_qty!)
+2. Round to nearest integer (use Math.round)
+3. Consider package optimization:
+   - If bought "6 unidades de 200g" and "2 unidades de 500g":
+     * Total consumed: 6*200g + 2*500g = 2.2kg
+     * Suggest cost-efficient option: e.g., "2 unidades de 1kg" if cheaper per gram
+4. Never suggest more than 2x avg_qty_per_purchase (avoid over-buying)
+
+IMPORTANT:
+- Return quantities as INTEGER numbers (1, 2, 3, not 1.5)
+- Use simple units: "unidades", "kg", "litros", "pacotes"
+- Only suggest products that match category: "${category}"
+- Filter OUT products where days_since_last < avg_days_between * 0.5
+
+RESPONSE FORMAT: Return valid JSON array:
+[
+  {
+    "product_name": "Leite Integral 1L",
+    "quantity": 12,
+    "unit": "unidades",
+    "estimated_price": 4.50,
+    "category": "Laticínios",
+    "subcategory": "Leite",
+    "ai_confidence": 0.95,
+    "ai_reasoning": "Compra a cada 30 dias. Última compra há 25 dias (83% do ciclo). Sugerindo 12 unidades para os próximos 30 dias."
+  }
+]
+
+HISTORICAL DATA:
+${formattedHistory}
+        `;
+
+      console.log(`Sending ${formattedHistory.length} characters to AI for category: ${category}`);
+
+      let response;
+      try {
+        response = await this.client.models.generateContent({
+          model: this.model,
+          contents: prompt,
+          config: {
+            responseMimeType: 'application/json',
+            responseSchema: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  product_name: { type: Type.STRING },
+                  quantity: { type: Type.NUMBER },
+                  unit: { type: Type.STRING },
+                  estimated_price: { type: Type.NUMBER },
+                  category: { type: Type.STRING },
+                  subcategory: { type: Type.STRING },
+                  ai_confidence: { type: Type.NUMBER },
+                  ai_reasoning: { type: Type.STRING },
+                },
+                required: ['product_name', 'quantity', 'unit', 'estimated_price', 'ai_confidence', 'ai_reasoning'],
+              },
+            },
+          },
+        });
+      } catch (apiError) {
+        console.error('Google AI API call failed:', apiError);
+        throw new GoogleAIServiceError('Failed to call Google AI API', 'API_ERROR', {
+          originalError: apiError instanceof Error ? apiError.message : String(apiError),
+        });
+      }
+
+      console.log('AI response received');
+
+      if (!response.text) {
+        console.error('Empty response from Google AI');
+        throw new GoogleAIServiceError('Empty response from Google AI', 'EMPTY_RESPONSE');
+      }
+
+      console.log(`AI response length: ${response.text.length} characters`);
+
+      const items = JSON.parse(response.text);
+
+      console.log(`Parsed ${Array.isArray(items) ? items.length : 0} items from AI response`);
+
+      // Validate response
+      if (!Array.isArray(items)) {
+        throw new GoogleAIServiceError('Invalid response format: expected array', 'INVALID_RESPONSE_FORMAT');
+      }
+
+      if (items.length === 0) {
+        throw new GoogleAIServiceError('No items generated from history', 'EMPTY_RESULT');
+      }
+
+      // Validate and sanitize each item
+      const sanitizedItems = items.map((item, index) => {
+        // Validate and convert product_name
+        if (!item.product_name || typeof item.product_name !== 'string') {
+          throw new GoogleAIServiceError(`Invalid item ${index}: missing or invalid product_name`, 'INVALID_ITEM');
+        }
+
+        // Validate and convert quantity (handle string numbers)
+        let quantity = item.quantity;
+        if (typeof quantity === 'string') {
+          quantity = parseFloat(quantity);
+        }
+        if (typeof quantity !== 'number' || isNaN(quantity) || quantity <= 0) {
+          console.warn(`Invalid quantity for ${item.product_name}: ${item.quantity}, defaulting to 1`);
+          quantity = 1;
+        }
+        quantity = Math.max(1, Math.round(quantity)); // Ensure positive integer
+
+        // Validate and convert estimated_price
+        let estimatedPrice = item.estimated_price;
+        if (typeof estimatedPrice === 'string') {
+          estimatedPrice = parseFloat(estimatedPrice);
+        }
+        if (typeof estimatedPrice !== 'number' || isNaN(estimatedPrice) || estimatedPrice < 0) {
+          console.warn(`Invalid price for ${item.product_name}: ${item.estimated_price}, defaulting to 0`);
+          estimatedPrice = 0;
+        }
+
+        // Validate and convert ai_confidence
+        let confidence = item.ai_confidence;
+        if (typeof confidence === 'string') {
+          confidence = parseFloat(confidence);
+        }
+        if (typeof confidence !== 'number' || isNaN(confidence) || confidence < 0 || confidence > 1) {
+          console.warn(`Invalid confidence for ${item.product_name}: ${item.ai_confidence}, defaulting to 0.5`);
+          confidence = 0.5;
+        }
+
+        return {
+          product_name: item.product_name.trim(),
+          quantity,
+          unit: item.unit || 'unidades',
+          estimated_price: estimatedPrice,
+          category: item.category || '',
+          subcategory: item.subcategory || '',
+          ai_confidence: confidence,
+          ai_reasoning: item.ai_reasoning || 'Baseado no histórico de compras',
+        };
+      });
+
+      return sanitizedItems;
+    } catch (error) {
+      console.error('Error in generateIntelligentShoppingList:', error);
+
+      if (error instanceof GoogleAIServiceError) {
+        throw error;
+      }
+
+      // Handle JSON parsing errors
+      if (error instanceof SyntaxError) {
+        console.error('JSON parse error:', error.message);
+        throw new GoogleAIServiceError('Failed to parse AI response', 'PARSE_ERROR', {
+          originalError: error.message,
+        });
+      }
+
+      // Log detailed error information
+      if (error instanceof Error) {
+        console.error('Error details:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name,
+        });
+      }
+
+      // Handle Google AI API errors
+      throw new GoogleAIServiceError('Failed to generate intelligent shopping list', 'GENERATION_ERROR', {
+        originalError: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
 }
 
 // ============================================
