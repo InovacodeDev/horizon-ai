@@ -2,13 +2,13 @@
  * GET /api/notifications
  * Get user notifications
  */
-import { getUserFromSession } from '@/lib/auth/session';
+import { getCurrentUser } from '@/lib/auth/session';
 import { getUserNotifications } from '@/lib/services/notification.service';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getUserFromSession();
+    const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20', 10);
     const offset = parseInt(searchParams.get('offset') || '0', 10);
 
-    const result = await getUserNotifications(user.$id, {
+    const result = await getUserNotifications(user.sub, {
       unreadOnly,
       limit,
       offset,

@@ -2,18 +2,18 @@
  * GET /api/notifications/unread-count
  * Get unread notification count
  */
-import { getUserFromSession } from '@/lib/auth/session';
+import { getCurrentUser } from '@/lib/auth/session';
 import { getUnreadCount } from '@/lib/services/notification.service';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    const user = await getUserFromSession();
+    const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const count = await getUnreadCount(user.$id);
+    const count = await getUnreadCount(user.sub);
 
     return NextResponse.json({ count });
   } catch (error) {

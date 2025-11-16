@@ -623,8 +623,6 @@ export class InvoiceService {
     const productPayload = {
       user_id: userId,
       name: normalizedProduct.normalizedName,
-      product_code: normalizedProduct.productCode,
-      ncm_code: normalizedProduct.ncmCode,
       category: category,
       subcategory: subcategory || null,
       brand: normalizedProduct.brand || null,
@@ -756,8 +754,6 @@ export class InvoiceService {
       $updatedAt: document.$updatedAt,
       user_id: document.user_id,
       name: document.name,
-      product_code: document.product_code,
-      ncm_code: document.ncm_code,
       category: document.category,
       subcategory: document.subcategory,
       created_at: document.created_at,
