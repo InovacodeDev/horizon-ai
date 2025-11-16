@@ -43,6 +43,7 @@ import { migration as createShoppingListItemsTable } from './20251114_000039_cre
 import { migration as createShoppingListRequestsTable } from './20251114_000040_create_shopping_list_requests_table';
 import { migration as createNotificationsTable } from './20251114_000041_create_notifications_table';
 import { migration as addBrandPromotionToProducts } from './20251115_000042_add_brand_promotion_to_products';
+import { migration as removeProductCodes } from './20251116_000043_remove_product_codes';
 import { Migration } from './migration.interface';
 
 /**
@@ -92,4 +93,5 @@ export const migrations: Migration[] = [
   createShoppingListRequestsTable,
   createNotificationsTable,
   addBrandPromotionToProducts,
+  removeProductCodes,
 ];
