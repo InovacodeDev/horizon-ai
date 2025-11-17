@@ -398,6 +398,7 @@ ${historyText}
 
 /**
  * Create shopping list and items
+ * Implements manual rollback if item creation fails
  */
 async function createShoppingList(
   databases: TablesDB,
@@ -408,48 +409,88 @@ async function createShoppingList(
   // Calculate estimated total
   const estimatedTotal = items.reduce((sum, item) => sum + item.quantity * item.estimated_price, 0);
 
-  // Create shopping list
-  const list = await databases.createRow({
-    databaseId: DATABASE_ID,
-    tableId: COLLECTIONS.SHOPPING_LISTS,
-    rowId: ID.unique(),
-    data: {
-      user_id: userId,
-      title: `Lista Inteligente - ${category.charAt(0).toUpperCase() + category.slice(1)}`,
-      category,
-      generated_by_ai: true,
-      estimated_total: estimatedTotal,
-      completed: false,
-      metadata: JSON.stringify({ items_count: items.length }),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-  });
+  let listId: string | null = null;
+  const createdItemIds: string[] = [];
 
-  // Create shopping list items
-  for (const item of items) {
-    await databases.createRow({
+  try {
+    // Create shopping list
+    const list = await databases.createRow({
       databaseId: DATABASE_ID,
-      tableId: COLLECTIONS.SHOPPING_LIST_ITEMS,
+      tableId: COLLECTIONS.SHOPPING_LISTS,
       rowId: ID.unique(),
       data: {
-        shopping_list_id: list.$id,
-        product_name: item.product_name,
-        quantity: item.quantity,
-        unit: item.unit,
-        estimated_price: item.estimated_price,
-        category: item.category || '',
-        subcategory: item.subcategory || '',
-        checked: false,
-        ai_confidence: item.ai_confidence,
-        ai_reasoning: item.ai_reasoning,
+        user_id: userId,
+        title: `Lista Inteligente - ${category.charAt(0).toUpperCase() + category.slice(1)}`,
+        category,
+        generated_by_ai: true,
+        estimated_total: estimatedTotal,
+        completed: false,
+        metadata: JSON.stringify({ items_count: items.length }),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       },
     });
-  }
 
-  return list.$id as string;
+    listId = list.$id as string;
+
+    // Create shopping list items
+    for (const item of items) {
+      const createdItem = await databases.createRow({
+        databaseId: DATABASE_ID,
+        tableId: COLLECTIONS.SHOPPING_LIST_ITEMS,
+        rowId: ID.unique(),
+        data: {
+          shopping_list_id: listId,
+          user_id: userId,
+          product_name: item.product_name,
+          quantity: item.quantity,
+          unit: item.unit,
+          estimated_price: item.estimated_price,
+          category: item.category || '',
+          subcategory: item.subcategory || '',
+          checked: false,
+          ai_confidence: item.ai_confidence,
+          ai_reasoning: item.ai_reasoning,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      });
+      createdItemIds.push(createdItem.$id as string);
+    }
+
+    return listId;
+  } catch (error) {
+    // Rollback: delete all created items and the list
+    console.error('Error creating shopping list, performing rollback...');
+
+    // Delete created items
+    for (const itemId of createdItemIds) {
+      try {
+        await databases.deleteRow({
+          databaseId: DATABASE_ID,
+          tableId: COLLECTIONS.SHOPPING_LIST_ITEMS,
+          rowId: itemId,
+        });
+      } catch (deleteError) {
+        console.error(`Failed to delete item ${itemId} during rollback:`, deleteError);
+      }
+    }
+
+    // Delete the list if it was created
+    if (listId) {
+      try {
+        await databases.deleteRow({
+          databaseId: DATABASE_ID,
+          tableId: COLLECTIONS.SHOPPING_LISTS,
+          rowId: listId,
+        });
+      } catch (deleteError) {
+        console.error(`Failed to delete list ${listId} during rollback:`, deleteError);
+      }
+    }
+
+    throw error;
+  }
 }
 
 /**

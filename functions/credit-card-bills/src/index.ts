@@ -359,7 +359,6 @@ async function upsertBillTransaction(
 
   try {
     if (existingTransaction) {
-      // Atualizar transaction existente
       console.log(`[CreditCardBills] Updating bill transaction ${existingTransaction.$id}`);
       await databases.updateRow({
         databaseId: DATABASE_ID,
@@ -368,7 +367,6 @@ async function upsertBillTransaction(
         data: payload,
       });
     } else {
-      // Criar nova transaction
       console.log(`[CreditCardBills] Creating new bill transaction for ${bill.dueDate}`);
       await databases.createRow({
         databaseId: DATABASE_ID,
@@ -543,17 +541,15 @@ async function syncCreditCardBills(databases: TablesDB): Promise<void> {
         continue;
       }
 
-      // Buscar TODAS as transações do cartão (não apenas as pending) para calcular o valor correto
-      const allCardTransactions = await getAllCreditCardTransactions(databases, creditCardId);
-      console.log(`[CreditCardBills] Card ${creditCard.name} has ${allCardTransactions.length} total transactions`);
+      console.log(`[CreditCardBills] Card ${creditCard.name} has ${transactions.length} total transactions`);
 
-      if (allCardTransactions.length === 0) {
+      if (transactions.length === 0) {
         console.log(`[CreditCardBills] No transactions found for card ${creditCardId}, skipping...`);
         continue;
       }
 
       // Agrupar TODAS as transações por fatura para calcular o valor correto
-      const bills = groupTransactionsByBill(allCardTransactions, creditCard);
+      const bills = groupTransactionsByBill(transactions, creditCard);
       console.log(`[CreditCardBills] Grouped into ${bills.size} bills`);
 
       if (bills.size === 0) {
@@ -562,7 +558,7 @@ async function syncCreditCardBills(databases: TablesDB): Promise<void> {
       }
 
       // Buscar transactions de fatura existentes
-      const userId = allCardTransactions[0].user_id;
+      const userId = transactions[0].user_id;
       const existingTransactions = await getExistingBillTransactions(databases, creditCard.name, userId);
       console.log(`[CreditCardBills] Found ${existingTransactions.length} existing bill transactions`);
 
