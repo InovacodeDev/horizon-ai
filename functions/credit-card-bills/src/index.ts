@@ -47,7 +47,6 @@ interface Transaction {
   $id: string;
   user_id: string;
   account_id?: string;
-  credit_card_id?: string;
   amount: number;
   type: 'income' | 'expense' | 'transfer' | 'salary';
   date: string;
@@ -274,10 +273,11 @@ function groupTransactionsByBill(
 
 /**
  * Busca todas as transactions existentes para um cartão de crédito
+ * Identifica as transações de fatura pela categoria "Cartão de Crédito" e merchant
  */
 async function getExistingBillTransactions(
   databases: TablesDB,
-  creditCardId: string,
+  creditCardName: string,
   userId: string,
 ): Promise<Transaction[]> {
   const allTransactions: Transaction[] = [];
@@ -291,7 +291,8 @@ async function getExistingBillTransactions(
         tableId: TRANSACTIONS_COLLECTION,
         queries: [
           Query.equal('user_id', userId),
-          Query.equal('credit_card_id', creditCardId),
+          Query.equal('category', 'Cartão de Crédito'),
+          Query.equal('merchant', creditCardName),
           Query.equal('type', 'expense'),
           Query.limit(limit),
           Query.offset(offset),
@@ -329,7 +330,6 @@ async function upsertBillTransaction(
   const payload: any = {
     user_id: bill.userId,
     account_id: bill.accountId,
-    credit_card_id: bill.creditCardId,
     amount: Math.abs(bill.totalAmount),
     type: 'expense',
     date: `${bill.dueDate}T00:00:00.000Z`,
@@ -377,9 +377,11 @@ async function removeObsoleteBillTransactions(
   databases: TablesDB,
   existingTransactions: Transaction[],
   currentBills: Map<string, BillSummary>,
+  creditCardId: string,
 ): Promise<void> {
   for (const transaction of existingTransactions) {
-    const billKey = `${transaction.credit_card_id}_${transaction.date.split('T')[0]}`;
+    const dateKey = transaction.date.split('T')[0];
+    const billKey = `${creditCardId}_${dateKey}`;
 
     if (!currentBills.has(billKey)) {
       console.log(`[CreditCardBills] Removing obsolete bill transaction ${transaction.$id}`);
@@ -422,7 +424,7 @@ async function syncCreditCardBills(databases: TablesDB, creditCardId: string): P
   // 4. Buscar transactions existentes
   const existingTransactions = await getExistingBillTransactions(
     databases,
-    creditCardId,
+    creditCard.name,
     creditCardTransactions[0]?.user_id || '',
   );
   console.log(`[CreditCardBills] Found ${existingTransactions.length} existing bill transactions`);
@@ -441,7 +443,7 @@ async function syncCreditCardBills(databases: TablesDB, creditCardId: string): P
   }
 
   // 7. Remover transactions de faturas obsoletas
-  await removeObsoleteBillTransactions(databases, existingTransactions, bills);
+  await removeObsoleteBillTransactions(databases, existingTransactions, bills, creditCardId);
 
   console.log(`[CreditCardBills] Sync completed for credit card ${creditCardId}`);
 }
