@@ -173,6 +173,35 @@ APPWRITE_API_KEY=<sua-api-key>
 APPWRITE_DATABASE_ID=<seu-database-id>
 ```
 
+## **Configuração no Appwrite**
+
+- **Variáveis de ambiente (Function > Environment Variables):**
+  - `APPWRITE_ENDPOINT` — Endpoint do Appwrite (ex: `https://nyc.cloud.appwrite.io/v1`).
+  - `APPWRITE_FUNCTION_PROJECT_ID` — ID do projeto onde a Function será executada.
+  - `APPWRITE_API_KEY` — _Service API Key_ com permissões de acesso a Databases (capaz de `list`, `create`, `update` e `delete` nas coleções usadas). Use uma API Key de Serviço (não um token de usuário) para que a função consiga acessar dados com row security ativado.
+  - `APPWRITE_DATABASE_ID` — ID do database onde as coleções `credit_cards`, `credit_card_transactions` e `transactions` estão.
+
+- **Permissões / API Key:**
+  - Crie uma _API Key_ do tipo Service / Server com permissões para executar operações em Tables/Databases. A função precisa ler e escrever nas coleções mencionadas e também deletar rows em operações de limpeza.
+  - Se você usa Row-Level Security (rowSecurity: true), assegure que a API Key tem privilégios suficientes para ignorar restrições (Service Key normalmente já tem).
+
+- **Triggers / Agendamento:**
+  - Esta função deve ser executada via Schedule (cron). Configure o agendamento para rodar a cada 5 minutos, por exemplo: `*/5 * * * *`.
+  - NÃO é necessário configurar triggers event-based (a função foi migrada para schedule-based). Você pode manter manual trigger para testes.
+
+- **Timeout / Recursos:**
+  - Dependendo do volume de transações, aumente o `timeout` da Function para um valor suficiente (ex: 60–120s ou mais conforme necessidade). Ajuste memória/CPU se observar timeouts.
+  - Habilite prevenção de execuções concorrentes (se a sua instalação Appwrite suportar essa opção) para evitar múltiplas instâncias processando os mesmos dados simultaneamente.
+
+- **Coleções requeridas:**
+  - `credit_cards` — deve conter pelo menos: `$id`, `account_id`, `name`, `closing_day`, `due_day`.
+  - `credit_card_transactions` — campos necessários: `$id`, `user_id`, `credit_card_id`, `amount`, `purchase_date`, `installment` (opcional), `installments` (opcional), `status`, `sync_status`.
+  - `transactions` — a função cria/atualiza rows nesta coleção. As rows criadas usarão campos como: `user_id`, `account_id`, `amount`, `type` (`expense`), `date`, `status`, `direction` (`out`), `category` (deve ser `Cartão de Crédito`), `description`, `merchant`.
+
+- **Observações de segurança e operação:**
+  - Use uma API Key de serviço com escopo mínimo necessário. Nunca commit a chave em repositório.
+  - Teste a função em um ambiente de staging com um conjunto reduzido de transações antes de ativar em produção.
+
 ### Deploy
 
 1. **Instalar dependências:**
