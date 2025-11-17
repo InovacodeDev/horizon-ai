@@ -15,6 +15,15 @@
  */
 import { Client, ID, Query, TablesDB } from 'node-appwrite';
 
+// Helpers
+/**
+ * Arredonda um valor para exatamente 2 casas decimais
+ * Garante que todos os amounts na base de dados tenham precisão consistente
+ */
+function roundToTwoDecimals(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
 // Tipos
 interface CreditCard {
   $id: string;
@@ -247,7 +256,8 @@ function groupTransactionsByBill(
 
       const bill = billsMap.get(billKey)!;
       // Para parcelamentos, dividir o valor total pelo número de parcelas
-      bill.totalAmount += transaction.amount / (transaction.installments || 1);
+      const installmentAmount = roundToTwoDecimals(transaction.amount / (transaction.installments || 1));
+      bill.totalAmount += installmentAmount;
       bill.transactionCount += 1;
       bill.transactionIds.push(transaction.$id);
     } else {
@@ -269,7 +279,7 @@ function groupTransactionsByBill(
       }
 
       const bill = billsMap.get(billKey)!;
-      bill.totalAmount += transaction.amount;
+      bill.totalAmount += roundToTwoDecimals(transaction.amount);
       bill.transactionCount += 1;
       bill.transactionIds.push(transaction.$id);
     }
@@ -337,7 +347,7 @@ async function upsertBillTransaction(
   const payload: any = {
     user_id: bill.userId,
     account_id: bill.accountId,
-    amount: Math.abs(bill.totalAmount),
+    amount: roundToTwoDecimals(Math.abs(bill.totalAmount)),
     type: 'expense',
     date: `${bill.dueDate}T00:00:00.000Z`,
     status: 'pending',
@@ -407,24 +417,47 @@ async function removeObsoleteBillTransactions(
 
 /**
  * Atualiza o sync_status das transações processadas para 'synced'
+ * Usa updateRows em lote para evitar rate limit
  */
 async function markTransactionsAsSynced(databases: TablesDB, transactionIds: string[]): Promise<void> {
   console.log(`[CreditCardBills] Marking ${transactionIds.length} transactions as synced`);
 
-  for (const transactionId of transactionIds) {
-    try {
-      await databases.updateRow({
+  if (transactionIds.length === 0) {
+    return;
+  }
+
+  try {
+    // Usar updateRows em lote para evitar rate limit
+    // Dividir em chunks de 50 transações por vez para não exceder limites de query
+    const CHUNK_SIZE = 50;
+    for (let i = 0; i < transactionIds.length; i += CHUNK_SIZE) {
+      const chunk = transactionIds.slice(i, i + CHUNK_SIZE);
+
+      // Criar query para atualizar múltiplas transações de uma vez
+      const queries = [Query.equal('$id', chunk)];
+
+      await databases.updateRows({
         databaseId: DATABASE_ID,
         tableId: CREDIT_CARD_TRANSACTIONS_COLLECTION,
-        rowId: transactionId,
+        queries,
         data: {
           sync_status: 'synced',
           updated_at: new Date().toISOString(),
         },
       });
-    } catch (error) {
-      console.error(`[CreditCardBills] Error marking transaction ${transactionId} as synced:`, error);
+
+      console.log(
+        `[CreditCardBills] Updated ${chunk.length} transactions to synced (${i + chunk.length}/${transactionIds.length})`,
+      );
+
+      // Pequeno delay entre chunks para não sobrecarregar a API
+      if (i + CHUNK_SIZE < transactionIds.length) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
     }
+  } catch (error) {
+    console.error(`[CreditCardBills] Error marking transactions as synced:`, error);
+    throw error;
   }
 }
 

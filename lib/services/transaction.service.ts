@@ -4,6 +4,14 @@ import { dateToUserTimezone } from '@/lib/utils/timezone';
 import { ID, Query } from 'node-appwrite';
 
 /**
+ * Arredonda um valor para exatamente 2 casas decimais
+ * Garante que todos os amounts na base de dados tenham precisão consistente
+ */
+function roundToTwoDecimals(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+/**
  * Transaction Service
  * Handles transaction CRUD operations and statistics
  */
@@ -153,7 +161,8 @@ export class TransactionService {
     const direction = data.type === 'expense' ? 'out' : 'in';
 
     // Amount should be positive for 'in' direction, negative for 'out' direction
-    const signedAmount = direction === 'in' ? Math.abs(data.amount) : -Math.abs(data.amount);
+    const signedAmount =
+      direction === 'in' ? roundToTwoDecimals(Math.abs(data.amount)) : -roundToTwoDecimals(Math.abs(data.amount));
 
     const payload: any = {
       user_id: data.userId,
@@ -260,7 +269,8 @@ export class TransactionService {
     const direction = data.type === 'expense' ? 'out' : 'in';
 
     // Amount should be positive for 'in' direction, negative for 'out' direction
-    const signedAmount = direction === 'in' ? Math.abs(data.amount) : -Math.abs(data.amount);
+    const signedAmount =
+      direction === 'in' ? roundToTwoDecimals(Math.abs(data.amount)) : -roundToTwoDecimals(Math.abs(data.amount));
 
     const payload: any = {
       user_id: data.userId,
@@ -350,9 +360,10 @@ export class TransactionService {
         const newType = data.type !== undefined ? data.type : existing.type;
         const newDirection = newType === 'expense' ? 'out' : 'in';
 
-        // Calculate signed amount
+        // Calculate signed amount with 2 decimal places
         const newAmount = data.amount !== undefined ? data.amount : Math.abs(existing.amount);
-        const signedAmount = newDirection === 'in' ? Math.abs(newAmount) : -Math.abs(newAmount);
+        const signedAmount =
+          newDirection === 'in' ? roundToTwoDecimals(Math.abs(newAmount)) : -roundToTwoDecimals(Math.abs(newAmount));
 
         updatePayload.amount = signedAmount;
 

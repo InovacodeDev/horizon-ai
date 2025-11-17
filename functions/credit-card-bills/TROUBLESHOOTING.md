@@ -1,5 +1,55 @@
 # Troubleshooting: Credit Card Bills Function
 
+## Erro: "Rate limit for the current endpoint has been exceeded"
+
+### Problema
+
+A função está fazendo muitas requisições individuais para atualizar o `sync_status` das transações, causando **rate limit** da API do Appwrite.
+
+### Causa
+
+A função anterior atualizava cada transação individualmente em um loop:
+
+- 295 transações = 295 requisições `updateRow()`
+- Appwrite tem limite de taxa por endpoint
+- Resultado: maioria das transações não são marcadas como "synced"
+
+### ✅ Solução Implementada
+
+A função foi otimizada para usar **batch updates** com `updateRows()`:
+
+- Agrupa transações em chunks de 50
+- 1 requisição atualiza até 50 transações de uma vez
+- 295 transações = apenas 6 requisições
+- Delay de 100ms entre chunks para segurança
+
+**Código Otimizado:**
+
+```typescript
+// Antes: 1 requisição por transação (lento, rate limit)
+for (const transactionId of transactionIds) {
+  await databases.updateRow({ rowId: transactionId, ... });
+}
+
+// Depois: 50 transações por requisição (rápido, sem rate limit)
+const queries = [Query.equal('$id', chunk)];
+await databases.updateRows({ queries, data: { sync_status: 'synced' } });
+```
+
+### Verificação
+
+Após o deploy da versão otimizada, os logs devem mostrar:
+
+```text
+[CreditCardBills] Updated 50 transactions to synced (50/295)
+[CreditCardBills] Updated 50 transactions to synced (100/295)
+...
+```
+
+Ao invés de múltiplos erros de rate limit.
+
+---
+
 ## Erro: "Timed out waiting for runtime. Error Code: 400"
 
 ### Possíveis Causas e Soluções
@@ -10,7 +60,7 @@
 
 **Solução:** Verifique no Appwrite Console se estas variáveis estão configuradas:
 
-- `APPWRITE_ENDPOINT` (ex: https://nyc.cloud.appwrite.io/v1)
+- `APPWRITE_ENDPOINT` (ex: `https://nyc.cloud.appwrite.io/v1`)
 - `APPWRITE_DATABASE_ID` (ex: horizon_ai_db ou seu database ID específico)
 
 As variáveis `APPWRITE_FUNCTION_PROJECT_ID` e `APPWRITE_API_KEY` são injetadas automaticamente pelo Appwrite.
@@ -30,7 +80,7 @@ As variáveis `APPWRITE_FUNCTION_PROJECT_ID` e `APPWRITE_API_KEY` são injetadas
 
 **Solução:** Verifique se o schedule está configurado como:
 
-```
+```text
 */5 * * * *
 ```
 
@@ -117,7 +167,7 @@ A função agora tem:
 
 Agora os logs mostram:
 
-```
+```text
 Credit Card Bills function triggered (scheduled execution)
 Database ID: horizon_ai_db
 Endpoint: https://nyc.cloud.appwrite.io/v1

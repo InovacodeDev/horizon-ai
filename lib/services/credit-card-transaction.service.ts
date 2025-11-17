@@ -6,6 +6,14 @@ import { ID, Query } from 'node-appwrite';
 import AppwriteDBAdapter from '../appwrite/adapter';
 
 /**
+ * Arredonda um valor para exatamente 2 casas decimais
+ * Garante que todos os amounts na base de dados tenham precisão consistente
+ */
+function roundToTwoDecimals(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+/**
  * Credit Card Transaction Service
  * Handles credit card transaction CRUD operations
  *
@@ -78,7 +86,7 @@ export class CreditCardTransactionService {
     const payload: any = {
       user_id: data.userId,
       credit_card_id: data.creditCardId,
-      amount: data.amount,
+      amount: roundToTwoDecimals(data.amount),
       date: dateInUserTimezone,
       purchase_date: purchaseDateInUserTimezone,
       category: data.category,
@@ -144,7 +152,7 @@ export class CreditCardTransactionService {
       updated_at: now,
     };
 
-    if (data.amount !== undefined) updatePayload.amount = data.amount;
+    if (data.amount !== undefined) updatePayload.amount = roundToTwoDecimals(data.amount);
     if (data.category !== undefined) updatePayload.category = data.category;
     if (data.description !== undefined) updatePayload.description = data.description;
     if (data.merchant !== undefined) updatePayload.merchant = data.merchant;
