@@ -31,6 +31,16 @@ Expiração automática de convites antigos.
 
 **Função:** Expira convites de compartilhamento não aceitos após X dias.
 
+### credit-card-bills/
+
+Gerenciamento automático de faturas de cartão de crédito.
+
+**Triggers:**
+
+- Eventos de transação de cartão de crédito (create, update, delete)
+
+**Função:** Cria ou atualiza transactions de despesa para cada fatura de cartão de crédito, consolidando todas as compras e parcelamentos do mês em uma única transação com o valor total da fatura e data de vencimento.
+
 ## Deploy
 
 Cada function tem seu próprio script de deploy:
@@ -44,6 +54,10 @@ cd functions/recurring-transactions
 
 cd functions/expire-invitations
 ./deploy.sh
+
+cd functions/credit-card-bills
+npm install && npm run build
+# Deploy via Appwrite Console ou CLI
 ```
 
 ## Estrutura
