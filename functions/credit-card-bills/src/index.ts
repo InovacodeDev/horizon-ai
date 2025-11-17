@@ -255,9 +255,8 @@ function groupTransactionsByBill(
       }
 
       const bill = billsMap.get(billKey)!;
-      // Para parcelamentos, dividir o valor total pelo número de parcelas
-      const installmentAmount = roundToTwoDecimals(transaction.amount / (transaction.installments || 1));
-      bill.totalAmount += installmentAmount;
+      // O amount já representa o valor da parcela individual, usar diretamente
+      bill.totalAmount += roundToTwoDecimals(transaction.amount);
       bill.transactionCount += 1;
       bill.transactionIds.push(transaction.$id);
     } else {

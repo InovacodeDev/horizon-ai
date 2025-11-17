@@ -98,13 +98,10 @@ export function useCreditCardTransactions(options: UseCreditCardTransactionsOpti
       if (startDate) {
         queries.push(Query.greaterThanEqual('purchase_date', startDate.toISOString()));
         console.log('🔍 useCreditCardTransactions: Filtering from date:', startDate.toISOString());
-      } else {
-        // Default: últimos 6 meses
-        const sixMonthsAgo = new Date(Date.now() - 6 * 30 * 24 * 60 * 60 * 1000);
-        queries.push(Query.greaterThanEqual('purchase_date', sixMonthsAgo.toISOString()));
-        console.log('🔍 useCreditCardTransactions: Filtering from 6 months ago:', sixMonthsAgo.toISOString());
       }
 
+      // Buscar apenas transações com status pending (faturas em aberto)
+      queries.push(Query.equal('status', 'pending'));
       queries.push(Query.limit(1000));
       // Order by purchase date descending
       queries.push(Query.orderDesc('purchase_date'));
