@@ -2,15 +2,16 @@
  * Appwrite Function: Credit Card Bills
  *
  * Esta função gerencia automaticamente transações de pagamento de faturas de cartão de crédito.
- * É acionada quando uma transação de cartão de crédito é criada, atualizada ou deletada.
+ * É executada a cada 5 minutos via schedule, processando apenas transações com sync_status='pending'.
  *
  * Funcionalidades:
- * 1. Busca todas as transações de cartão de crédito de um cartão específico
- * 2. Agrupa por mês de vencimento (baseado no closing_day e due_day do cartão)
- * 3. Calcula o total de cada fatura considerando parcelamentos
- * 4. Cria ou atualiza uma `transaction` para cada fatura com o valor total
+ * 1. Busca TODAS as transações de cartão de crédito com sync_status='pending'
+ * 2. Agrupa por cartão e mês de vencimento (baseado no closing_day e due_day do cartão)
+ * 3. Calcula o total de cada fatura considerando TODAS as transações (parcelamentos e avistas)
+ * 4. Cria ou atualiza uma `transaction` para cada fatura com o valor total correto
  * 5. A transaction tem a data de vencimento do cartão (due_day)
- * 6. Remove transactions de faturas antigas quando não há mais transações de cartão
+ * 6. Atualiza sync_status das transações processadas para 'synced'
+ * 7. Remove transactions de faturas obsoletas quando não há mais transações de cartão
  */
 import { Client, ID, Query, TablesDB } from 'node-appwrite';
 
@@ -40,6 +41,7 @@ interface CreditCardTransaction {
   installments?: number; // Total installments (12 for 12x)
   is_recurring?: boolean;
   status: 'pending' | 'completed' | 'cancelled';
+  sync_status: 'pending' | 'synced';
   [key: string]: any;
 }
 
@@ -67,6 +69,7 @@ interface BillSummary {
   totalAmount: number;
   transactionCount: number;
   closingDate: string;
+  transactionIds: string[]; // IDs das transações que compõem esta fatura
 }
 
 // Configuração
@@ -108,9 +111,9 @@ async function getCreditCard(databases: TablesDB, creditCardId: string): Promise
 }
 
 /**
- * Busca todas as transações de cartão de crédito de um cartão específico
+ * Busca todas as transações de cartão de crédito com sync_status='pending'
  */
-async function getCreditCardTransactions(databases: TablesDB, creditCardId: string): Promise<CreditCardTransaction[]> {
+async function getPendingCreditCardTransactions(databases: TablesDB): Promise<CreditCardTransaction[]> {
   const allTransactions: CreditCardTransaction[] = [];
   let offset = 0;
   const limit = 100;
@@ -121,7 +124,7 @@ async function getCreditCardTransactions(databases: TablesDB, creditCardId: stri
         databaseId: DATABASE_ID,
         tableId: CREDIT_CARD_TRANSACTIONS_COLLECTION,
         queries: [
-          Query.equal('credit_card_id', creditCardId),
+          Query.equal('sync_status', 'pending'),
           Query.notEqual('status', 'cancelled'),
           Query.limit(limit),
           Query.offset(offset),
@@ -137,7 +140,7 @@ async function getCreditCardTransactions(databases: TablesDB, creditCardId: stri
 
       offset += limit;
     } catch (error) {
-      console.error(`[CreditCardBills] Error fetching credit card transactions:`, error);
+      console.error(`[CreditCardBills] Error fetching pending credit card transactions:`, error);
       throw error;
     }
   }
@@ -238,6 +241,7 @@ function groupTransactionsByBill(
           totalAmount: 0,
           transactionCount: 0,
           closingDate: installmentClosingDate.toISOString().split('T')[0],
+          transactionIds: [],
         });
       }
 
@@ -245,6 +249,7 @@ function groupTransactionsByBill(
       // Para parcelamentos, dividir o valor total pelo número de parcelas
       bill.totalAmount += transaction.amount / (transaction.installments || 1);
       bill.transactionCount += 1;
+      bill.transactionIds.push(transaction.$id);
     } else {
       // Transação à vista ou única
       const billKey = `${creditCard.$id}_${dueDate}`;
@@ -259,12 +264,14 @@ function groupTransactionsByBill(
           totalAmount: 0,
           transactionCount: 0,
           closingDate,
+          transactionIds: [],
         });
       }
 
       const bill = billsMap.get(billKey)!;
       bill.totalAmount += transaction.amount;
       bill.transactionCount += 1;
+      bill.transactionIds.push(transaction.$id);
     }
   }
 
@@ -399,78 +406,168 @@ async function removeObsoleteBillTransactions(
 }
 
 /**
- * Sincroniza transactions de faturas para um cartão de crédito
+ * Atualiza o sync_status das transações processadas para 'synced'
  */
-async function syncCreditCardBills(databases: TablesDB, creditCardId: string): Promise<void> {
-  console.log(`[CreditCardBills] Starting sync for credit card ${creditCardId}`);
+async function markTransactionsAsSynced(databases: TablesDB, transactionIds: string[]): Promise<void> {
+  console.log(`[CreditCardBills] Marking ${transactionIds.length} transactions as synced`);
 
-  // 1. Buscar informações do cartão
-  const creditCard = await getCreditCard(databases, creditCardId);
-  if (!creditCard) {
-    console.error(`[CreditCardBills] Credit card ${creditCardId} not found`);
+  for (const transactionId of transactionIds) {
+    try {
+      await databases.updateRow({
+        databaseId: DATABASE_ID,
+        tableId: CREDIT_CARD_TRANSACTIONS_COLLECTION,
+        rowId: transactionId,
+        data: {
+          sync_status: 'synced',
+          updated_at: new Date().toISOString(),
+        },
+      });
+    } catch (error) {
+      console.error(`[CreditCardBills] Error marking transaction ${transactionId} as synced:`, error);
+    }
+  }
+}
+
+/**
+ * Busca todas as transações de cartão de crédito de um cartão específico (incluindo synced)
+ * Para calcular o valor total correto da fatura
+ */
+async function getAllCreditCardTransactions(
+  databases: TablesDB,
+  creditCardId: string,
+): Promise<CreditCardTransaction[]> {
+  const allTransactions: CreditCardTransaction[] = [];
+  let offset = 0;
+  const limit = 100;
+
+  while (true) {
+    try {
+      const result = await databases.listRows({
+        databaseId: DATABASE_ID,
+        tableId: CREDIT_CARD_TRANSACTIONS_COLLECTION,
+        queries: [
+          Query.equal('credit_card_id', creditCardId),
+          Query.notEqual('status', 'cancelled'),
+          Query.limit(limit),
+          Query.offset(offset),
+        ],
+      });
+
+      const transactions = result.rows as unknown as CreditCardTransaction[];
+      allTransactions.push(...transactions);
+
+      if (transactions.length === 0 || transactions.length < limit) {
+        break;
+      }
+
+      offset += limit;
+    } catch (error) {
+      console.error(`[CreditCardBills] Error fetching all credit card transactions:`, error);
+      throw error;
+    }
+  }
+
+  return allTransactions;
+}
+
+/**
+ * Sincroniza faturas de cartão de crédito
+ * Processa transações pending por cartão
+ */
+async function syncCreditCardBills(databases: TablesDB): Promise<void> {
+  console.log(`[CreditCardBills] Starting bills synchronization`);
+
+  // 1. Buscar todas as transações pendentes
+  const pendingTransactions = await getPendingCreditCardTransactions(databases);
+  console.log(`[CreditCardBills] Found ${pendingTransactions.length} pending transactions`);
+
+  if (pendingTransactions.length === 0) {
+    console.log(`[CreditCardBills] No pending transactions to process`);
     return;
   }
 
-  console.log(`[CreditCardBills] Processing card: ${creditCard.name}`);
-
-  // 2. Buscar todas as transações de cartão de crédito
-  const creditCardTransactions = await getCreditCardTransactions(databases, creditCardId);
-  console.log(`[CreditCardBills] Found ${creditCardTransactions.length} credit card transactions`);
-
-  // 3. Agrupar por fatura
-  const bills = groupTransactionsByBill(creditCardTransactions, creditCard);
-  console.log(`[CreditCardBills] Grouped into ${bills.size} bills`);
-
-  // 4. Buscar transactions existentes
-  const existingTransactions = await getExistingBillTransactions(
-    databases,
-    creditCard.name,
-    creditCardTransactions[0]?.user_id || '',
-  );
-  console.log(`[CreditCardBills] Found ${existingTransactions.length} existing bill transactions`);
-
-  // 5. Criar um mapa de transactions existentes por data
-  const existingTransactionsMap = new Map<string, Transaction>();
-  for (const transaction of existingTransactions) {
-    const dateKey = transaction.date.split('T')[0];
-    existingTransactionsMap.set(dateKey, transaction);
+  // 2. Agrupar transações por cartão de crédito
+  const transactionsByCard = new Map<string, CreditCardTransaction[]>();
+  for (const transaction of pendingTransactions) {
+    if (!transactionsByCard.has(transaction.credit_card_id)) {
+      transactionsByCard.set(transaction.credit_card_id, []);
+    }
+    transactionsByCard.get(transaction.credit_card_id)!.push(transaction);
   }
 
-  // 6. Criar ou atualizar transactions para cada fatura
-  for (const [billKey, bill] of bills) {
-    const existingTransaction = existingTransactionsMap.get(bill.dueDate);
-    await upsertBillTransaction(databases, bill, existingTransaction);
+  console.log(`[CreditCardBills] Processing ${transactionsByCard.size} credit cards`);
+
+  // 3. Processar cada cartão
+  for (const [creditCardId, transactions] of transactionsByCard) {
+    try {
+      console.log(
+        `[CreditCardBills] Processing credit card ${creditCardId} with ${transactions.length} pending transactions`,
+      );
+
+      // Buscar informações do cartão
+      const creditCard = await getCreditCard(databases, creditCardId);
+      if (!creditCard) {
+        console.error(`[CreditCardBills] Credit card ${creditCardId} not found`);
+        continue;
+      }
+
+      // Buscar TODAS as transações do cartão (não apenas as pending) para calcular o valor correto
+      const allCardTransactions = await getAllCreditCardTransactions(databases, creditCardId);
+      console.log(`[CreditCardBills] Card ${creditCard.name} has ${allCardTransactions.length} total transactions`);
+
+      // Agrupar TODAS as transações por fatura para calcular o valor correto
+      const bills = groupTransactionsByBill(allCardTransactions, creditCard);
+      console.log(`[CreditCardBills] Grouped into ${bills.size} bills`);
+
+      // Buscar transactions de fatura existentes
+      const existingTransactions = await getExistingBillTransactions(
+        databases,
+        creditCard.name,
+        creditCard.account_id ? allCardTransactions[0]?.user_id || '' : '',
+      );
+      console.log(`[CreditCardBills] Found ${existingTransactions.length} existing bill transactions`);
+
+      // Criar mapa de transactions existentes por data
+      const existingTransactionsMap = new Map<string, Transaction>();
+      for (const transaction of existingTransactions) {
+        const dateKey = transaction.date.split('T')[0];
+        existingTransactionsMap.set(dateKey, transaction);
+      }
+
+      // Criar ou atualizar transactions para cada fatura
+      for (const [billKey, bill] of bills) {
+        const existingTransaction = existingTransactionsMap.get(bill.dueDate);
+        await upsertBillTransaction(databases, bill, existingTransaction);
+      }
+
+      // Remover transactions de faturas obsoletas
+      await removeObsoleteBillTransactions(databases, existingTransactions, bills, creditCardId);
+
+      // Marcar as transações pending como synced
+      const pendingIds = transactions.map((t) => t.$id);
+      await markTransactionsAsSynced(databases, pendingIds);
+
+      console.log(`[CreditCardBills] Completed sync for credit card ${creditCardId}`);
+    } catch (error) {
+      console.error(`[CreditCardBills] Error processing credit card ${creditCardId}:`, error);
+    }
   }
 
-  // 7. Remover transactions de faturas obsoletas
-  await removeObsoleteBillTransactions(databases, existingTransactions, bills, creditCardId);
-
-  console.log(`[CreditCardBills] Sync completed for credit card ${creditCardId}`);
+  console.log(`[CreditCardBills] Bills synchronization completed`);
 }
 
 /**
  * Função principal
+ * Executada a cada 5 minutos via schedule
  */
 export default async ({ req, res, log, error }: any) => {
-  log('Credit Card Bills function triggered');
+  log('Credit Card Bills function triggered (scheduled execution)');
 
   try {
     const { databases } = initializeClient();
 
-    // Extrair informações do evento
-    const payload = JSON.parse(req.bodyRaw || '{}');
-    log(`Event payload: ${JSON.stringify(payload)}`);
-
-    // O evento contém informações sobre a transação de cartão de crédito
-    const creditCardTransaction = payload as CreditCardTransaction;
-
-    if (!creditCardTransaction.credit_card_id) {
-      error('No credit_card_id found in event payload');
-      return res.json({ success: false, message: 'No credit card ID provided' }, 400);
-    }
-
-    // Sincronizar faturas do cartão de crédito
-    await syncCreditCardBills(databases, creditCardTransaction.credit_card_id);
+    // Sincronizar faturas de todos os cartões com transações pendentes
+    await syncCreditCardBills(databases);
 
     return res.json({
       success: true,

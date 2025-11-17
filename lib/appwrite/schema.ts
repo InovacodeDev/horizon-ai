@@ -15,7 +15,6 @@ export const COLLECTIONS = {
   ACCOUNTS: 'accounts',
   CREDIT_CARDS: 'credit_cards',
   CREDIT_CARD_TRANSACTIONS: 'credit_card_transactions',
-  CREDIT_CARD_BILLS: 'credit_card_bills',
   INVOICES: 'invoices',
   INVOICE_ITEMS: 'invoice_items',
   PRODUCTS: 'products',
@@ -633,6 +632,7 @@ export interface CreditCardTransaction {
   installments?: number; // Total installments (12 for 12x)
   is_recurring?: boolean; // Is this a recurring subscription?
   status: 'pending' | 'completed' | 'cancelled';
+  sync_status: 'pending' | 'synced'; // Bill synchronization status
   created_at: string;
   updated_at: string;
 }

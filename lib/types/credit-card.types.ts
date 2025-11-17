@@ -38,14 +38,23 @@ export interface InstallmentPlan {
 
 export interface CreditCardTransaction {
   $id: string;
-  transaction_id: string;
-  credit_card_bill_id: string;
-  installment_plan_id?: string;
+  $createdAt: string;
+  $updatedAt: string;
+  user_id: string;
+  credit_card_id: string;
   amount: number;
-  installment_number?: number;
-  description: string;
-  date: string;
+  date: string; // Bill due date
+  purchase_date: string; // Original purchase date
+  category?: string;
+  description?: string;
+  merchant?: string;
+  installment?: number; // Current installment (1, 2, 3...)
+  installments?: number; // Total installments (12 for 12x)
+  is_recurring?: boolean; // Is this a recurring subscription?
+  status: 'pending' | 'completed' | 'cancelled';
+  sync_status: 'pending' | 'synced'; // Bill synchronization status
   created_at: string;
+  updated_at: string;
 }
 
 export interface CreateInstallmentDto {

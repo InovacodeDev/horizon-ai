@@ -40,7 +40,6 @@ function initializeGlobalSubscription() {
     // Subscreve a todos os canais de uma vez
     const allChannels = [
       `databases.${databaseId}.collections.credit_cards.documents`,
-      `databases.${databaseId}.collections.credit_card_bills.documents`,
       `databases.${databaseId}.collections.credit_card_transactions.documents`,
       `databases.${databaseId}.collections.accounts.documents`,
       `databases.${databaseId}.collections.transactions.documents`,

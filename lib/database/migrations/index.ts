@@ -44,6 +44,8 @@ import { migration as createShoppingListRequestsTable } from './20251114_000040_
 import { migration as createNotificationsTable } from './20251114_000041_create_notifications_table';
 import { migration as addBrandPromotionToProducts } from './20251115_000042_add_brand_promotion_to_products';
 import { migration as removeProductCodes } from './20251116_000043_remove_product_codes';
+import { migration as addSyncStatusToCreditCardTransactions } from './20251117_000044_add_sync_status_to_credit_card_transactions';
+import { migration as deleteCreditCardBillsTable } from './20251117_000045_delete_credit_card_bills_table';
 import { Migration } from './migration.interface';
 
 /**
@@ -94,4 +96,6 @@ export const migrations: Migration[] = [
   createNotificationsTable,
   addBrandPromotionToProducts,
   removeProductCodes,
+  addSyncStatusToCreditCardTransactions,
+  deleteCreditCardBillsTable,
 ];

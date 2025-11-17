@@ -8,7 +8,6 @@ import Skeleton from '@/components/ui/Skeleton';
 import Button from '@/components/ui/Button';
 import { useAllCreditCards } from '@/hooks/useAllCreditCards';
 import { useCreditCardTransactions } from '@/hooks/useCreditCardTransactions';
-import { useCreditCardBills } from '@/hooks/useCreditCardBills';
 import { getCategoryById } from '@/lib/constants/categories';
 import CreateTransactionModal from './CreateTransactionModal';
 import EditTransactionModal from './EditTransactionModal';

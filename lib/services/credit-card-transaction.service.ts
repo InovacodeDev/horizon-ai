@@ -88,6 +88,7 @@ export class CreditCardTransactionService {
       installments: data.installments,
       is_recurring: data.isRecurring || false,
       status: data.status || 'completed',
+      sync_status: 'pending', // Always create with pending sync_status
       created_at: now,
       updated_at: now,
     };

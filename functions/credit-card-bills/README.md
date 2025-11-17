@@ -1,20 +1,41 @@
 # Credit Card Bills Function
 
-Função Appwrite que gerencia automaticamente as transações de pagamento de faturas de cartão de crédito.
+Gerencia automaticamente as transações de fatura de cartão de crédito.
 
 ## 📋 Visão Geral
 
-Esta função é acionada automaticamente sempre que uma transação de cartão de crédito é criada, atualizada ou deletada. Ela:
+Esta função é executada **a cada 5 minutos via schedule** e processa transações de cartão de crédito com `sync_status='pending'`. Ela:
 
-1. **Busca** todas as transações de cartão de crédito do cartão afetado
-2. **Agrupa** as transações por mês de vencimento (considerando `closing_day` e `due_day` do cartão)
-3. **Calcula** o total de cada fatura, considerando parcelamentos
-4. **Cria ou atualiza** uma `transaction` (expense) para cada fatura com:
-   - Valor total da fatura
+1. **Busca** todas as transações de cartão de crédito com `sync_status='pending'`
+2. **Agrupa** as transações pendentes por cartão de crédito
+3. Para cada cartão, busca **TODAS** as transações (incluindo as já sincronizadas) para calcular o valor correto da fatura
+4. **Agrupa** as transações por mês de vencimento (considerando `closing_day` e `due_day` do cartão)
+5. **Calcula** o total de cada fatura, considerando parcelamentos
+6. **Cria ou atualiza** uma `transaction` (expense) para cada fatura com:
+   - Valor total da fatura (calculado a partir de TODAS as transações do cartão)
    - Data de vencimento do cartão
    - Categoria "Cartão de Crédito"
    - Descrição com nome do cartão e mês/ano
-5. **Remove** transactions de faturas antigas quando não há mais transações de cartão
+7. **Atualiza** o `sync_status` das transações processadas de 'pending' para 'synced'
+8. **Remove** transactions de faturas antigas quando não há mais transações de cartão
+
+## 🔄 Fluxo de Sincronização
+
+### Antes (Event-Based)
+
+- ❌ Acionada a cada CREATE/UPDATE/DELETE de `credit_card_transaction`
+- ❌ Processava apenas o cartão afetado
+- ❌ Podia criar inconsistências com múltiplas execuções simultâneas
+- ❌ Não garantia que o valor da fatura estava correto
+
+### Agora (Schedule-Based)
+
+- ✅ Executada a cada 5 minutos
+- ✅ Processa apenas transações com `sync_status='pending'`
+- ✅ Busca TODAS as transações do cartão para calcular valor correto
+- ✅ Marca transações como 'synced' após processar
+- ✅ Evita processamento duplicado
+- ✅ Garante consistência do valor da fatura
 
 ## 🎯 Objetivo
 
