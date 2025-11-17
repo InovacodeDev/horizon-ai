@@ -349,7 +349,7 @@ async function upsertBillTransaction(
     account_id: bill.accountId,
     amount: roundToTwoDecimals(Math.abs(bill.totalAmount)),
     type: 'expense',
-    date: `${bill.dueDate}T00:00:00.000Z`,
+    date: `${bill.dueDate}T12:00:00.000Z`,
     status: 'pending',
     direction: 'out',
     category: 'Cartão de Crédito',

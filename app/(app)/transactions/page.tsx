@@ -257,7 +257,9 @@ export default function TransactionsPage() {
         createTransaction,
         updateTransaction,
         deleteTransaction,
-        refetch 
+        refetch,
+        hasMore,
+        loadMore
     } = useTransactions({ userId });
     
     // Fetch accounts and credit cards
@@ -356,15 +358,8 @@ export default function TransactionsPage() {
             const minAmountMatch = filters.minAmount === "" || amount >= parseFloat(filters.minAmount);
             const maxAmountMatch = filters.maxAmount === "" || amount <= parseFloat(filters.maxAmount);
 
-            let dateMatch = true;
-            if (filters.dateRange !== "all") {
-                const txDate = new Date(tx.date);
-                const cutoffDate = new Date();
-                if (filters.dateRange === "7d") cutoffDate.setDate(cutoffDate.getDate() - 7);
-                else if (filters.dateRange === "30d") cutoffDate.setDate(cutoffDate.getDate() - 30);
-                dateMatch = txDate >= cutoffDate;
-            }
-            return searchMatch && categoryMatch && accountMatch && minAmountMatch && maxAmountMatch && dateMatch;
+            // Date filtering is now handled server-side in the useTransactions hook
+            return searchMatch && categoryMatch && accountMatch && minAmountMatch && maxAmountMatch;
         });
     }, [searchTerm, filters, transactions]);
 
@@ -554,12 +549,32 @@ export default function TransactionsPage() {
         setNewTransaction(prev => ({ ...prev, creditCardId: "" }));
     }, [newTransaction.accountId]);
 
-    // Fetch transactions on mount
+    // Fetch transactions on mount and when date filter changes
     useEffect(() => {
-        if (userId) {
-            refetch();
+        if (!userId) return;
+
+        // Convert dateRange to actual date filters
+        let startDate: string | undefined;
+        let endDate: string | undefined;
+
+        if (filters.dateRange !== "all") {
+            const now = new Date();
+            endDate = now.toISOString();
+
+            if (filters.dateRange === "7d") {
+                const cutoff = new Date();
+                cutoff.setDate(cutoff.getDate() - 7);
+                startDate = cutoff.toISOString();
+            } else if (filters.dateRange === "30d") {
+                const cutoff = new Date();
+                cutoff.setDate(cutoff.getDate() - 30);
+                startDate = cutoff.toISOString();
+            }
         }
-    }, [userId, refetch]);
+
+        // Fetch with date filters
+        fetchTransactions({ userId, startDate, endDate });
+    }, [userId, filters.dateRange, fetchTransactions]);
 
     // Show loading skeleton on initial load
     if (isLoadingTransactions && apiTransactions.length === 0) {
@@ -748,22 +763,37 @@ export default function TransactionsPage() {
 
             <main>
                 {Object.keys(groupedTransactions).length > 0 ? (
-                    Object.entries(groupedTransactions).map(([date, transactions], groupIndex) => (
-                        <div key={`${date}-${groupIndex}`} className="mb-6">
-                            <h2 className="font-medium text-sm text-on-surface-variant pb-2 border-b border-outline mb-3">
-                                {date}
-                            </h2>
-                            <ul className="divide-y divide-outline bg-surface-container rounded-lg p-1">
-                                {(transactions as Transaction[]).map((tx, txIndex) => (
-                                    <TransactionItem
-                                        key={`${tx.$id}-${txIndex}`}
-                                        transaction={tx}
-                                        onClick={() => setSelectedTransaction(tx)}
-                                    />
-                                ))}
-                            </ul>
-                        </div>
-                    ))
+                    <>
+                        {Object.entries(groupedTransactions).map(([date, transactions], groupIndex) => (
+                            <div key={`${date}-${groupIndex}`} className="mb-6">
+                                <h2 className="font-medium text-sm text-on-surface-variant pb-2 border-b border-outline mb-3">
+                                    {date}
+                                </h2>
+                                <ul className="divide-y divide-outline bg-surface-container rounded-lg p-1">
+                                    {(transactions as Transaction[]).map((tx, txIndex) => (
+                                        <TransactionItem
+                                            key={`${tx.$id}-${txIndex}`}
+                                            transaction={tx}
+                                            onClick={() => setSelectedTransaction(tx)}
+                                        />
+                                    ))}
+                                </ul>
+                            </div>
+                        ))}
+                        
+                        {/* Infinite Scroll Trigger */}
+                        {hasMore && (
+                            <div className="flex justify-center py-8">
+                                <Button
+                                    variant="outline"
+                                    onClick={loadMore}
+                                    disabled={isLoadingTransactions}
+                                >
+                                    {isLoadingTransactions ? 'Carregando...' : 'Carregar Mais'}
+                                </Button>
+                            </div>
+                        )}
+                    </>
                 ) : (
                     <div className="text-center py-16">
                         <SearchIcon className="w-12 h-12 mx-auto text-outline" />

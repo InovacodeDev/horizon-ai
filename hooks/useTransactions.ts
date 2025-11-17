@@ -50,6 +50,9 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [hasMore, setHasMore] = useState(true);
+  const [currentOffset, setCurrentOffset] = useState(0);
+  const LIMIT_PER_PAGE = 50;
 
   // Optimistic state for instant UI updates
   const [optimisticTransactions, addOptimisticUpdate] = useOptimistic(
@@ -71,20 +74,22 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
   );
 
   const fetchTransactions = useCallback(
-    async (filters?: TransactionFilters, skipCache = false) => {
+    async (filters?: TransactionFilters, skipCache = false, append = false) => {
       if (!userId) {
         setLoading(false);
         return;
       }
 
-      // Check cache first
-      if (!skipCache) {
+      // Check cache first (only for initial load)
+      if (!skipCache && !append) {
         const cacheKey = getCacheKey.transactions(userId);
         const cached = cacheManager.get<{ data: Transaction[]; total: number }>(cacheKey);
 
         if (cached) {
           setTransactions(cached.data);
           setTotal(cached.total);
+          setCurrentOffset(cached.data.length);
+          setHasMore(cached.data.length < cached.total);
           setLoading(false);
           return;
         }
@@ -115,8 +120,13 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
         if (filters?.accountId) queries.push(Query.equal('account_id', filters.accountId));
         if (filters?.startDate) queries.push(Query.greaterThanEqual('date', filters.startDate));
         if (filters?.endDate) queries.push(Query.lessThanEqual('date', filters.endDate));
-        if (filters?.limit) queries.push(Query.limit(filters.limit));
-        if (filters?.offset) queries.push(Query.offset(filters.offset));
+
+        // Use provided offset or current offset for pagination
+        const offset = append ? currentOffset : filters?.offset || 0;
+        const limit = filters?.limit || LIMIT_PER_PAGE;
+
+        queries.push(Query.limit(limit));
+        queries.push(Query.offset(offset));
 
         // Default ordering by date descending
         queries.push(Query.orderDesc('date'));
@@ -124,21 +134,36 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
         const result = await databases.listRows({ databaseId, tableId: 'transactions', queries });
 
         const transactionsData = result.rows as unknown as Transaction[];
-        setTransactions(transactionsData);
-        setTotal(result.total);
 
-        // Cache the result
-        const cacheKey = getCacheKey.transactions(userId);
-        cacheManager.set(cacheKey, { data: transactionsData, total: result.total });
+        if (append) {
+          // Append to existing transactions
+          setTransactions((prev) => [...prev, ...transactionsData]);
+          setCurrentOffset((prev) => prev + transactionsData.length);
+        } else {
+          // Replace transactions
+          setTransactions(transactionsData);
+          setCurrentOffset(transactionsData.length);
+        }
+
+        setTotal(result.total);
+        setHasMore(offset + transactionsData.length < result.total);
+
+        // Cache the result (only for initial load)
+        if (!append) {
+          const cacheKey = getCacheKey.transactions(userId);
+          cacheManager.set(cacheKey, { data: transactionsData, total: result.total });
+        }
       } catch (err: any) {
         console.error('Error fetching transactions:', err);
         setError(err.message || 'Failed to fetch transactions');
-        setTransactions([]);
+        if (!append) {
+          setTransactions([]);
+        }
       } finally {
         setLoading(false);
       }
     },
-    [userId],
+    [userId, currentOffset, LIMIT_PER_PAGE],
   );
 
   // Auto-fetch on mount
@@ -147,6 +172,15 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
       fetchTransactions();
     }
   }, [userId, initialTransactions, fetchTransactions]);
+
+  const loadMore = useCallback(
+    async (filters?: TransactionFilters) => {
+      if (!loading && hasMore) {
+        await fetchTransactions(filters, true, true);
+      }
+    },
+    [loading, hasMore, fetchTransactions],
+  );
 
   // Setup realtime subscription for transactions with granular event handling
   useEffect(() => {
@@ -387,6 +421,8 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
 
   const refetch = useCallback(
     (filters?: TransactionFilters) => {
+      setCurrentOffset(0);
+      setHasMore(true);
       return fetchTransactions(filters);
     },
     [fetchTransactions],
@@ -402,5 +438,7 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
     updateTransaction,
     deleteTransaction,
     refetch,
+    loadMore,
+    hasMore,
   };
 }
