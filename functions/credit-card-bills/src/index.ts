@@ -515,16 +515,23 @@ async function syncCreditCardBills(databases: TablesDB): Promise<void> {
       const allCardTransactions = await getAllCreditCardTransactions(databases, creditCardId);
       console.log(`[CreditCardBills] Card ${creditCard.name} has ${allCardTransactions.length} total transactions`);
 
+      if (allCardTransactions.length === 0) {
+        console.log(`[CreditCardBills] No transactions found for card ${creditCardId}, skipping...`);
+        continue;
+      }
+
       // Agrupar TODAS as transações por fatura para calcular o valor correto
       const bills = groupTransactionsByBill(allCardTransactions, creditCard);
       console.log(`[CreditCardBills] Grouped into ${bills.size} bills`);
 
+      if (bills.size === 0) {
+        console.log(`[CreditCardBills] No bills to process for card ${creditCardId}`);
+        continue;
+      }
+
       // Buscar transactions de fatura existentes
-      const existingTransactions = await getExistingBillTransactions(
-        databases,
-        creditCard.name,
-        creditCard.account_id ? allCardTransactions[0]?.user_id || '' : '',
-      );
+      const userId = allCardTransactions[0].user_id;
+      const existingTransactions = await getExistingBillTransactions(databases, creditCard.name, userId);
       console.log(`[CreditCardBills] Found ${existingTransactions.length} existing bill transactions`);
 
       // Criar mapa de transactions existentes por data
@@ -561,27 +568,51 @@ async function syncCreditCardBills(databases: TablesDB): Promise<void> {
  * Executada a cada 5 minutos via schedule
  */
 export default async ({ req, res, log, error }: any) => {
+  const startTime = Date.now();
   log('Credit Card Bills function triggered (scheduled execution)');
 
   try {
+    // Validar variáveis de ambiente
+    if (!process.env.APPWRITE_FUNCTION_PROJECT_ID) {
+      error('APPWRITE_FUNCTION_PROJECT_ID not set');
+      return res.json({ success: false, message: 'Missing project ID configuration' }, 500);
+    }
+
+    if (!process.env.APPWRITE_API_KEY) {
+      error('APPWRITE_API_KEY not set');
+      return res.json({ success: false, message: 'Missing API key configuration' }, 500);
+    }
+
+    log(`Database ID: ${DATABASE_ID}`);
+    log(`Endpoint: ${process.env.APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1'}`);
+
     const { databases } = initializeClient();
 
     // Sincronizar faturas de todos os cartões com transações pendentes
     await syncCreditCardBills(databases);
 
+    const duration = Date.now() - startTime;
+    log(`Function completed successfully in ${duration}ms`);
+
     return res.json({
       success: true,
       message: 'Credit card bills synchronized successfully',
+      duration,
     });
   } catch (err: any) {
-    error(`Error processing credit card bills: ${err.message}`);
-    error(err.stack);
+    const duration = Date.now() - startTime;
+    error(`Error processing credit card bills after ${duration}ms: ${err.message}`);
+
+    if (err.stack) {
+      error(`Stack trace: ${err.stack}`);
+    }
 
     return res.json(
       {
         success: false,
         message: 'Failed to process credit card bills',
         error: err.message,
+        duration,
       },
       500,
     );
