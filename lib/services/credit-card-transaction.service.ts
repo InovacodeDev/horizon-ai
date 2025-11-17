@@ -362,6 +362,7 @@ export class CreditCardTransactionService {
       $updatedAt: document.$updatedAt,
       user_id: document.user_id,
       credit_card_id: document.credit_card_id,
+      sync_status: document.sync_status,
       amount: document.amount,
       date: document.date,
       purchase_date: document.purchase_date,
