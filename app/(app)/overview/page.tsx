@@ -15,7 +15,6 @@ import {
 import Skeleton from "@/components/ui/Skeleton";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useFinancialInsights } from "@/hooks/useFinancialInsights";
-import { useTotalBalance } from "@/hooks/useTotalBalance";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useCreditCardTransactions } from "@/hooks/useCreditCardTransactions";
 import { useAllCreditCards } from "@/hooks/useAllCreditCards";
@@ -27,7 +26,6 @@ import { getCategoryById } from "@/lib/constants/categories";
 import type { Transaction, FinancialInsight, InsightType } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { getAppwriteUsers } from "@/lib/appwrite/client";
 import { useUser } from "@/lib/contexts/UserContext";
 import CashFlowProjection from "@/components/CashFlowProjection";
 import { useProjections } from "@/hooks/useProjections";

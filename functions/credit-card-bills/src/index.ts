@@ -346,7 +346,7 @@ async function upsertBillTransaction(
   const payload: any = {
     user_id: bill.userId,
     account_id: bill.accountId,
-    amount: roundToTwoDecimals(Math.abs(bill.totalAmount)),
+    amount: -roundToTwoDecimals(Math.abs(bill.totalAmount)),
     type: 'expense',
     date: `${bill.dueDate}T12:00:00.000Z`,
     status: 'pending',

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { AVAILABLE_CATEGORY_ICONS } from "@/lib/constants";
 import { TRANSACTION_CATEGORIES, getCategoryById } from "@/lib/constants/categories";
 import type { Transaction as APITransaction, TransactionType } from "@/lib/types";
@@ -578,6 +578,39 @@ export default function TransactionsPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [userId, filters.dateRange]);
 
+        // Infinite scroll sentinel ref + observer
+        const loadMoreRef = useRef<HTMLDivElement | null>(null);
+        const observerRef = useRef<IntersectionObserver | null>(null);
+
+        useEffect(() => {
+            const el = loadMoreRef.current;
+            if (!el) return;
+
+            // If there's nothing more to load, disconnect any observer
+            if (!hasMore) {
+                observerRef.current?.disconnect();
+                return;
+            }
+
+            // Clean up previous observer
+            observerRef.current?.disconnect();
+
+            observerRef.current = new IntersectionObserver(
+                (entries) => {
+                    entries.forEach((entry) => {
+                        if (entry.isIntersecting && hasMore && !isLoadingTransactions) {
+                            loadMore();
+                        }
+                    });
+                },
+                { root: null, rootMargin: '400px', threshold: 0.1 }
+            );
+
+            observerRef.current.observe(el);
+
+            return () => observerRef.current?.disconnect();
+        }, [hasMore, isLoadingTransactions, loadMore]);
+
     // Show loading skeleton on initial load
     if (isLoadingTransactions && apiTransactions.length === 0) {
         return <TransactionsScreenSkeleton />;
@@ -783,16 +816,12 @@ export default function TransactionsPage() {
                             </div>
                         ))}
                         
-                        {/* Infinite Scroll Trigger */}
+                        {/* Infinite Scroll Trigger (sentinel) */}
                         {hasMore && (
-                            <div className="flex justify-center py-8">
-                                <Button
-                                    variant="outline"
-                                    onClick={() => loadMore()}
-                                    disabled={isLoadingTransactions}
-                                >
-                                    {isLoadingTransactions ? 'Carregando...' : 'Carregar Mais'}
-                                </Button>
+                            <div ref={loadMoreRef} className="flex justify-center py-8" aria-hidden>
+                                {isLoadingTransactions ? (
+                                    <span className="text-sm text-on-surface-variant">Carregando...</span>
+                                ) : null}
                             </div>
                         )}
                     </>
