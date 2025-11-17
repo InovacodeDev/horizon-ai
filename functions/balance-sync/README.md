@@ -76,9 +76,9 @@ APPWRITE_API_KEY=sua-api-key
 Adicione os seguintes eventos:
 
 ```
-databases.*.collections.transactions.documents.*.create
-databases.*.collections.transactions.documents.*.update
-databases.*.collections.transactions.documents.*.delete
+databases.*.tables.transactions.rows.*.create
+databases.*.tables.transactions.rows.*.update
+databases.*.tables.transactions.rows.*.delete
 ```
 
 ### 4. Deploy

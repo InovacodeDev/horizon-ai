@@ -23,6 +23,7 @@ interface Transaction {
   credit_card_id?: string;
   amount: number;
   status: 'pending' | 'completed' | 'failed';
+  date?: string;
 }
 
 interface Account {
@@ -129,6 +130,16 @@ async function handleCreate(databases: TablesDB, transaction: Transaction): Prom
     return;
   }
 
+  // Validar data: apenas processar transações anteriores ao momento atual
+  if (transaction.date) {
+    const transactionDate = new Date(transaction.date);
+    const now = new Date();
+    if (transactionDate > now) {
+      console.log(`[BalanceSync] Transaction date ${transaction.date} is in the future, skipping`);
+      return;
+    }
+  }
+
   // Atualizar balance (somar amount)
   await updateAccountBalance(databases, transaction.account_id, transaction.amount);
 
@@ -153,6 +164,16 @@ async function handleDelete(databases: TablesDB, transaction: Transaction): Prom
   if (transaction.credit_card_id) {
     console.log('[BalanceSync] Credit card transaction, skipping');
     return;
+  }
+
+  // Validar data: apenas processar transações anteriores ao momento atual
+  if (transaction.date) {
+    const transactionDate = new Date(transaction.date);
+    const now = new Date();
+    if (transactionDate > now) {
+      console.log(`[BalanceSync] Transaction date ${transaction.date} is in the future, skipping`);
+      return;
+    }
   }
 
   // Atualizar balance (subtrair amount)
@@ -182,6 +203,16 @@ async function handleUpdate(databases: TablesDB, newTransaction: Transaction, ol
   if (newTransaction.status !== 'pending' && newTransaction.status !== 'failed') {
     console.log(`[BalanceSync] Transaction status is ${newTransaction.status}, skipping`);
     return;
+  }
+
+  // Validar data: apenas processar transações anteriores ao momento atual
+  if (newTransaction.date) {
+    const transactionDate = new Date(newTransaction.date);
+    const now = new Date();
+    if (transactionDate > now) {
+      console.log(`[BalanceSync] Transaction date ${newTransaction.date} is in the future, skipping`);
+      return;
+    }
   }
 
   // Calcular diferença entre amount novo e antigo

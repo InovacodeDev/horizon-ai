@@ -1,9 +1,0 @@
-node_modules/
-dist/
-*.log
-.env
-.DS_Store
-index.js
-index.d.ts
-index.js.map
-index.d.ts.map
