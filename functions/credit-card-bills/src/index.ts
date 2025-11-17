@@ -125,7 +125,7 @@ async function getCreditCard(databases: TablesDB, creditCardId: string): Promise
 async function getPendingCreditCardTransactions(databases: TablesDB): Promise<CreditCardTransaction[]> {
   const allTransactions: CreditCardTransaction[] = [];
   let offset = 0;
-  const limit = 100;
+  const limit = 10000;
 
   while (true) {
     try {
@@ -299,7 +299,7 @@ async function getExistingBillTransactions(
 ): Promise<Transaction[]> {
   const allTransactions: Transaction[] = [];
   let offset = 0;
-  const limit = 100;
+  const limit = 10000;
 
   while (true) {
     try {

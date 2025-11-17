@@ -259,7 +259,8 @@ export default function TransactionsPage() {
         deleteTransaction,
         refetch,
         hasMore,
-        loadMore
+        loadMore,
+        fetchTransactions
     } = useTransactions({ userId });
     
     // Fetch accounts and credit cards
@@ -572,9 +573,10 @@ export default function TransactionsPage() {
             }
         }
 
-        // Fetch with date filters
-        fetchTransactions({ userId, startDate, endDate });
-    }, [userId, filters.dateRange, fetchTransactions]);
+        // Refetch with date filters
+        refetch({ userId, startDate, endDate });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [userId, filters.dateRange]);
 
     // Show loading skeleton on initial load
     if (isLoadingTransactions && apiTransactions.length === 0) {
@@ -786,7 +788,7 @@ export default function TransactionsPage() {
                             <div className="flex justify-center py-8">
                                 <Button
                                     variant="outline"
-                                    onClick={loadMore}
+                                    onClick={() => loadMore()}
                                     disabled={isLoadingTransactions}
                                 >
                                     {isLoadingTransactions ? 'Carregando...' : 'Carregar Mais'}
