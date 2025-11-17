@@ -91,13 +91,7 @@ const CreditCardBillsPage: React.FC = () => {
     }));
   };
 
-  // Use o hook otimizado de transações
-  const startDate = useMemo(() => {
-    const date = new Date();
-    date.setMonth(date.getMonth() - 6); // Últimos 6 meses
-    return date;
-  }, []);
-
+  // Use o hook otimizado de transações (sem limitação de data para pegar todas as transações pendentes)
   useEffect(() => console.log("selectedCardId:", selectedCardId), [selectedCardId]);
 
   const {
@@ -105,7 +99,6 @@ const CreditCardBillsPage: React.FC = () => {
     loading: loadingTransactions,
   } = useCreditCardTransactions({
     creditCardId: selectedCardId || undefined,
-    startDate,
     enableRealtime: true,
   });
 

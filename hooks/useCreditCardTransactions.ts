@@ -94,15 +94,14 @@ export function useCreditCardTransactions(options: UseCreditCardTransactionsOpti
         queries.push(Query.equal('credit_card_id', creditCardId));
       }
 
-      // Filter by start date if provided
+      // Filter by start date if provided (opcional)
       if (startDate) {
         queries.push(Query.greaterThanEqual('purchase_date', startDate.toISOString()));
         console.log('🔍 useCreditCardTransactions: Filtering from date:', startDate.toISOString());
       }
 
-      // Buscar apenas transações com status pending (faturas em aberto)
-      queries.push(Query.equal('status', 'pending'));
-      queries.push(Query.limit(1000));
+      // IMPORTANTE: Usar limit alto para pegar todas as transações (seguindo guideline)
+      queries.push(Query.limit(10000));
       // Order by purchase date descending
       queries.push(Query.orderDesc('purchase_date'));
 
