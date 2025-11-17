@@ -362,7 +362,15 @@ ${historyText}
     throw new Error(`Google AI API error: ${response.status} ${response.statusText}`);
   }
 
-  const data = await response.json();
+  const data = (await response.json()) as {
+    candidates?: Array<{
+      content?: {
+        parts?: Array<{
+          text?: string;
+        }>;
+      };
+    }>;
+  };
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
   if (!text) {
