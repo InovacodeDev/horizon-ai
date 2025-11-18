@@ -15,3 +15,4 @@ export { ConfirmDialog } from './ConfirmDialog';
 export { ErrorBoundary, withErrorBoundary } from './ErrorBoundary';
 export { RetryError, EmptyState } from './RetryError';
 export { OwnershipBadge } from './OwnershipBadge';
+export { default as Pagination } from './Pagination';

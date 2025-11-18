@@ -38,9 +38,6 @@ interface TransactionResponse {
   offset: number;
 }
 
-/**
- * Hook for managing transactions with React 19.2 optimistic updates
- */
 export function useTransactions(options: UseTransactionsOptions = {}) {
   const { user } = useUser();
   const userId = user.$id;
@@ -50,11 +47,10 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const [hasMore, setHasMore] = useState(true);
-  const [currentOffset, setCurrentOffset] = useState(0);
-  const LIMIT_PER_PAGE = 50;
+  const [currentPage, setCurrentPage] = useState(1);
+  const LIMIT_PER_PAGE = 100;
+  const totalPages = Math.ceil(total / LIMIT_PER_PAGE);
 
-  // Optimistic state for instant UI updates
   const [optimisticTransactions, addOptimisticUpdate] = useOptimistic(
     transactions,
     (state, update: { type: 'add' | 'update' | 'delete'; transaction?: Transaction; id?: string }) => {
@@ -74,22 +70,22 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
   );
 
   const fetchTransactions = useCallback(
-    async (filters?: TransactionFilters, skipCache = false, append = false) => {
+    async (filters?: TransactionFilters, skipCache = false, page = 1) => {
       if (!userId) {
         setLoading(false);
         return;
       }
 
-      // Check cache first (only for initial load)
-      if (!skipCache && !append) {
+      const offset = (page - 1) * LIMIT_PER_PAGE;
+
+      if (!skipCache && page === 1) {
         const cacheKey = getCacheKey.transactions(userId);
         const cached = cacheManager.get<{ data: Transaction[]; total: number }>(cacheKey);
 
         if (cached) {
           setTransactions(cached.data);
           setTotal(cached.total);
-          setCurrentOffset(cached.data.length);
-          setHasMore(cached.data.length < cached.total);
+          setCurrentPage(1);
           setLoading(false);
           return;
         }
@@ -99,7 +95,6 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
       setError(null);
 
       try {
-        // Fetch directly from Appwrite using the browser client
         const { getAppwriteBrowserDatabases } = await import('@/lib/appwrite/client-browser');
         const { Query } = await import('appwrite');
 
@@ -110,7 +105,6 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
           throw new Error('Database ID not configured');
         }
 
-        // Build queries
         const queries = [Query.equal('user_id', userId)];
 
         if (filters?.type) queries.push(Query.equal('type', filters.type));
@@ -121,68 +115,50 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
         if (filters?.startDate) queries.push(Query.greaterThanEqual('date', filters.startDate));
         if (filters?.endDate) queries.push(Query.lessThanEqual('date', filters.endDate));
 
-        // Use provided offset or current offset for pagination
-        const offset = append ? currentOffset : filters?.offset || 0;
         const limit = filters?.limit || LIMIT_PER_PAGE;
 
         queries.push(Query.limit(limit));
         queries.push(Query.offset(offset));
 
-        // Default ordering by date descending
         queries.push(Query.orderDesc('date'));
 
         const result = await databases.listRows({ databaseId, tableId: 'transactions', queries });
 
         const transactionsData = result.rows as unknown as Transaction[];
 
-        if (append) {
-          // Append to existing transactions
-          setTransactions((prev) => [...prev, ...transactionsData]);
-          setCurrentOffset((prev) => prev + transactionsData.length);
-        } else {
-          // Replace transactions
-          setTransactions(transactionsData);
-          setCurrentOffset(transactionsData.length);
-        }
-
+        setTransactions(transactionsData);
         setTotal(result.total);
-        setHasMore(offset + transactionsData.length < result.total);
+        setCurrentPage(page);
 
-        // Cache the result (only for initial load)
-        if (!append) {
+        if (page === 1) {
           const cacheKey = getCacheKey.transactions(userId);
           cacheManager.set(cacheKey, { data: transactionsData, total: result.total });
         }
       } catch (err: any) {
         console.error('Error fetching transactions:', err);
         setError(err.message || 'Failed to fetch transactions');
-        if (!append) {
-          setTransactions([]);
-        }
+        setTransactions([]);
       } finally {
         setLoading(false);
       }
     },
-    [userId, currentOffset, LIMIT_PER_PAGE],
+    [userId, LIMIT_PER_PAGE],
   );
 
-  // Auto-fetch on mount
   useEffect(() => {
     if (userId && !initialTransactions) {
       fetchTransactions();
     }
   }, [userId, initialTransactions, fetchTransactions]);
 
-  const loadMore = useCallback(
-    async (filters?: TransactionFilters) => {
-      if (!loading && hasMore) {
-        await fetchTransactions(filters, true, true);
-      }
+  const changePage = useCallback(
+    async (page: number, filters?: TransactionFilters) => {
+      if (page < 1 || page > totalPages || loading) return;
+      await fetchTransactions(filters, true, page);
     },
-    [loading, hasMore, fetchTransactions],
+    [totalPages, loading, fetchTransactions],
   );
 
-  // Setup realtime subscription for transactions with granular event handling
   useEffect(() => {
     if (!userId) return;
 
@@ -204,16 +180,13 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
 
         console.log('📡 Realtime event received for transactions:', events);
 
-        // Only process events for the current user
         if (payload.user_id !== userId) {
           return;
         }
 
-        // Handle create events
         if (events.some((e: string) => e.includes('.create'))) {
           console.log('➕ Transaction created:', payload.$id);
           setTransactions((prev) => {
-            // Avoid duplicates
             if (prev.some((t) => t.$id === payload.$id)) {
               return prev;
             }
@@ -221,24 +194,17 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
           });
           setTotal((prev) => prev + 1);
 
-          // Invalidate cache
           invalidateCache.transactions(userId);
-        }
-        // Handle update events
-        else if (events.some((e: string) => e.includes('.update'))) {
+        } else if (events.some((e: string) => e.includes('.update'))) {
           console.log('✏️ Transaction updated:', payload.$id);
           setTransactions((prev) => prev.map((t) => (t.$id === payload.$id ? payload : t)));
 
-          // Invalidate cache
           invalidateCache.transactions(userId);
-        }
-        // Handle delete events
-        else if (events.some((e: string) => e.includes('.delete'))) {
+        } else if (events.some((e: string) => e.includes('.delete'))) {
           console.log('🗑️ Transaction deleted:', payload.$id);
           setTransactions((prev) => prev.filter((t) => t.$id !== payload.$id));
           setTotal((prev) => Math.max(0, prev - 1));
 
-          // Invalidate cache
           invalidateCache.transactions(userId);
         }
       });
@@ -257,17 +223,19 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
 
   const createTransaction = useCallback(
     async (input: CreateTransactionDto) => {
-      const tempId = `temp-${Date.now()}`;
+      const now = new Date();
+      now.setHours(12);
+      const tempId = `temp-${now.getTime()}`;
       const optimisticTransaction: Transaction = {
         $id: tempId,
-        $createdAt: new Date().toISOString(),
-        $updatedAt: new Date().toISOString(),
+        $createdAt: now.toISOString(),
+        $updatedAt: now.toISOString(),
         user_id: userId || '',
-        amount: input.amount,
+        amount: input.type !== 'expense' ? input.amount : -input.amount,
         type: input.type,
         direction: input.type !== 'expense' ? 'in' : 'out',
         date: input.date,
-        status: 'completed',
+        status: 'pending',
         category: input.category,
         description: input.description,
         account_id: input.account_id,
@@ -275,11 +243,10 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
         merchant: input.merchant,
         currency: input.currency || 'BRL',
         source: 'manual',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        created_at: now.toISOString(),
+        updated_at: now.toISOString(),
       };
 
-      // Add optimistically
       startTransition(() => {
         addOptimisticUpdate({ type: 'add', transaction: optimisticTransaction });
       });
@@ -301,11 +268,9 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
         const result = await response.json();
         const newTransaction = result.success ? result.data : result;
 
-        // Update with real data
         setTransactions((prev) => [newTransaction, ...prev.filter((t) => t.$id !== tempId)]);
         setTotal((prev) => prev + 1);
 
-        // Invalidate cache
         if (userId) {
           invalidateCache.transactions(userId);
         }
@@ -314,7 +279,6 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
       } catch (err: any) {
         console.error('Error creating transaction:', err);
         setError(err.message || 'Failed to create transaction');
-        // Rollback optimistic update
         setTransactions((prev) => prev.filter((t) => t.$id !== tempId));
         throw err;
       }
@@ -336,7 +300,6 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
         updated_at: new Date().toISOString(),
       };
 
-      // Update optimistically
       startTransition(() => {
         addOptimisticUpdate({ type: 'update', transaction: optimisticTransaction });
       });
@@ -357,10 +320,8 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
 
         const updatedTransaction = await response.json();
 
-        // Update with real data
         setTransactions((prev) => prev.map((t) => (t.$id === transactionId ? updatedTransaction : t)));
 
-        // Invalidate cache
         if (userId) {
           invalidateCache.transactions(userId);
         }
@@ -379,7 +340,6 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
 
   const deleteTransaction = useCallback(
     async (transactionId: string) => {
-      // Delete optimistically
       startTransition(() => {
         addOptimisticUpdate({ type: 'delete', id: transactionId });
       });
@@ -398,18 +358,15 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
           throw new Error(errorData.message || 'Failed to delete transaction');
         }
 
-        // Confirm deletion
         setTransactions((prev) => prev.filter((t) => t.$id !== transactionId));
         setTotal((prev) => Math.max(0, prev - 1));
 
-        // Invalidate cache
         if (userId) {
           invalidateCache.transactions(userId);
         }
       } catch (err: any) {
         console.error('Error deleting transaction:', err);
         setError(err.message || 'Failed to delete transaction');
-        // Rollback optimistic update
         if (deletedTransaction) {
           setTransactions((prev) => [...prev, deletedTransaction]);
         }
@@ -421,9 +378,8 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
 
   const refetch = useCallback(
     (filters?: TransactionFilters) => {
-      setCurrentOffset(0);
-      setHasMore(true);
-      return fetchTransactions(filters);
+      setCurrentPage(1);
+      return fetchTransactions(filters, true, 1);
     },
     [fetchTransactions],
   );
@@ -431,6 +387,8 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
   return {
     transactions: optimisticTransactions,
     total,
+    totalPages,
+    currentPage,
     loading: loading || isPending,
     error,
     fetchTransactions,
@@ -438,7 +396,6 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
     updateTransaction,
     deleteTransaction,
     refetch,
-    loadMore,
-    hasMore,
+    changePage,
   };
 }

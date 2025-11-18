@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { AVAILABLE_CATEGORY_ICONS } from "@/lib/constants";
 import { TRANSACTION_CATEGORIES, getCategoryById } from "@/lib/constants/categories";
 import type { Transaction as APITransaction, TransactionType } from "@/lib/types";
@@ -14,6 +14,7 @@ import Skeleton from "@/components/ui/Skeleton";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
+import Pagination from "@/components/ui/Pagination";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useCreditCards } from "@/hooks/useCreditCards";
@@ -258,8 +259,10 @@ export default function TransactionsPage() {
         updateTransaction,
         deleteTransaction,
         refetch,
-        hasMore,
-        loadMore,
+        changePage,
+        currentPage,
+        totalPages,
+        total: totalTransactions,
         fetchTransactions
     } = useTransactions({ userId });
     
@@ -573,43 +576,37 @@ export default function TransactionsPage() {
             }
         }
 
-        // Refetch with date filters
+        // Refetch with date filters and reset to page 1
         refetch({ userId, startDate, endDate });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [userId, filters.dateRange]);
 
-        // Infinite scroll sentinel ref + observer
-        const loadMoreRef = useRef<HTMLDivElement | null>(null);
-        const observerRef = useRef<IntersectionObserver | null>(null);
+    // Handler for page changes
+    const handlePageChange = useCallback((page: number) => {
+        // Convert dateRange to actual date filters
+        let startDate: string | undefined;
+        let endDate: string | undefined;
 
-        useEffect(() => {
-            const el = loadMoreRef.current;
-            if (!el) return;
+        if (filters.dateRange !== "all") {
+            const now = new Date();
+            endDate = now.toISOString();
 
-            // If there's nothing more to load, disconnect any observer
-            if (!hasMore) {
-                observerRef.current?.disconnect();
-                return;
+            if (filters.dateRange === "7d") {
+                const cutoff = new Date();
+                cutoff.setDate(cutoff.getDate() - 7);
+                startDate = cutoff.toISOString();
+            } else if (filters.dateRange === "30d") {
+                const cutoff = new Date();
+                cutoff.setDate(cutoff.getDate() - 30);
+                startDate = cutoff.toISOString();
             }
+        }
 
-            // Clean up previous observer
-            observerRef.current?.disconnect();
-
-            observerRef.current = new IntersectionObserver(
-                (entries) => {
-                    entries.forEach((entry) => {
-                        if (entry.isIntersecting && hasMore && !isLoadingTransactions) {
-                            loadMore();
-                        }
-                    });
-                },
-                { root: null, rootMargin: '400px', threshold: 0.1 }
-            );
-
-            observerRef.current.observe(el);
-
-            return () => observerRef.current?.disconnect();
-        }, [hasMore, isLoadingTransactions, loadMore]);
+        changePage(page, { userId, startDate, endDate });
+        
+        // Scroll to top when changing pages
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, [userId, filters.dateRange, changePage]);
 
     // Show loading skeleton on initial load
     if (isLoadingTransactions && apiTransactions.length === 0) {
@@ -816,14 +813,15 @@ export default function TransactionsPage() {
                             </div>
                         ))}
                         
-                        {/* Infinite Scroll Trigger (sentinel) */}
-                        {hasMore && (
-                            <div ref={loadMoreRef} className="flex justify-center py-8" aria-hidden>
-                                {isLoadingTransactions ? (
-                                    <span className="text-sm text-on-surface-variant">Carregando...</span>
-                                ) : null}
-                            </div>
-                        )}
+                        {/* Pagination Component */}
+                        <Pagination
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            totalItems={totalTransactions}
+                            itemsPerPage={100}
+                            onPageChange={handlePageChange}
+                            isLoading={isLoadingTransactions}
+                        />
                     </>
                 ) : (
                     <div className="text-center py-16">

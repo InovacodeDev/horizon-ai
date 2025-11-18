@@ -8,7 +8,6 @@ import Skeleton from '@/components/ui/Skeleton';
 import { useToast } from '@/components/ui/Toast';
 import { AddInvoiceModal, CreateInvoiceInput } from '@/components/modals/AddInvoiceModal';
 import { ExportInvoicesModal, ExportOptions } from '@/components/modals/ExportInvoicesModal';
-import { AddTransactionModal } from '@/components/modals/AddTransactionModal';
 import InvoiceCard from '@/components/invoices/InvoiceCard';
 import { getCategoryLabel } from '@/components/ui/CategoryChip';
 import type { Invoice as InvoiceType } from '@/lib/appwrite/schema';

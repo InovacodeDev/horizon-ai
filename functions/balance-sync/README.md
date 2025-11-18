@@ -4,17 +4,30 @@ Função Appwrite para atualizar automaticamente o saldo das contas quando trans
 
 ## 🎯 Funcionalidade
 
-Esta função é **extremamente simples e direta**:
+Esta função opera de duas maneiras:
+
+### 1. Via Database Triggers (Tempo Real)
+
+Responde imediatamente a mudanças nas transações:
 
 1. **CREATE**: Quando uma transação é criada → soma o `amount` ao `balance` da conta
 2. **DELETE**: Quando uma transação é deletada → subtrai o `amount` do `balance` da conta
 3. **UPDATE**: Quando uma transação é editada → calcula a diferença entre o `amount` antigo e novo, aplica ao `balance`
+
+### 2. Via Schedule (Processamento em Lote)
+
+Executa **diariamente às 05:00 UTC** para processar:
+
+- ✅ Transações criadas para o futuro que já chegaram na data programada
+- ✅ Transações pendentes que não foram processadas
+- ✅ Transações com falhas que precisam ser reprocessadas
 
 ### Regras
 
 - ✅ Processa apenas transações com status `pending` ou `failed`
 - ✅ Marca transação como `completed` após processar (CREATE e UPDATE)
 - ✅ O `amount` já vem sinalizado (positivo/negativo), basta somar
+- ✅ Processa apenas transações com data <= data atual
 - ❌ Ignora transações de cartão de crédito (`credit_card_id` presente)
 - ❌ Ignora transações sem `account_id`
 
@@ -71,15 +84,25 @@ APPWRITE_DATABASE_ID=seu-database-id
 APPWRITE_API_KEY=sua-api-key
 ```
 
-### 3. Configurar Triggers (Eventos de Database)
+### 3. Configurar Triggers e Schedule
 
-Adicione os seguintes eventos:
+**Eventos de Database:**
 
 ```
 databases.*.tables.transactions.rows.*.create
 databases.*.tables.transactions.rows.*.update
 databases.*.tables.transactions.rows.*.delete
 ```
+
+**Schedule (Agendamento):**
+
+Configure o cron schedule para executar diariamente às 05:00 UTC:
+
+```
+0 5 * * *
+```
+
+Este agendamento processa transações futuras que já chegaram na data programada e transações pendentes que não foram processadas em tempo real.
 
 ### 4. Deploy
 
@@ -105,6 +128,8 @@ Crie, edite ou remova uma transação no banco de dados. A função será execut
 
 A função gera logs detalhados:
 
+**Para execuções via trigger:**
+
 ```
 [BalanceSync] Handling CREATE event for transaction abc123
 [BalanceSync] Transaction ID: abc123
@@ -121,7 +146,22 @@ A função gera logs detalhados:
 [BalanceSync] CREATE event processed successfully
 ```
 
+**Para execuções via schedule:**
+
+```
+[BalanceSync] Processing pending transactions from schedule
+[BalanceSync] Current time: 2025-11-17T05:00:00.000Z
+[BalanceSync] Found 15 pending transactions to process
+[BalanceSync] Processing transaction abc123
+[BalanceSync] Updating account acc456 balance by 1000
+[BalanceSync] Transaction abc123 processed successfully
+...
+[BalanceSync] Processed 15 pending transactions
+```
+
 ## 🔧 Estrutura do Código
+
+**Via Database Triggers:**
 
 ```typescript
 // CREATE: Soma amount ao balance
@@ -135,6 +175,23 @@ await updateAccountBalance(databases, accountId, -amount);
 const difference = newAmount - oldAmount;
 await updateAccountBalance(databases, accountId, difference);
 await markTransactionCompleted(databases, transactionId);
+```
+
+**Via Schedule (Processamento em Lote):**
+
+```typescript
+// Busca transações pendentes com data <= hoje
+const queries = [
+  Query.or([Query.equal('status', 'pending'), Query.equal('status', 'failed')]),
+  Query.lessThanEqual('date', now.toISOString()),
+  Query.limit(100),
+];
+
+// Processa cada transação
+for (const transaction of transactions) {
+  await updateAccountBalance(databases, transaction.account_id, transaction.amount);
+  await markTransactionCompleted(databases, transaction.$id);
+}
 ```
 
 ## ⚠️ Importante
@@ -154,6 +211,12 @@ A função simplesmente **soma** o amount ao balance, sem fazer conversões.
 - A função processa e marca como `completed`
 - Transações já `completed` são ignoradas
 
+### Transações Futuras
+
+- Transações com data no futuro **não são processadas imediatamente**
+- São processadas pela execução agendada (schedule) quando a data chegar
+- Exemplo: transação criada em 15/11 com data 20/11 será processada no dia 20/11 às 05:00 UTC
+
 ### Transações de Cartão de Crédito
 
 Transações com `credit_card_id` são ignoradas, pois são gerenciadas separadamente.
@@ -165,11 +228,12 @@ Transações com `credit_card_id` são ignoradas, pois são gerenciadas separada
 Verifique:
 
 1. ✅ Função está ativa e deployada
-2. ✅ Triggers configurados corretamente
+2. ✅ Triggers e schedule configurados corretamente
 3. ✅ Transação tem `account_id`
 4. ✅ Transação não tem `credit_card_id`
 5. ✅ Status da transação é `pending` ou `failed`
-6. ✅ Logs da função no Appwrite Console
+6. ✅ Data da transação é <= data atual (ou aguarde execução do schedule)
+7. ✅ Logs da função no Appwrite Console
 
 ### Transação não marca como completed
 
