@@ -1,15 +1,18 @@
 Commit Guidelines (Conventional + Repo Conventions)
 
 Purpose
+
 - Provide a simple, consistent commit message format so commits are readable and changelogs can be generated automatically.
 
 Style
+
 - Use the Conventional Commits format: `<type>(<scope>): <short summary>`
 - Keep the short summary <= 72 characters when possible.
 - Use the body to explain "what" and "why" (not "how"). Wrap lines at ~100 chars.
 - Use bullet points in the body for lists of changes.
 
 Types (common set for this repo)
+
 - feat: a new feature
 - fix: a bug fix
 - docs: documentation only changes
@@ -20,9 +23,11 @@ Types (common set for this repo)
 - chore: build tasks, tooling, package.json, scripts
 
 Scope
+
 - Scope is optional but recommended. Use the area changed, e.g. `transactions`, `hooks`, `balance-sync`, `ui`, `docs`.
 
 Message Structure
+
 1. Header: `<type>(<scope>): <short summary>`
 2. Blank line
 3. Body (optional): explanatory text, rationale, and more details
@@ -30,6 +35,7 @@ Message Structure
 5. Footer (optional): issue numbers or metadata
 
 Example 1 - Feature
+
 ```
 feat(transactions): replace infinite scroll with pagination (100/page)
 
@@ -39,6 +45,7 @@ feat(transactions): replace infinite scroll with pagination (100/page)
 ```
 
 Example 2 - Multi-area change
+
 ```
 feat(balance-sync,transactions): add daily schedule processing & pagination
 
@@ -48,16 +55,19 @@ feat(balance-sync,transactions): add daily schedule processing & pagination
 ```
 
 Pre-commit Checklist
+
 - [ ] Changes build locally (if applicable)
 - [ ] Unit/integration tests updated or added
 - [ ] Linting passes
 - [ ] README or docs updated if feature changes behavior
 
 Notes
+
 - If your change touches many areas, consider splitting into multiple commits with focused scopes.
 - For quick fixes, `fix(scope): short message` is fine.
 
 Commit message template (copy/paste)
+
 ```
 <type>(<scope>): <short summary>
 
