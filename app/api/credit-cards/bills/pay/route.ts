@@ -51,7 +51,9 @@ export async function POST(request: NextRequest) {
 
       const creditCard = await databases.getDocument(DATABASE_ID, COLLECTIONS.CREDIT_CARDS, body.credit_card_id);
 
-      creditCardName = creditCard.name || creditCardName;
+      if (creditCard) {
+        creditCardName = creditCard.name || creditCardName;
+      }
     } catch (error) {
       console.error('Error fetching credit card name:', error);
     }

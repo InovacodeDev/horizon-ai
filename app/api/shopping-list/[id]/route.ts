@@ -17,6 +17,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     // Fetch shopping list
     const list = await databases.getDocument(DATABASE_ID, COLLECTIONS.SHOPPING_LISTS, id);
 
+    if (!list) {
+      return NextResponse.json({ error: 'Shopping list not found' }, { status: 404 });
+    }
+
     // Verify ownership
     if (list.user_id !== userId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
