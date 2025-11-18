@@ -229,7 +229,7 @@ export class CreditCardService {
       if (userId) {
         // Get the account to check ownership
         const account = await this.dbAdapter.getDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, existing.account_id);
-        if (account.user_id !== userId) {
+        if (account?.user_id !== userId) {
           throw new Error('You cannot modify credit cards that belong to another user');
         }
       }
@@ -277,7 +277,7 @@ export class CreditCardService {
 
         // Get the account to check ownership
         const account = await this.dbAdapter.getDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, existing.account_id);
-        if (account.user_id !== userId) {
+        if (account?.user_id !== userId) {
           throw new Error('You cannot delete credit cards that belong to another user');
         }
       }

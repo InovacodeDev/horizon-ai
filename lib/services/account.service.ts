@@ -148,7 +148,7 @@ export class AccountService {
       const document = await this.dbAdapter.getDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, accountId);
 
       // Verify the account belongs to the user
-      if (document.user_id !== userId) {
+      if (document?.user_id !== userId) {
         throw new Error(`Account not found`);
       }
 
@@ -223,7 +223,7 @@ export class AccountService {
   async getAccountBalance(accountId: string): Promise<number> {
     try {
       const document = await this.dbAdapter.getDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, accountId);
-      return document.balance;
+      return document?.balance;
     } catch (error: any) {
       throw new Error(`Account not found`);
     }
@@ -257,7 +257,7 @@ export class AccountService {
       // Just return the current balance from the database
       // The Appwrite Function handles actual synchronization
       const document = await this.dbAdapter.getDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, accountId);
-      return document.balance;
+      return document?.balance;
     } catch (error: any) {
       throw new Error(`Failed to get account balance: ${error.message}`);
     }

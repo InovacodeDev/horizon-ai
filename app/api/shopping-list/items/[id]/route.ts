@@ -17,9 +17,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const item = await databases.getDocument(DATABASE_ID, COLLECTIONS.SHOPPING_LIST_ITEMS, id);
 
     // Fetch parent shopping list to verify ownership
-    const list = await databases.getDocument(DATABASE_ID, COLLECTIONS.SHOPPING_LISTS, item.shopping_list_id);
+    const list = await databases.getDocument(DATABASE_ID, COLLECTIONS.SHOPPING_LISTS, item?.shopping_list_id);
 
-    if (list.user_id !== userId) {
+    if (list?.user_id !== userId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -56,9 +56,9 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     const item = await databases.getDocument(DATABASE_ID, COLLECTIONS.SHOPPING_LIST_ITEMS, id);
 
     // Fetch parent shopping list to verify ownership
-    const list = await databases.getDocument(DATABASE_ID, COLLECTIONS.SHOPPING_LISTS, item.shopping_list_id);
+    const list = await databases.getDocument(DATABASE_ID, COLLECTIONS.SHOPPING_LISTS, item?.shopping_list_id);
 
-    if (list.user_id !== userId) {
+    if (list?.user_id !== userId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
