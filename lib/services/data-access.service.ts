@@ -29,6 +29,8 @@ export interface TransactionFilters {
   search?: string;
   creditCardId?: string;
   accountId?: string;
+  limit?: number;
+  offset?: number;
 }
 
 export interface InvoiceFilters {
@@ -39,6 +41,8 @@ export interface InvoiceFilters {
   minAmount?: number;
   maxAmount?: number;
   search?: string;
+  limit?: number;
+  offset?: number;
 }
 
 export class DataAccessService {
@@ -557,7 +561,12 @@ export class DataAccessService {
     queries.push(Query.orderDesc('date'));
 
     // Limit to reasonable number for performance
-    queries.push(Query.limit(1000));
+    const limit = filters?.limit || 100;
+    queries.push(Query.limit(limit));
+
+    if (filters?.offset) {
+      queries.push(Query.offset(filters.offset));
+    }
 
     return queries;
   }
@@ -600,7 +609,12 @@ export class DataAccessService {
     queries.push(Query.orderDesc('issue_date'));
 
     // Limit to reasonable number for performance
-    queries.push(Query.limit(1000));
+    const limit = filters?.limit || 100;
+    queries.push(Query.limit(limit));
+
+    if (filters?.offset) {
+      queries.push(Query.offset(filters.offset));
+    }
 
     return queries;
   }

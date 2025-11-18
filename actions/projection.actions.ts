@@ -36,14 +36,15 @@ export async function getNextMonthProjections(): Promise<{
 
     // Get recurring transactions from current and previous months
     const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const { transactions: recurringTransactions } = await transactionService.listTransactions({
+    const { transactions: recurring } = await transactionService.listTransactions({
       userId: user.sub,
       startDate: currentMonthStart.toISOString().split('T')[0],
-      limit: 1000,
+      limit: 50,
+      isRecurring: true,
     });
 
-    // Filter only recurring transactions
-    const recurring = recurringTransactions.filter((tx) => tx.is_recurring);
+    // Filter only recurring transactions - already filtered by query
+    // const recurring = recurringTransactions.filter((tx) => tx.is_recurring);
 
     // Project recurring transactions to next month
     const projectedTransactions: ProjectedTransaction[] = [];
@@ -148,7 +149,7 @@ export async function getNextMonthProjections(): Promise<{
       status: 'pending',
       startDate: nextMonthStart.toISOString().split('T')[0],
       endDate: nextMonthEnd.toISOString().split('T')[0],
-      limit: 1000,
+      limit: 50,
     });
 
     // Add scheduled transactions to projections

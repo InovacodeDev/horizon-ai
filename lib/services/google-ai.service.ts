@@ -47,6 +47,7 @@ export class GoogleAIServiceError extends Error {
 export class GoogleAIService {
   private client: GoogleGenAI;
   private readonly model = 'gemini-2.5-flash';
+  private readonly fallbackModel = 'gemini-1.5-flash';
 
   constructor() {
     const apiKey = process.env.GEMINI_API_KEY;
@@ -77,57 +78,43 @@ export class GoogleAIService {
 
       const apiPrompt = `Based on the following request, create a shopping list. The response must be a valid JSON array of strings. Request: "${prompt}"`;
 
-      const response = await this.client.models.generateContent({
-        model: this.model,
-        contents: apiPrompt,
-        config: {
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING },
-          },
+      const responseText = await this.callAI(apiPrompt, {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
         },
+        operationName: 'generateShoppingList',
       });
 
-      if (!response.text) {
-        throw new GoogleAIServiceError('Empty response from Google AI', 'EMPTY_RESPONSE');
+      if (!responseText) {
+        // Fallback failed or returned empty, return empty array as requested
+        return [];
       }
 
-      const items = JSON.parse(response.text);
+      const items = JSON.parse(responseText);
 
       // Validate response is an array of strings
       if (!Array.isArray(items)) {
-        throw new GoogleAIServiceError('Invalid response format: expected array', 'INVALID_RESPONSE_FORMAT');
+        console.warn('Invalid response format from AI: expected array');
+        return [];
       }
 
       if (items.length === 0) {
-        throw new GoogleAIServiceError('No items generated from prompt', 'EMPTY_RESULT');
+        return [];
       }
 
       // Ensure all items are strings
       const validItems = items.filter((item) => typeof item === 'string' && item.trim().length > 0);
-
-      if (validItems.length === 0) {
-        throw new GoogleAIServiceError('No valid items in response', 'INVALID_ITEMS');
-      }
 
       return validItems;
     } catch (error) {
       if (error instanceof GoogleAIServiceError) {
         throw error;
       }
-
-      // Handle JSON parsing errors
-      if (error instanceof SyntaxError) {
-        throw new GoogleAIServiceError('Failed to parse AI response', 'PARSE_ERROR', {
-          originalError: error.message,
-        });
-      }
-
-      // Handle Google AI API errors
-      throw new GoogleAIServiceError('Failed to generate shopping list', 'GENERATION_ERROR', {
-        originalError: error instanceof Error ? error.message : String(error),
-      });
+      // For any other error, return empty array (graceful degradation)
+      console.error('Error generating shopping list:', error);
+      return [];
     }
   }
 
@@ -173,42 +160,39 @@ export class GoogleAIService {
             URL: ${nfeUrl}
         `;
 
-      const response = await this.client.models.generateContent({
-        model: this.model,
-        contents: prompt,
-        config: {
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              storeName: { type: Type.STRING },
-              purchaseDate: { type: Type.STRING },
-              totalAmount: { type: Type.NUMBER },
+      const responseText = await this.callAI(prompt, {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            storeName: { type: Type.STRING },
+            purchaseDate: { type: Type.STRING },
+            totalAmount: { type: Type.NUMBER },
+            items: {
+              type: Type.ARRAY,
               items: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    name: { type: Type.STRING },
-                    brand: { type: Type.STRING },
-                    quantity: { type: Type.NUMBER },
-                    unitPrice: { type: Type.NUMBER },
-                    totalPrice: { type: Type.NUMBER },
-                  },
-                  required: ['name', 'quantity', 'unitPrice', 'totalPrice'],
+                type: Type.OBJECT,
+                properties: {
+                  name: { type: Type.STRING },
+                  brand: { type: Type.STRING },
+                  quantity: { type: Type.NUMBER },
+                  unitPrice: { type: Type.NUMBER },
+                  totalPrice: { type: Type.NUMBER },
                 },
+                required: ['name', 'quantity', 'unitPrice', 'totalPrice'],
               },
             },
-            required: ['storeName', 'purchaseDate', 'totalAmount', 'items'],
           },
+          required: ['storeName', 'purchaseDate', 'totalAmount', 'items'],
         },
+        operationName: 'parseNFe',
       });
 
-      if (!response.text) {
+      if (!responseText) {
         throw new GoogleAIServiceError('Empty response from Google AI', 'EMPTY_RESPONSE');
       }
 
-      const parsedData = JSON.parse(response.text);
+      const parsedData = JSON.parse(responseText);
 
       // Validate required fields
       this.validateParsedPurchase(parsedData);
@@ -293,7 +277,8 @@ export class GoogleAIService {
       }
 
       if (purchaseHistory.length === 0) {
-        throw new GoogleAIServiceError('Purchase history cannot be empty', 'EMPTY_HISTORY');
+        // Return empty string instead of error for empty history
+        return '';
       }
 
       // Format purchase history using TOON for token efficiency
@@ -327,31 +312,23 @@ export class GoogleAIService {
             ${formattedHistory}
         `;
 
-      const response = await this.client.models.generateContent({
-        model: this.model,
-        contents: prompt,
+      const responseText = await this.callAI(prompt, {
+        operationName: 'generateInsights',
       });
 
-      if (!response.text) {
-        throw new GoogleAIServiceError('Empty response from Google AI', 'EMPTY_RESPONSE');
+      if (!responseText) {
+        return '';
       }
 
-      const insights = response.text.trim();
-
-      if (insights.length === 0) {
-        throw new GoogleAIServiceError('No insights generated', 'EMPTY_RESULT');
-      }
-
-      return insights;
+      return responseText.trim();
     } catch (error) {
       if (error instanceof GoogleAIServiceError) {
         throw error;
       }
 
-      // Handle Google AI API errors
-      throw new GoogleAIServiceError('Failed to generate insights', 'INSIGHTS_ERROR', {
-        originalError: error instanceof Error ? error.message : String(error),
-      });
+      // Handle Google AI API errors - return empty string for graceful degradation
+      console.error('Failed to generate insights:', error);
+      return '';
     }
   }
 
@@ -557,66 +534,70 @@ ${formattedHistory}
 
       console.log(`Sending ${formattedHistory.length} characters to AI for category: ${category}`);
 
-      let response;
+      console.log(`Sending ${formattedHistory.length} characters to AI for category: ${category}`);
+
+      let responseText: string | null = null;
       try {
-        response = await this.client.models.generateContent({
-          model: this.model,
-          contents: prompt,
-          config: {
-            responseMimeType: 'application/json',
-            responseSchema: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  product_name: { type: Type.STRING },
-                  quantity: { type: Type.NUMBER },
-                  unit: { type: Type.STRING },
-                  estimated_price: { type: Type.NUMBER },
-                  category: { type: Type.STRING },
-                  subcategory: { type: Type.STRING },
-                  ai_confidence: { type: Type.NUMBER },
-                  ai_reasoning: { type: Type.STRING },
-                },
-                required: ['product_name', 'quantity', 'unit', 'estimated_price', 'ai_confidence', 'ai_reasoning'],
+        responseText = await this.callAI(prompt, {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                product_name: { type: Type.STRING },
+                quantity: { type: Type.NUMBER },
+                unit: { type: Type.STRING },
+                estimated_price: { type: Type.NUMBER },
+                category: { type: Type.STRING },
+                subcategory: { type: Type.STRING },
+                ai_confidence: { type: Type.NUMBER },
+                ai_reasoning: { type: Type.STRING },
               },
+              required: ['product_name', 'quantity', 'unit', 'estimated_price', 'ai_confidence', 'ai_reasoning'],
             },
           },
+          operationName: 'generateIntelligentShoppingList',
         });
       } catch (apiError) {
         console.error('Google AI API call failed:', apiError);
-        throw new GoogleAIServiceError('Failed to call Google AI API', 'API_ERROR', {
-          originalError: apiError instanceof Error ? apiError.message : String(apiError),
-        });
+        // Graceful degradation: return empty list
+        return [];
       }
 
-      console.log('AI response received');
-
-      if (!response.text) {
-        console.error('Empty response from Google AI');
-        throw new GoogleAIServiceError('Empty response from Google AI', 'EMPTY_RESPONSE');
+      if (!responseText) {
+        console.warn('Empty response from Google AI for intelligent shopping list');
+        return [];
       }
 
-      console.log(`AI response length: ${response.text.length} characters`);
+      console.log(`AI response length: ${responseText.length} characters`);
 
-      const items = JSON.parse(response.text);
+      let items;
+      try {
+        items = JSON.parse(responseText);
+      } catch (e) {
+        console.error('Failed to parse AI response JSON:', e);
+        return [];
+      }
 
       console.log(`Parsed ${Array.isArray(items) ? items.length : 0} items from AI response`);
 
       // Validate response
       if (!Array.isArray(items)) {
-        throw new GoogleAIServiceError('Invalid response format: expected array', 'INVALID_RESPONSE_FORMAT');
+        console.warn('Invalid response format: expected array');
+        return [];
       }
 
       if (items.length === 0) {
-        throw new GoogleAIServiceError('No items generated from history', 'EMPTY_RESULT');
+        return [];
       }
 
       // Validate and sanitize each item
       const sanitizedItems = items.map((item, index) => {
         // Validate and convert product_name
         if (!item.product_name || typeof item.product_name !== 'string') {
-          throw new GoogleAIServiceError(`Invalid item ${index}: missing or invalid product_name`, 'INVALID_ITEM');
+          // Skip invalid items instead of throwing
+          return null;
         }
 
         // Validate and convert quantity (handle string numbers)
@@ -625,7 +606,6 @@ ${formattedHistory}
           quantity = parseFloat(quantity);
         }
         if (typeof quantity !== 'number' || isNaN(quantity) || quantity <= 0) {
-          console.warn(`Invalid quantity for ${item.product_name}: ${item.quantity}, defaulting to 1`);
           quantity = 1;
         }
         quantity = Math.max(1, Math.round(quantity)); // Ensure positive integer
@@ -636,7 +616,6 @@ ${formattedHistory}
           estimatedPrice = parseFloat(estimatedPrice);
         }
         if (typeof estimatedPrice !== 'number' || isNaN(estimatedPrice) || estimatedPrice < 0) {
-          console.warn(`Invalid price for ${item.product_name}: ${item.estimated_price}, defaulting to 0`);
           estimatedPrice = 0;
         }
 
@@ -646,7 +625,6 @@ ${formattedHistory}
           confidence = parseFloat(confidence);
         }
         if (typeof confidence !== 'number' || isNaN(confidence) || confidence < 0 || confidence > 1) {
-          console.warn(`Invalid confidence for ${item.product_name}: ${item.ai_confidence}, defaulting to 0.5`);
           confidence = 0.5;
         }
 
@@ -660,7 +638,7 @@ ${formattedHistory}
           ai_confidence: confidence,
           ai_reasoning: item.ai_reasoning || 'Baseado no histórico de compras',
         };
-      });
+      }).filter(item => item !== null) as any[];
 
       return sanitizedItems;
     } catch (error) {
@@ -670,27 +648,62 @@ ${formattedHistory}
         throw error;
       }
 
-      // Handle JSON parsing errors
-      if (error instanceof SyntaxError) {
-        console.error('JSON parse error:', error.message);
-        throw new GoogleAIServiceError('Failed to parse AI response', 'PARSE_ERROR', {
-          originalError: error.message,
-        });
-      }
+      // Graceful degradation
+      return [];
+    }
+  }
 
-      // Log detailed error information
-      if (error instanceof Error) {
-        console.error('Error details:', {
-          message: error.message,
-          stack: error.stack,
-          name: error.name,
-        });
-      }
+  /**
+   * Helper method to call AI with fallback logic
+   */
+  private async callAI(
+    prompt: string,
+    options: {
+      responseMimeType?: string;
+      responseSchema?: any;
+      operationName: string;
+    },
+  ): Promise<string | null> {
+    const { responseMimeType, responseSchema, operationName } = options;
 
-      // Handle Google AI API errors
-      throw new GoogleAIServiceError('Failed to generate intelligent shopping list', 'GENERATION_ERROR', {
-        originalError: error instanceof Error ? error.message : String(error),
+    // Try primary model
+    try {
+      const response = await this.client.models.generateContent({
+        model: this.model,
+        contents: prompt,
+        config: {
+          responseMimeType,
+          responseSchema,
+        },
       });
+
+      return response.text || null;
+    } catch (error: any) {
+      console.warn(
+        `[GoogleAIService] Primary model ${this.model} failed for ${operationName}. Error: ${error.message || error}`,
+      );
+
+      // Try fallback model
+      try {
+        console.log(`[GoogleAIService] Attempting fallback with ${this.fallbackModel}...`);
+        const response = await this.client.models.generateContent({
+          model: this.fallbackModel,
+          contents: prompt,
+          config: {
+            responseMimeType,
+            responseSchema,
+          },
+        });
+
+        return response.text || null;
+      } catch (fallbackError: any) {
+        console.error(
+          `[GoogleAIService] Fallback model ${this.fallbackModel} also failed for ${operationName}. Error: ${
+            fallbackError.message || fallbackError
+          }`,
+        );
+        return null;
+      }
     }
   }
 }

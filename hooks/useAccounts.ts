@@ -23,6 +23,7 @@ export function useAccounts(options: UseAccountsOptions = {}) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isLimitReached, setIsLimitReached] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [initialized, setInitialized] = useState(false);
 
@@ -53,7 +54,17 @@ export function useAccounts(options: UseAccountsOptions = {}) {
       setInitialized(true);
     } catch (err: any) {
       console.error('Error fetching accounts:', err);
-      setError(err.message || 'Failed to fetch accounts');
+      
+      // If billing limit exceeded, don't clear existing data
+      if (err?.code === 402 || err?.type === 'billing_limit_exceeded') {
+        console.warn('Billing limit exceeded, keeping existing accounts');
+        setIsLimitReached(true);
+        if (accounts.length === 0) {
+           setError('Resource limit exceeded. Some data may be missing.');
+        }
+      } else {
+        setError(err.message || 'Failed to fetch accounts');
+      }
       setInitialized(true);
     } finally {
       setLoading(false);
@@ -291,5 +302,6 @@ export function useAccounts(options: UseAccountsOptions = {}) {
     updateAccount,
     deleteAccount,
     getAccountBalance,
+    isLimitReached,
   };
 }

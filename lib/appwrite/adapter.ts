@@ -97,7 +97,13 @@ export class AppwriteDBAdapter {
         });
         return { documents: res.rows, total: res.total };
       }, `listDocuments(${collectionId})`);
-    } catch (error) {
+    } catch (error: any) {
+      // Gracefully handle billing limit exceeded
+      if (error?.code === 402 || error?.type === 'billing_limit_exceeded') {
+        console.warn(`[AppwriteAdapter] Billing limit exceeded for ${collectionId}. Returning empty list.`);
+        return { documents: [], total: 0 };
+      }
+
       console.error(`Error listing documents from ${collectionId}:`, error);
       throw error;
     }
@@ -114,7 +120,13 @@ export class AppwriteDBAdapter {
         });
         return res;
       }, `getDocument(${documentId})`);
-    } catch (error) {
+    } catch (error: any) {
+      // Gracefully handle billing limit exceeded
+      if (error?.code === 402 || error?.type === 'billing_limit_exceeded') {
+        console.warn(`[AppwriteAdapter] Billing limit exceeded for getDocument ${documentId}. Returning null.`);
+        return null;
+      }
+
       console.error(`Error getting document ${documentId} from ${collectionId}:`, error);
       throw error;
     }

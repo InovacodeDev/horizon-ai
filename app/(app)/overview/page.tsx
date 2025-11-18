@@ -30,6 +30,7 @@ import { useUser } from "@/lib/contexts/UserContext";
 import CashFlowProjection from "@/components/CashFlowProjection";
 import { useProjections } from "@/hooks/useProjections";
 import { ProcessDueTransactions } from "@/components/ProcessDueTransactions";
+import { BillingLimitBanner } from "@/components/BillingLimitBanner";
 
 // --- Helper Functions for Date Filtering ---
 const getMonthKey = (date: Date): string => {
@@ -44,6 +45,24 @@ const getPreviousMonthKey = (): string => {
     const now = new Date();
     const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     return getMonthKey(prevMonth);
+};
+
+const getMonthsForPeriod = (period: '3m' | '6m' | '12m' | 'all', allMonthKeys: string[]): string[] => {
+    if (period === 'all') {
+        return allMonthKeys;
+    }
+    
+    const monthsCount = period === '3m' ? 3 : period === '6m' ? 6 : 12;
+    const now = new Date();
+    const months: string[] = [];
+    
+    // Get previous months + current month
+    for (let i = monthsCount - 1; i >= 0; i--) {
+        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        months.push(getMonthKey(date));
+    }
+    
+    return months;
 };
 
 const getLastSixMonths = (): string[] => {
@@ -89,6 +108,11 @@ const BarChart: React.FC<{ data: ChartData[] }> = ({ data }) => {
         return { value, label: formatCurrencyForChart(value) };
     }).reverse();
 
+    // Calculate appropriate grid columns based on data length
+    const gridCols = data.length <= 6 ? 'grid-cols-6' : 
+                     data.length <= 12 ? 'grid-cols-12' : 
+                     `grid-cols-${data.length}`;
+
     return (
         <div className="w-full">
             <div className="flex justify-end gap-4 mb-6">
@@ -110,12 +134,12 @@ const BarChart: React.FC<{ data: ChartData[] }> = ({ data }) => {
                 </div>
 
                 {/* Chart Bars Area */}
-                <div className="flex-grow grid grid-cols-6 gap-3 border-l border-b border-outline/50 relative">
+                <div className={`flex-grow flex gap-2 border-l border-b border-outline/50 relative overflow-x-auto`}>
                     {/* Grid lines */}
                     {yAxisLabels.slice(0, -1).map(({ value }) => (
                         <div
                             key={value}
-                            className="col-span-6 border-t border-dashed border-outline/50 absolute w-full"
+                            className="absolute w-full border-t border-dashed border-outline/50"
                             style={{ bottom: `${(value / maxValue) * 100}%` }}
                         ></div>
                     ))}
@@ -123,7 +147,8 @@ const BarChart: React.FC<{ data: ChartData[] }> = ({ data }) => {
                     {data.map((item) => (
                         <div
                             key={item.month}
-                            className="flex flex-col items-center justify-end h-full relative group pt-1"
+                            className="flex flex-col items-center justify-end h-full relative group pt-1 min-w-[40px] flex-1"
+                            style={{ maxWidth: data.length > 12 ? '60px' : undefined }}
                         >
                             <div className="flex gap-1 items-end h-full w-full justify-center">
                                 <div
@@ -141,7 +166,7 @@ const BarChart: React.FC<{ data: ChartData[] }> = ({ data }) => {
 
                             {/* Tooltip */}
                             <div className="absolute bottom-full mb-2 w-40 p-3 bg-on-surface text-surface rounded-lg text-xs shadow-soft-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                                <p className="font-semibold mb-2 text-center">{item.month} 2024</p>
+                                <p className="font-semibold mb-2 text-center">{item.month}</p>
                                 <div className="flex justify-between items-center mb-1">
                                     <span className="flex items-center gap-1.5">
                                         <div className="w-2 h-2 rounded-full bg-secondary"></div>
@@ -395,13 +420,17 @@ export default function OverviewPage() {
     // State for toggling between own data and combined data
     const [showSharedData, setShowSharedData] = React.useState(true);
     
+    // State for chart period selector
+    const [chartPeriod, setChartPeriod] = React.useState<'3m' | '6m' | '12m' | 'all'>('6m');
+    
     // Fetch own data
     const { 
         transactions: ownTransactions, 
         loading: isLoadingOwnTransactions,
-        refetch: refetchOwnTransactions
+        refetch: refetchOwnTransactions,
+        isLimitReached: isLimitReachedOwnTransactions
     } = useTransactions({ userId: user.$id ?? 'default-user' });
-    const { accounts: ownAccounts, loading: loadingOwnAccounts } = useAccounts();
+    const { accounts: ownAccounts, loading: loadingOwnAccounts, isLimitReached: isLimitReachedOwnAccounts } = useAccounts();
     
     // Fetch shared data (includes own + shared)
     const { 
@@ -410,7 +439,8 @@ export default function OverviewPage() {
     } = useAccountsWithSharing({ enableRealtime: true });
     const { 
         transactions: sharedTransactions, 
-        loading: loadingSharedTransactions 
+        loading: loadingSharedTransactions,
+        isLimitReached: isLimitReachedSharedTransactions
     } = useTransactionsWithSharing({ enableRealtime: true });
     
     // Use appropriate data based on toggle
@@ -419,7 +449,9 @@ export default function OverviewPage() {
     const apiTransactions = showSharedData ? sharedTransactions : ownTransactions;
     const isLoadingTransactions = showSharedData ? loadingSharedTransactions : isLoadingOwnTransactions;
     const loadingAccounts = showSharedData ? loadingSharedAccounts : loadingOwnAccounts;
-    const refetch = showSharedData ? () => {} : refetchOwnTransactions;
+    const refetch = useMemo(() => 
+        showSharedData ? () => {} : refetchOwnTransactions,
+    [showSharedData, refetchOwnTransactions]);
     
     const { creditCards } = useAllCreditCards();
     
@@ -600,8 +632,19 @@ export default function OverviewPage() {
     }, [apiTransactions, creditCardTransactions, accounts, creditCards, openBills, showSharedData]);
 
     const chartData = useMemo(() => {
-        const lastSixMonths = getLastSixMonths();
-        return lastSixMonths.map((monthKey) => {
+        // Get all unique month keys from transactions
+        const allMonthKeys = Array.from(
+            new Set(
+                apiTransactions
+                    .filter(tx => tx.type !== 'transfer') // Exclude transfers
+                    .map(tx => getMonthKey(new Date(tx.date)))
+            )
+        ).sort();
+        
+        // Get months to display based on selected period
+        const monthsToDisplay = getMonthsForPeriod(chartPeriod, allMonthKeys);
+        
+        return monthsToDisplay.map((monthKey) => {
             const monthData = monthlyMetrics.transactionsByMonth[monthKey] || { income: 0, expenses: 0 };
             const creditCardBill = monthlyMetrics.creditCardBillsByMonth.get(monthKey) || 0;
             return {
@@ -610,7 +653,7 @@ export default function OverviewPage() {
                 expenses: monthData.expenses + creditCardBill,
             };
         });
-    }, [monthlyMetrics]);
+    }, [monthlyMetrics, chartPeriod, apiTransactions]);
 
     const hasTransactions = apiTransactions.length > 0;
 
@@ -626,6 +669,7 @@ export default function OverviewPage() {
     return (
         <>
             <ProcessDueTransactions />
+            <BillingLimitBanner isVisible={isLimitReachedOwnTransactions || isLimitReachedOwnAccounts || isLimitReachedSharedTransactions} />
             <header className="mb-8">
                 <div className="flex justify-between items-start mb-4">
                     <div>
@@ -699,10 +743,48 @@ export default function OverviewPage() {
 
                 {hasTransactions && chartData.some(d => d.income > 0 || d.expenses > 0) && (
                     <Card className="p-6">
-                        <h3 className="text-xl font-medium text-on-surface mb-6">Fluxo de Caixa - 4 Meses Anteriores, Atual e Próximo</h3>
-                        <p className="text-sm text-on-surface-variant mb-4">
-                            Despesas incluem transações e faturas de cartão em aberto
-                        </p>
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                            <div>
+                                <h3 className="text-xl font-medium text-on-surface">Fluxo de Caixa</h3>
+                                <p className="text-sm text-on-surface-variant mt-1">
+                                    Despesas incluem transações e faturas de cartão em aberto
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2 bg-surface-variant/30 rounded-lg p-1">
+                                <Button
+                                    variant={chartPeriod === '3m' ? 'primary' : 'ghost'}
+                                    size="sm"
+                                    onClick={() => setChartPeriod('3m')}
+                                    className="!h-8 !px-3 !text-sm"
+                                >
+                                    3 meses
+                                </Button>
+                                <Button
+                                    variant={chartPeriod === '6m' ? 'primary' : 'ghost'}
+                                    size="sm"
+                                    onClick={() => setChartPeriod('6m')}
+                                    className="!h-8 !px-3 !text-sm"
+                                >
+                                    6 meses
+                                </Button>
+                                <Button
+                                    variant={chartPeriod === '12m' ? 'primary' : 'ghost'}
+                                    size="sm"
+                                    onClick={() => setChartPeriod('12m')}
+                                    className="!h-8 !px-3 !text-sm"
+                                >
+                                    12 meses
+                                </Button>
+                                <Button
+                                    variant={chartPeriod === 'all' ? 'primary' : 'ghost'}
+                                    size="sm"
+                                    onClick={() => setChartPeriod('all')}
+                                    className="!h-8 !px-3 !text-sm"
+                                >
+                                    Tudo
+                                </Button>
+                            </div>
+                        </div>
                         <BarChart data={chartData} />
                     </Card>
                 )}

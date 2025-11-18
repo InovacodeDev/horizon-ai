@@ -27,6 +27,7 @@ export function useTransactionsWithSharing(options: UseTransactionsWithSharingOp
   const [transactions, setTransactions] = useState<TransactionWithOwnership[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isLimitReached, setIsLimitReached] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
   const fetchTransactions = useCallback(async () => {
@@ -77,7 +78,17 @@ export function useTransactionsWithSharing(options: UseTransactionsWithSharingOp
       setInitialized(true);
     } catch (err: any) {
       console.error('Error fetching transactions with sharing:', err);
-      setError(err.message || 'Failed to fetch transactions');
+      
+      // If billing limit exceeded, don't clear existing data
+      if (err?.code === 402 || err?.type === 'billing_limit_exceeded') {
+        console.warn('Billing limit exceeded, keeping existing transactions');
+        setIsLimitReached(true);
+        if (transactions.length === 0) {
+           setError('Resource limit exceeded. Some data may be missing.');
+        }
+      } else {
+        setError(err.message || 'Failed to fetch transactions');
+      }
       setInitialized(true);
     } finally {
       setLoading(false);
@@ -132,5 +143,6 @@ export function useTransactionsWithSharing(options: UseTransactionsWithSharingOp
     loading,
     error,
     refetch: fetchTransactions,
+    isLimitReached,
   };
 }

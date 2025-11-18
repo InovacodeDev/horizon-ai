@@ -46,6 +46,7 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
   const [total, setTotal] = useState(initialTotal || 0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isLimitReached, setIsLimitReached] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [currentPage, setCurrentPage] = useState(1);
   const LIMIT_PER_PAGE = 100;
@@ -136,8 +137,19 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
         }
       } catch (err: any) {
         console.error('Error fetching transactions:', err);
-        setError(err.message || 'Failed to fetch transactions');
-        setTransactions([]);
+        
+        // If billing limit exceeded, don't clear existing data
+        if (err?.code === 402 || err?.type === 'billing_limit_exceeded') {
+          console.warn('Billing limit exceeded, keeping existing transactions');
+          setIsLimitReached(true);
+          // Don't set error to avoid UI error states if we have data
+          if (transactions.length === 0) {
+             setError('Resource limit exceeded. Some data may be missing.');
+          }
+        } else {
+          setError(err.message || 'Failed to fetch transactions');
+          setTransactions([]);
+        }
       } finally {
         setLoading(false);
       }
@@ -397,5 +409,6 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
     deleteTransaction,
     refetch,
     changePage,
+    isLimitReached,
   };
 }

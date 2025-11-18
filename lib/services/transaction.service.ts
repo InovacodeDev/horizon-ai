@@ -98,6 +98,7 @@ export interface TransactionFilter {
   creditCardId?: string;
   limit?: number;
   offset?: number;
+  isRecurring?: boolean;
 }
 
 export class TransactionService {
@@ -625,7 +626,10 @@ export class TransactionService {
         queries.push(Query.equal('credit_card_id', filters.creditCardId));
       }
 
-      console.log({ queries });
+      if (filters.isRecurring !== undefined) {
+        queries.push(Query.equal('is_recurring', filters.isRecurring));
+      }
+
       // Pagination
       const limit = filters.limit || 50;
       const offset = filters.offset || 0;
