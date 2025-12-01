@@ -187,6 +187,7 @@ export interface Transaction {
   merchant?: string;
   tags?: string;
   is_recurring?: boolean;
+  purchase_date?: string;
   installment?: number;
   installments?: number;
   credit_card_transaction_created_at?: string;

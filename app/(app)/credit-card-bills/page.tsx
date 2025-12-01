@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { CreditCardIcon, CalendarIcon, DollarSignIcon, PlusIcon, EditIcon, ChevronDownIcon, ChevronUpIcon } from '@/components/assets/Icons';
+import { CreditCardIcon, CalendarIcon, DollarSignIcon, PlusIcon, EditIcon, ChevronDownIcon, ChevronUpIcon, Trash2Icon } from '@/components/assets/Icons';
 import Card from '@/components/ui/Card';
 import Skeleton from '@/components/ui/Skeleton';
 import Button from '@/components/ui/Button';
@@ -12,6 +12,7 @@ import { getCategoryById } from '@/lib/constants/categories';
 import CreateTransactionModal from './CreateTransactionModal';
 import EditTransactionModal from './EditTransactionModal';
 import PayBillModal from './PayBillModal';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Transaction } from '@/lib/types';
 
 interface Bill {
@@ -76,6 +77,8 @@ const CreditCardBillsPage: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [payingBill, setPayingBill] = useState<Bill | null>(null);
+  const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
+  const [isDeleteLoading, setIsDeleteLoading] = useState(false);
   
   // Estados para expandir/recolher seções
   const [expandedSections, setExpandedSections] = useState({
@@ -97,6 +100,8 @@ const CreditCardBillsPage: React.FC = () => {
   const {
     transactions: rawTransactions,
     loading: loadingTransactions,
+    fetchTransactions,
+    removeTransaction,
   } = useCreditCardTransactions({
     creditCardId: selectedCardId || undefined,
     enableRealtime: true,
@@ -316,9 +321,33 @@ const CreditCardBillsPage: React.FC = () => {
     return openBills.find((bill) => `${bill.year}-${bill.month}` === selectedBillMonth);
   }, [openBills, selectedBillMonth]);
 
-  const handleTransactionCreated = () => {
+  const handleTransactionCreated = (options?: { silent?: boolean }) => {
     // Invalida o cache e recarrega as transações
-    // invalidateTransactionsCache();
+    fetchTransactions(options);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!transactionToDelete) return;
+    
+    setIsDeleteLoading(true);
+    try {
+      const response = await fetch(`/api/credit-cards/transactions/${transactionToDelete.$id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Erro ao excluir transação');
+      }
+      
+      // Optimistic update - remove from list immediately
+      removeTransaction(transactionToDelete.$id);
+      setTransactionToDelete(null);
+    } catch (error) {
+      console.error('Erro ao excluir transação:', error);
+      alert('Erro ao excluir transação. Tente novamente.');
+    } finally {
+      setIsDeleteLoading(false);
+    }
   };
 
   if (loading) {
@@ -557,8 +586,8 @@ const CreditCardBillsPage: React.FC = () => {
                   // Função de ordenação: primeiro por data (mais recente), depois por valor (maior)
                   const sortTransactions = (transactions: Transaction[]) => {
                     return [...transactions].sort((a, b) => {
-                      const dateA = new Date(a.credit_card_transaction_created_at || a.date).getTime();
-                      const dateB = new Date(b.credit_card_transaction_created_at || b.date).getTime();
+                      const dateA = new Date(a.purchase_date || a.date).getTime();
+                      const dateB = new Date(b.purchase_date || b.date).getTime();
                       
                       // Ordenar por data (mais recente primeiro)
                       if (dateB !== dateA) {
@@ -594,7 +623,7 @@ const CreditCardBillsPage: React.FC = () => {
                           )}
                         </td>
                         <td className='py-3 px-4'>
-                          <p className='text-sm text-on-surface-variant'>{formatDate(transaction.credit_card_transaction_created_at || transaction.date)}</p>
+                          <p className='text-sm text-on-surface-variant'>{formatDate(transaction.purchase_date || transaction.date)}</p>
                         </td>
                         <td className='py-3 px-4'>
                           <TransactionCategoryBadge categoryId={transaction.category} />
@@ -615,14 +644,23 @@ const CreditCardBillsPage: React.FC = () => {
                           )}
                         </td>
                         <td className='py-3 px-4 text-right'>
+                          <p className='font-semibold text-on-surface'>{formatCurrency(transaction.amount)}</p>
+                        </td>
+                        <td className='py-3 px-4 text-right'>
                           <div className='flex items-center justify-end gap-2'>
-                            <p className='font-semibold text-on-surface'>{formatCurrency(transaction.amount)}</p>
                             <button
                               onClick={() => setEditingTransaction(transaction)}
-                              className='opacity-0 group-hover:opacity-100 p-1.5 hover:bg-primary/10 rounded-lg transition-all'
+                              className='p-1.5 hover:bg-primary/10 rounded-lg transition-all text-primary'
                               title='Editar transação'
                             >
-                              <EditIcon className='w-4 h-4 text-primary' />
+                              <EditIcon className='w-4 h-4' />
+                            </button>
+                            <button
+                              onClick={() => setTransactionToDelete(transaction)}
+                              className='p-1.5 hover:bg-error/10 rounded-lg transition-all text-error'
+                              title='Excluir transação'
+                            >
+                              <Trash2Icon className='w-4 h-4' />
                             </button>
                           </div>
                         </td>
@@ -665,6 +703,7 @@ const CreditCardBillsPage: React.FC = () => {
                                     <th className='text-left py-3 px-4 text-sm font-semibold text-on-surface'>Categoria</th>
                                     <th className='text-center py-3 px-4 text-sm font-semibold text-on-surface'>Tipo</th>
                                     <th className='text-right py-3 px-4 text-sm font-semibold text-on-surface'>Valor</th>
+                                    <th className='text-right py-3 px-4 text-sm font-semibold text-on-surface'>Ações</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -678,6 +717,7 @@ const CreditCardBillsPage: React.FC = () => {
                                     <td className='py-3 px-4 text-right'>
                                       <p className='font-bold text-tertiary'>{formatCurrency(subscriptionsTotal)}</p>
                                     </td>
+                                    <td className='py-3 px-4'></td>
                                   </tr>
                                 </tfoot>
                               </table>
@@ -719,6 +759,7 @@ const CreditCardBillsPage: React.FC = () => {
                                     <th className='text-left py-3 px-4 text-sm font-semibold text-on-surface'>Categoria</th>
                                     <th className='text-center py-3 px-4 text-sm font-semibold text-on-surface'>Parcela</th>
                                     <th className='text-right py-3 px-4 text-sm font-semibold text-on-surface'>Valor</th>
+                                    <th className='text-right py-3 px-4 text-sm font-semibold text-on-surface'>Ações</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -732,6 +773,7 @@ const CreditCardBillsPage: React.FC = () => {
                                     <td className='py-3 px-4 text-right'>
                                       <p className='font-bold text-secondary'>{formatCurrency(installmentsTotal)}</p>
                                     </td>
+                                    <td className='py-3 px-4'></td>
                                   </tr>
                                 </tfoot>
                               </table>
@@ -786,6 +828,7 @@ const CreditCardBillsPage: React.FC = () => {
                                     <td className='py-3 px-4 text-right'>
                                       <p className='font-bold text-primary'>{formatCurrency(singlePurchasesTotal)}</p>
                                     </td>
+                                    <td className='py-3 px-4'></td>
                                   </tr>
                                 </tfoot>
                               </table>
@@ -833,6 +876,19 @@ const CreditCardBillsPage: React.FC = () => {
           }}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={!!transactionToDelete}
+        onClose={() => setTransactionToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title="Excluir Transação"
+        message={`Tem certeza que deseja excluir a transação "${transactionToDelete?.description || transactionToDelete?.merchant || 'Selecionada'}"? Esta ação não pode ser desfeita.`}
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        variant="danger"
+        loading={isDeleteLoading}
+      />
     </div>
   );
 };

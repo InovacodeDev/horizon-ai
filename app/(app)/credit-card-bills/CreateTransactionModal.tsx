@@ -11,7 +11,7 @@ import { getCurrentDateInUserTimezone } from '@/lib/utils/timezone';
 interface CreateTransactionModalProps {
   creditCard: any;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (options?: { silent?: boolean }) => void;
 }
 
 const CreateTransactionModal: React.FC<CreateTransactionModalProps> = ({ creditCard, onClose, onSuccess }) => {
@@ -92,115 +92,151 @@ const CreateTransactionModal: React.FC<CreateTransactionModalProps> = ({ creditC
     'Outros',
   ];
 
+  const submitTransaction = async () => {
+    const totalAmount = formData.amount;
+    const installments = parseInt(formData.installments);
+
+    if (totalAmount <= 0) {
+      throw new Error('O valor deve ser maior que zero');
+    }
+
+    if (formData.isRecurring) {
+      // Recurring subscription
+      const response = await fetch('/api/credit-cards/recurring', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          credit_card_id: creditCard.$id,
+          amount: totalAmount,
+          category: formData.category,
+          account_id: creditCard.account_id,
+          description: formData.description,
+          merchant: formData.merchant,
+          recurring_day: parseInt(formData.recurringDay),
+          start_date: formData.date,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erro ao criar assinatura recorrente');
+      }
+    } else if (installments === 1) {
+      // Single transaction - use credit card transactions API
+      // Calculate bill date based on purchase date and closing day
+      // Parse date in YYYY-MM-DD format to avoid timezone issues
+      const [purchaseYear, purchaseMonth, purchaseDay] = formData.date.split('-').map(Number);
+      let billMonth = purchaseMonth - 1; // Convert to 0-indexed
+      let billYear = purchaseYear;
+      
+      // If purchase is on or after closing day, it goes to next month's bill
+      if (purchaseDay >= cardSettings.closingDay) {
+        billMonth += 1;
+        if (billMonth > 11) {
+          billMonth = 0;
+          billYear += 1;
+        }
+      }
+      
+      const billDate = new Date(billYear, billMonth, cardSettings.dueDay);
+      
+      const response = await fetch('/api/credit-cards/transactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          credit_card_id: creditCard.$id,
+          amount: totalAmount,
+          category: formData.category,
+          description: formData.description,
+          merchant: formData.merchant,
+          date: billDate.toISOString().split('T')[0],
+          purchase_date: formData.date,
+          status: 'pending',
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erro ao criar transação');
+      }
+    } else {
+      // Create installment plan
+      const response = await fetch('/api/credit-cards/installments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          credit_card_id: creditCard.$id,
+          total_amount: totalAmount,
+          installments: installments,
+          category: formData.category,
+          account_id: creditCard.account_id,
+          description: formData.description,
+          merchant: formData.merchant,
+          purchase_date: formData.date,
+          closing_day: cardSettings.closingDay,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erro ao criar parcelamento');
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
-      const totalAmount = formData.amount;
-      const installments = parseInt(formData.installments);
-
-      if (totalAmount <= 0) {
-        setError('O valor deve ser maior que zero');
-        setLoading(false);
-        return;
-      }
-
-      if (formData.isRecurring) {
-        // Recurring subscription
-        const response = await fetch('/api/credit-cards/recurring', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            credit_card_id: creditCard.$id,
-            amount: totalAmount,
-            category: formData.category,
-            account_id: creditCard.account_id,
-            description: formData.description,
-            merchant: formData.merchant,
-            recurring_day: parseInt(formData.recurringDay),
-            start_date: formData.date,
-          }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Erro ao criar assinatura recorrente');
-        }
-      } else if (installments === 1) {
-        // Single transaction - use credit card transactions API
-        // Calculate bill date based on purchase date and closing day
-        // Parse date in YYYY-MM-DD format to avoid timezone issues
-        const [purchaseYear, purchaseMonth, purchaseDay] = formData.date.split('-').map(Number);
-        let billMonth = purchaseMonth - 1; // Convert to 0-indexed
-        let billYear = purchaseYear;
-        
-        // If purchase is on or after closing day, it goes to next month's bill
-        if (purchaseDay >= cardSettings.closingDay) {
-          billMonth += 1;
-          if (billMonth > 11) {
-            billMonth = 0;
-            billYear += 1;
-          }
-        }
-        
-        const billDate = new Date(billYear, billMonth, cardSettings.dueDay);
-        
-        const response = await fetch('/api/credit-cards/transactions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            credit_card_id: creditCard.$id,
-            amount: totalAmount,
-            category: formData.category,
-            description: formData.description,
-            merchant: formData.merchant,
-            date: billDate.toISOString().split('T')[0],
-            purchase_date: formData.date,
-            status: 'pending',
-          }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Erro ao criar transação');
-        }
-      } else {
-        // Create installment plan
-        const response = await fetch('/api/credit-cards/installments', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            credit_card_id: creditCard.$id,
-            total_amount: totalAmount,
-            installments: installments,
-            category: formData.category,
-            account_id: creditCard.account_id,
-            description: formData.description,
-            merchant: formData.merchant,
-            purchase_date: formData.date,
-            closing_day: cardSettings.closingDay,
-          }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Erro ao criar parcelamento');
-        }
-      }
-
+      await submitTransaction();
       onSuccess();
       onClose();
+    } catch (err: any) {
+      setError(err.message || 'Erro ao criar transação');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveAndCreateNew = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      await submitTransaction();
+      onSuccess({ silent: true });
+      
+      // Reset form
+      setFormData({
+        amount: 0,
+        category: '',
+        description: '',
+        merchant: '',
+        date: getCurrentDateInUserTimezone(),
+        installments: '1',
+        isRecurring: false,
+        recurringDay: '1',
+      });
+      
+      // Focus amount field
+      setTimeout(() => {
+        const amountInput = document.getElementById('amount');
+        if (amountInput) {
+          amountInput.focus();
+        }
+      }, 100);
+      
     } catch (err: any) {
       setError(err.message || 'Erro ao criar transação');
     } finally {
@@ -392,6 +428,9 @@ const CreateTransactionModal: React.FC<CreateTransactionModalProps> = ({ creditC
         <div className="p-4 bg-surface-variant/20 flex justify-end gap-3 border-t border-outline sticky bottom-0">
           <Button type="button" variant="outline" onClick={onClose}>
             Cancelar
+          </Button>
+          <Button type="button" variant="secondary" onClick={handleSaveAndCreateNew} disabled={loading}>
+            Salvar e Criar Nova
           </Button>
           <Button type="submit" disabled={loading}>
             {loading ? 'Criando...' : 'Criar Transação'}
