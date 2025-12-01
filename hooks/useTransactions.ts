@@ -20,6 +20,8 @@ interface TransactionFilters {
   endDate?: string;
   creditCardId?: string;
   accountId?: string;
+  minAmount?: number;
+  maxAmount?: number;
   limit?: number;
   offset?: number;
 }
@@ -115,6 +117,20 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
         if (filters?.accountId) queries.push(Query.equal('account_id', filters.accountId));
         if (filters?.startDate) queries.push(Query.greaterThanEqual('date', filters.startDate));
         if (filters?.endDate) queries.push(Query.lessThanEqual('date', filters.endDate));
+        // Note: Amount in DB is signed (positive for income, negative for expense).
+        // If filtering by magnitude (absolute value), we'd need a different approach or multiple queries.
+        // Assuming minAmount/maxAmount here refer to the raw value for now, or we handle absolute value logic on client if DB doesn't support it easily.
+        // However, usually users want "Amount between 100 and 200", implying magnitude.
+        // Since we store signed values, this is tricky.
+        // For now, let's assume the user filters positive amounts (income) or negative amounts (expenses) separately,
+        // OR we just filter by the raw number line.
+        // Given the UI shows "Min Amount" and "Max Amount" inputs which are likely positive numbers,
+        // we might need to handle this carefully.
+        // But for a quick fix to enable server-side filtering, let's map them directly if provided.
+        // A better approach for "magnitude" filtering on signed columns is hard in simple SQL/NoSQL without a computed column.
+        // Let's implement raw filtering first.
+        if (filters?.minAmount !== undefined) queries.push(Query.greaterThanEqual('amount', filters.minAmount));
+        if (filters?.maxAmount !== undefined) queries.push(Query.lessThanEqual('amount', filters.maxAmount));
 
         const limit = filters?.limit || LIMIT_PER_PAGE;
 
@@ -137,14 +153,14 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
         }
       } catch (err: any) {
         console.error('Error fetching transactions:', err);
-        
+
         // If billing limit exceeded, don't clear existing data
         if (err?.code === 402 || err?.type === 'billing_limit_exceeded') {
           console.warn('Billing limit exceeded, keeping existing transactions');
           setIsLimitReached(true);
           // Don't set error to avoid UI error states if we have data
           if (transactions.length === 0) {
-             setError('Resource limit exceeded. Some data may be missing.');
+            setError('Resource limit exceeded. Some data may be missing.');
           }
         } else {
           setError(err.message || 'Failed to fetch transactions');

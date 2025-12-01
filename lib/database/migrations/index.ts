@@ -46,6 +46,7 @@ import { migration as addBrandPromotionToProducts } from './20251115_000042_add_
 import { migration as removeProductCodes } from './20251116_000043_remove_product_codes';
 import { migration as addSyncStatusToCreditCardTransactions } from './20251117_000044_add_sync_status_to_credit_card_transactions';
 import { migration as deleteCreditCardBillsTable } from './20251117_000045_delete_credit_card_bills_table';
+import { migration as createImportHistoryTable } from './20251201_000046_create_import_history_table';
 import { Migration } from './migration.interface';
 
 /**
@@ -98,4 +99,5 @@ export const migrations: Migration[] = [
   removeProductCodes,
   addSyncStatusToCreditCardTransactions,
   deleteCreditCardBillsTable,
+  createImportHistoryTable,
 ];

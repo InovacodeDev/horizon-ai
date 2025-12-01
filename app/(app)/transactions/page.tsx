@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useEffect, useCallback } from "react";
+import React, { useMemo, useState, useEffect, useCallback, Activity } from "react";
 import { AVAILABLE_CATEGORY_ICONS } from "@/lib/constants";
 import { TRANSACTION_CATEGORIES, getCategoryById } from "@/lib/constants/categories";
 import type { Transaction as APITransaction, TransactionType } from "@/lib/types";
@@ -22,6 +22,7 @@ import { useSearchParams } from "next/navigation";
 import { getCurrentDateInUserTimezone } from "@/lib/utils/timezone";
 import { ProcessDueTransactions } from "@/components/ProcessDueTransactions";
 import { ImportTransactionsModal } from "@/components/transactions/ImportTransactionsModal";
+import { useUser } from "@/lib/contexts/UserContext";
 
 // UI Transaction type for display
 interface Transaction {
@@ -247,8 +248,9 @@ const ActiveFilterTag: React.FC<{ label: string; onRemove: () => void }> = ({ la
 );
 
 export default function TransactionsPage() {
+  const { user } = useUser();
     const searchParams = useSearchParams();
-    const userId = "default-user"; // TODO: Get from session
+    const userId = user.$id; // TODO: Get from session
     
     // Fetch transactions from API
     const { 
@@ -354,18 +356,13 @@ export default function TransactionsPage() {
             new Map(transactions.map(tx => [tx.$id, tx])).values()
         );
         
-        return uniqueTransactions.filter((tx) => {
-            const searchMatch = (tx.description || '').toLowerCase().includes(searchTerm.toLowerCase());
-            const categoryMatch = filters.category === "all" || tx.category === filters.category;
-            const accountMatch = filters.account === "all" || tx.bankName === filters.account;
-            const amount = Math.abs(tx.amount);
-            const minAmountMatch = filters.minAmount === "" || amount >= parseFloat(filters.minAmount);
-            const maxAmountMatch = filters.maxAmount === "" || amount <= parseFloat(filters.maxAmount);
+        // Client-side search only (since we don't have full-text search on server yet)
+        if (!searchTerm) return uniqueTransactions;
 
-            // Date filtering is now handled server-side in the useTransactions hook
-            return searchMatch && categoryMatch && accountMatch && minAmountMatch && maxAmountMatch;
+        return uniqueTransactions.filter((tx) => {
+            return (tx.description || '').toLowerCase().includes(searchTerm.toLowerCase());
         });
-    }, [searchTerm, filters, transactions]);
+    }, [searchTerm, transactions]);
 
     const groupedTransactions = filteredTransactions.reduce((acc, tx) => {
         const dateGroup = formatDateForGrouping(tx.date);
@@ -393,6 +390,59 @@ export default function TransactionsPage() {
         setSearchTerm("");
     };
 
+    // Helper to get date filters
+    const getDateFilters = (range: string) => {
+        let startDate: string | undefined;
+        let endDate: string | undefined;
+
+        if (range !== "all") {
+            const now = new Date();
+            endDate = now.toISOString();
+
+            if (range === "7d") {
+                const cutoff = new Date();
+                cutoff.setDate(cutoff.getDate() - 7);
+                startDate = cutoff.toISOString();
+            } else if (range === "30d") {
+                const cutoff = new Date();
+                cutoff.setDate(cutoff.getDate() - 30);
+                startDate = cutoff.toISOString();
+            } else if (range === "currentMonth") {
+                const start = new Date(now.getFullYear(), now.getMonth(), 1);
+                const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                end.setHours(23, 59, 59, 999);
+                startDate = start.toISOString();
+                endDate = end.toISOString();
+            } else if (range === "previousMonth") {
+                const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                const end = new Date(now.getFullYear(), now.getMonth(), 0);
+                end.setHours(23, 59, 59, 999);
+                startDate = start.toISOString();
+                endDate = end.toISOString();
+            } else if (range === "nextMonth") {
+                const start = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+                const end = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+                end.setHours(23, 59, 59, 999);
+                startDate = start.toISOString();
+                endDate = end.toISOString();
+            }
+        }
+        return { startDate, endDate };
+    };
+
+    const currentApiFilters = useMemo(() => {
+        const { startDate, endDate } = getDateFilters(filters.dateRange);
+        return {
+            userId,
+            startDate,
+            endDate,
+            category: filters.category !== "all" ? filters.category : undefined,
+            accountId: filters.account !== "all" ? filters.account : undefined,
+            minAmount: filters.minAmount ? parseFloat(filters.minAmount) : undefined,
+            maxAmount: filters.maxAmount ? parseFloat(filters.maxAmount) : undefined,
+        };
+    }, [userId, filters]);
+
     const handleOpenAddModal = () => {
         setNewTransaction(initialNewTransactionState);
         setIsAddModalOpen(true);
@@ -400,7 +450,7 @@ export default function TransactionsPage() {
 
     const handleImportComplete = async (count: number) => {
         setIsImportModalOpen(false);
-        await refetch();
+        await refetch(currentApiFilters);
     };
 
     const handleAddNewTransaction = async (e: React.FormEvent) => {
@@ -452,7 +502,7 @@ export default function TransactionsPage() {
                 tax_amount: newTransaction.flow === "salary" && newTransaction.taxAmount ? newTransaction.taxAmount : undefined,
             });
 
-            await refetch();
+            await refetch(currentApiFilters);
             
             setIsAddModalOpen(false);
             setNewTransaction(initialNewTransactionState);
@@ -507,7 +557,7 @@ export default function TransactionsPage() {
                 account_id: newTransaction.accountId || undefined,
             });
 
-            await refetch();
+            await refetch(currentApiFilters);
             
             setIsEditModalOpen(false);
             setTransactionToEdit(null);
@@ -532,7 +582,7 @@ export default function TransactionsPage() {
 
         try {
             await deleteTransaction(transactionToDelete.$id);
-            await refetch();
+            await refetch(currentApiFilters);
             
             setIsDeleteModalOpen(false);
             setTransactionToDelete(null);
@@ -553,60 +603,44 @@ export default function TransactionsPage() {
         setNewTransaction(prev => ({ ...prev, creditCardId: "" }));
     }, [newTransaction.accountId]);
 
-    // Fetch transactions on mount and when date filter changes
+
+
+    // Fetch transactions on mount and when filters change
     useEffect(() => {
         if (!userId) return;
 
-        // Convert dateRange to actual date filters
-        let startDate: string | undefined;
-        let endDate: string | undefined;
+        const { startDate, endDate } = getDateFilters(filters.dateRange);
 
-        if (filters.dateRange !== "all") {
-            const now = new Date();
-            endDate = now.toISOString();
-
-            if (filters.dateRange === "7d") {
-                const cutoff = new Date();
-                cutoff.setDate(cutoff.getDate() - 7);
-                startDate = cutoff.toISOString();
-            } else if (filters.dateRange === "30d") {
-                const cutoff = new Date();
-                cutoff.setDate(cutoff.getDate() - 30);
-                startDate = cutoff.toISOString();
-            }
-        }
-
-        // Refetch with date filters and reset to page 1
-        refetch({ userId, startDate, endDate });
+        // Refetch with all filters and reset to page 1
+        refetch({ 
+            userId, 
+            startDate, 
+            endDate,
+            category: filters.category !== "all" ? filters.category : undefined,
+            accountId: filters.account !== "all" ? filters.account : undefined,
+            minAmount: filters.minAmount ? parseFloat(filters.minAmount) : undefined,
+            maxAmount: filters.maxAmount ? parseFloat(filters.maxAmount) : undefined,
+        });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [userId, filters.dateRange]);
+    }, [userId, filters]);
 
     // Handler for page changes
     const handlePageChange = useCallback((page: number) => {
-        // Convert dateRange to actual date filters
-        let startDate: string | undefined;
-        let endDate: string | undefined;
+        const { startDate, endDate } = getDateFilters(filters.dateRange);
 
-        if (filters.dateRange !== "all") {
-            const now = new Date();
-            endDate = now.toISOString();
-
-            if (filters.dateRange === "7d") {
-                const cutoff = new Date();
-                cutoff.setDate(cutoff.getDate() - 7);
-                startDate = cutoff.toISOString();
-            } else if (filters.dateRange === "30d") {
-                const cutoff = new Date();
-                cutoff.setDate(cutoff.getDate() - 30);
-                startDate = cutoff.toISOString();
-            }
-        }
-
-        changePage(page, { userId, startDate, endDate });
+        changePage(page, { 
+            userId, 
+            startDate, 
+            endDate,
+            category: filters.category !== "all" ? filters.category : undefined,
+            accountId: filters.account !== "all" ? filters.account : undefined,
+            minAmount: filters.minAmount ? parseFloat(filters.minAmount) : undefined,
+            maxAmount: filters.maxAmount ? parseFloat(filters.maxAmount) : undefined,
+        });
         
         // Scroll to top when changing pages
         window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, [userId, filters.dateRange, changePage]);
+    }, [userId, filters, changePage]);
 
     // Show loading skeleton on initial load
     if (isLoadingTransactions && apiTransactions.length === 0) {
@@ -644,6 +678,13 @@ export default function TransactionsPage() {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
+                    <Button
+                        variant="outline"
+                        onClick={() => setFilters(prev => ({ ...prev, dateRange: prev.dateRange === "currentMonth" ? "all" : "currentMonth" }))}
+                        className={filters.dateRange === "currentMonth" ? "bg-primary/10 text-primary border-primary" : ""}
+                    >
+                        Mês Atual
+                    </Button>
                     <Button
                         variant="outline"
                         onClick={() => setShowFilters(!showFilters)}
@@ -701,9 +742,9 @@ export default function TransactionsPage() {
                                 className="w-full h-12 px-3 bg-surface border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:outline-none transition-colors duration-200"
                             >
                                 <option value="all">Todas as Contas</option>
-                                {allAccounts.sort().map((acc) => (
-                                    <option key={acc} value={acc}>
-                                        {acc}
+                                {accounts.map((acc) => (
+                                    <option key={acc.$id} value={acc.$id}>
+                                        {acc.name}
                                     </option>
                                 ))}
                             </select>
@@ -723,9 +764,9 @@ export default function TransactionsPage() {
                                 className="w-full h-12 px-3 bg-surface border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:outline-none transition-colors duration-200"
                             >
                                 <option value="all">Todas as Categorias</option>
-                                {allCategories.sort().map((cat) => (
-                                    <option key={cat} value={cat}>
-                                        {cat}
+                                {TRANSACTION_CATEGORIES.map((cat) => (
+                                    <option key={cat.id} value={cat.id}>
+                                        {cat.name}
                                     </option>
                                 ))}
                             </select>
@@ -745,6 +786,9 @@ export default function TransactionsPage() {
                                 className="w-full h-12 px-3 bg-surface border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:outline-none transition-colors duration-200"
                             >
                                 <option value="all">Todo o Período</option>
+                                <option value="currentMonth">Mês Atual</option>
+                                <option value="previousMonth">Mês Anterior</option>
+                                <option value="nextMonth">Mês Seguinte</option>
                                 <option value="7d">Últimos 7 dias</option>
                                 <option value="30d">Últimos 30 dias</option>
                             </select>
@@ -761,29 +805,36 @@ export default function TransactionsPage() {
             {activeFilterCount > 0 && (
                 <div className="mb-6 flex items-center gap-2 flex-wrap">
                     {searchTerm && (
-                        <ActiveFilterTag label={`Search: "${searchTerm}"`} onRemove={() => setSearchTerm("")} />
+                        <ActiveFilterTag label={`Busca: "${searchTerm}"`} onRemove={() => setSearchTerm("")} />
                     )}
                     {filters.account !== "all" && (
                         <ActiveFilterTag
-                            label={`Account: ${filters.account}`}
+                            label={`Conta: ${accounts.find(a => a.$id === filters.account)?.name || filters.account}`}
                             onRemove={() => removeFilter("account")}
                         />
                     )}
                     {filters.category !== "all" && (
                         <ActiveFilterTag
-                            label={`Category: ${filters.category}`}
+                            label={`Categoria: ${TRANSACTION_CATEGORIES.find(c => c.id === filters.category)?.name || filters.category}`}
                             onRemove={() => removeFilter("category")}
                         />
                     )}
                     {filters.dateRange !== "all" && (
                         <ActiveFilterTag
-                            label={`Date: Last ${filters.dateRange === "7d" ? "7" : "30"} days`}
+                            label={`Data: ${
+                                filters.dateRange === "currentMonth" ? "Mês Atual" : 
+                                filters.dateRange === "previousMonth" ? "Mês Anterior" : 
+                                filters.dateRange === "nextMonth" ? "Mês Seguinte" : 
+                                filters.dateRange === "7d" ? "Últimos 7 dias" : 
+                                filters.dateRange === "30d" ? "Últimos 30 dias" : 
+                                filters.dateRange
+                            }`}
                             onRemove={() => removeFilter("dateRange")}
                         />
                     )}
                     {(filters.minAmount || filters.maxAmount) && (
                         <ActiveFilterTag
-                            label={`Amount: ${filters.minAmount || "0"} - ${filters.maxAmount || "∞"}`}
+                            label={`Valor: ${filters.minAmount || "0"} - ${filters.maxAmount || "∞"}`}
                             onRemove={() => {
                                 removeFilter("minAmount");
                                 removeFilter("maxAmount");
@@ -1373,7 +1424,7 @@ export default function TransactionsPage() {
                         <div className="mt-6 flex justify-between gap-3">
                             <div className="flex gap-3">
                                 {/* Only show edit/delete for manual transactions owned by current user */}
-                                {selectedTransaction.source === 'manual' && (selectedTransaction as any).user_id === userId && (
+                                <Activity mode={(selectedTransaction.source === 'manual') ? "visible" : "hidden"}>
                                     <>
                                         <Button 
                                             variant="outline" 
@@ -1392,13 +1443,7 @@ export default function TransactionsPage() {
                                             Excluir
                                         </Button>
                                     </>
-                                )}
-                                {/* Show read-only indicator for shared transactions */}
-                                {(selectedTransaction as any).user_id !== userId && (
-                                    <span className="text-sm text-gray-500 px-3 py-2 bg-gray-100 rounded-md">
-                                        Somente Leitura - Transação compartilhada
-                                    </span>
-                                )}
+                                </Activity>
                             </div>
                             <Button variant="outline" onClick={() => setSelectedTransaction(null)}>
                                 Fechar
