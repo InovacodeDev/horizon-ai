@@ -12,9 +12,10 @@ interface CreateTransactionModalProps {
   creditCard: any;
   onClose: () => void;
   onSuccess: (options?: { silent?: boolean }) => void;
+  showToast?: (message: string, type?: 'success' | 'error' | 'warning' | 'info') => void;
 }
 
-const CreateTransactionModal: React.FC<CreateTransactionModalProps> = ({ creditCard, onClose, onSuccess }) => {
+const CreateTransactionModal: React.FC<CreateTransactionModalProps> = ({ creditCard, onClose, onSuccess, showToast }) => {
   const [formData, setFormData] = useState({
     amount: 0,
     category: '',
@@ -202,8 +203,19 @@ const CreateTransactionModal: React.FC<CreateTransactionModalProps> = ({ creditC
       await submitTransaction();
       onSuccess();
       onClose();
+      if (showToast) {
+        showToast('Transação criada com sucesso!', 'success');
+      }
     } catch (err: any) {
-      setError(err.message || 'Erro ao criar transação');
+      const errorMessage = err.message || 'Erro ao criar transação';
+      // Close modal and show toast on error
+      onClose();
+      if (showToast) {
+        showToast(errorMessage, 'error');
+      } else {
+        // Fallback if showToast is not provided (shouldn't happen if properly integrated)
+        alert(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
@@ -217,6 +229,10 @@ const CreateTransactionModal: React.FC<CreateTransactionModalProps> = ({ creditC
       await submitTransaction();
       onSuccess({ silent: true });
       
+      if (showToast) {
+        showToast('Transação criada com sucesso!', 'success');
+      }
+
       // Reset form
       setFormData({
         amount: 0,
@@ -238,6 +254,7 @@ const CreateTransactionModal: React.FC<CreateTransactionModalProps> = ({ creditC
       }, 100);
       
     } catch (err: any) {
+      // Keep modal open and show error alert
       setError(err.message || 'Erro ao criar transação');
     } finally {
       setLoading(false);

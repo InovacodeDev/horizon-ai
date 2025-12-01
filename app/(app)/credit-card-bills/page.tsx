@@ -13,6 +13,7 @@ import CreateTransactionModal from './CreateTransactionModal';
 import EditTransactionModal from './EditTransactionModal';
 import PayBillModal from './PayBillModal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useToast } from '@/components/ui/Toast';
 import { Transaction } from '@/lib/types';
 
 interface Bill {
@@ -79,6 +80,8 @@ const CreditCardBillsPage: React.FC = () => {
   const [payingBill, setPayingBill] = useState<Bill | null>(null);
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
   const [isDeleteLoading, setIsDeleteLoading] = useState(false);
+  
+  const { showToast, ToastComponent } = useToast();
   
   // Estados para expandir/recolher seções
   const [expandedSections, setExpandedSections] = useState({
@@ -851,6 +854,7 @@ const CreditCardBillsPage: React.FC = () => {
           creditCard={selectedCard}
           onClose={() => setIsCreateModalOpen(false)}
           onSuccess={handleTransactionCreated}
+          showToast={showToast}
         />
       )}
 
@@ -889,6 +893,8 @@ const CreditCardBillsPage: React.FC = () => {
         variant="danger"
         loading={isDeleteLoading}
       />
+      
+      {ToastComponent}
     </div>
   );
 };
