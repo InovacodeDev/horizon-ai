@@ -1,2 +1,11 @@
 {
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.expand": false,
+  "explorer.fileNesting.patterns": {
+    ".gitignore": ".*ignore",
+    "README.md": "LICENSE, *.md",
+    "package.json": ".eslintrc*, .husky, .nvmrc, .npmrc, tsconfig.json, tailwind.config.js, postcss.config.js, next.config.js, vitest.config.ts, commitlint.config.js, vercel.json",
+    "pnpm-lock.yaml": "next-env.d.ts, toon.d.ts, bun.lockb, yarn.lock, package-lock.json",
+    ".env.example": ".env*"
+  }
 }
