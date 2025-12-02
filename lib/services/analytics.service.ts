@@ -7,7 +7,7 @@
 import { getAppwriteDatabases } from '@/lib/appwrite/client';
 import { COLLECTIONS, DATABASE_ID, Invoice, InvoiceItem, Product } from '@/lib/appwrite/schema';
 import { cacheManager, getCacheKey } from '@/lib/utils/cache';
-import { Query } from 'node-appwrite';
+import { ID, Query } from 'node-appwrite';
 
 // ============================================
 // Types and Interfaces
@@ -181,6 +181,11 @@ export class AnalyticsService {
 
       // Generate predictions (requires minimum months of data)
       const predictions = await this.generatePredictions(userId, monthlyTrend);
+
+      // Save predictions to database
+      if (predictions.length > 0) {
+        await this.savePredictions(userId, predictions);
+      }
 
       // Detect anomalies
       const anomalies = await this.detectAnomalies(userId, invoices, categoryBreakdown);
@@ -528,6 +533,56 @@ export class AnalyticsService {
   // ============================================
 
   /**
+   * Save predictions to database
+   */
+  private async savePredictions(userId: string, predictions: SpendingPrediction[]): Promise<void> {
+    try {
+      const now = new Date().toISOString();
+      const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+
+      for (const prediction of predictions) {
+        // Check if prediction already exists for this month and category
+        const existing = await this.dbAdapter.listDocuments(DATABASE_ID, COLLECTIONS.SPENDING_PREDICTIONS, [
+          Query.equal('user_id', userId),
+          Query.equal('month', currentMonth),
+          Query.equal('category', prediction.category),
+          Query.limit(1),
+        ]);
+
+        if (existing.documents.length > 0) {
+          // Update existing prediction
+          await this.dbAdapter.updateDocument(
+            DATABASE_ID,
+            COLLECTIONS.SPENDING_PREDICTIONS,
+            existing.documents[0].$id,
+            {
+              predicted_amount: prediction.predictedAmount,
+              confidence: prediction.confidence,
+              calculated_at: now,
+              updated_at: now,
+            },
+          );
+        } else {
+          // Create new prediction
+          await this.dbAdapter.createDocument(DATABASE_ID, COLLECTIONS.SPENDING_PREDICTIONS, ID.unique(), {
+            user_id: userId,
+            category: prediction.category,
+            predicted_amount: prediction.predictedAmount,
+            confidence: prediction.confidence,
+            month: currentMonth,
+            calculated_at: now,
+            created_at: now,
+            updated_at: now,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to save spending predictions:', error);
+      // Don't throw error to avoid blocking the main flow
+    }
+  }
+
+  /**
    * Generate monthly spending predictions per category
    * Requires minimum 3 months of historical data
    */
@@ -562,6 +617,7 @@ export class AnalyticsService {
         currentMonthData,
         currentDayOfMonth,
         daysInCurrentMonth,
+        daysRemaining,
       );
 
       if (prediction) {
@@ -585,46 +641,57 @@ export class AnalyticsService {
     currentMonthData: MonthlySpending | undefined,
     currentDayOfMonth: number,
     daysInCurrentMonth: number,
+    daysRemaining: number,
   ): SpendingPrediction | null {
     // Get historical data for this category (excluding current month)
     const historicalData: number[] = [];
-    for (const month of monthlyTrend) {
-      if (month.month !== currentMonth) {
-        const amount = month.categoryBreakdown[category] || 0;
+    // Sort monthly trend by date descending to get most recent months easily
+    const sortedTrend = [...monthlyTrend]
+      .filter((m) => m.month !== currentMonth)
+      .sort((a, b) => b.month.localeCompare(a.month));
+
+    // Look back up to 6 months
+    const lookbackMonths = 6;
+    const recentMonthsData = sortedTrend.slice(0, lookbackMonths);
+
+    for (const month of recentMonthsData) {
+      const amount = month.categoryBreakdown[category] || 0;
+      // Only include months with spending > 0
+      if (amount > 0) {
         historicalData.push(amount);
       }
     }
 
-    // Need at least 3 months of historical data
-    if (historicalData.length < this.MINIMUM_MONTHS) {
-      return null;
+    // If no historical data with spending, prediction is 0
+    if (historicalData.length === 0) {
+      return {
+        category,
+        predictedAmount: 0,
+        confidence: 1, // High confidence that it's 0 if no history
+        currentSpending: currentMonthData?.categoryBreakdown[category] || 0,
+        daysRemaining: 0,
+        onTrack: true,
+        baseline: 0,
+        trend: 0,
+      };
     }
 
-    // Calculate 3-month moving average for baseline
-    const recentMonths = historicalData.slice(-3);
-    const baselinePrediction = this.calculateAverage(recentMonths);
+    // Calculate simple average of months with spending
+    const averageSpending = this.calculateAverage(historicalData);
 
-    // Apply trend adjustment
-    const trend = this.calculateTrend(recentMonths);
-    const trendAdjusted = baselinePrediction * (1 + trend);
+    // The prediction is simply the average of the valid months
+    const finalPrediction = averageSpending;
 
     // Get current month's spending for this category
     const currentSpending = currentMonthData?.categoryBreakdown[category] || 0;
 
-    // Factor in current month progress
-    let finalPrediction = trendAdjusted;
-    if (currentDayOfMonth > 0 && currentSpending > 0) {
-      const projectedFromCurrent = (currentSpending / currentDayOfMonth) * daysInCurrentMonth;
-      // Weighted average: 70% historical, 30% current projection
-      finalPrediction = trendAdjusted * 0.7 + projectedFromCurrent * 0.3;
-    }
-
     // Calculate confidence based on variance
-    const variance = this.calculateVariance(recentMonths);
-    const coefficientOfVariation = baselinePrediction > 0 ? variance / baselinePrediction : 1;
+    const variance = this.calculateVariance(historicalData);
+    const coefficientOfVariation = averageSpending > 0 ? variance / averageSpending : 1;
     const confidence = Math.max(0.5, Math.min(0.95, 1 - coefficientOfVariation));
 
     // Determine if on track
+    // Simple linear check: are we below the proportional limit for today?
     const expectedSpendingByNow = (finalPrediction / daysInCurrentMonth) * currentDayOfMonth;
     const onTrack = currentSpending <= expectedSpendingByNow * 1.1; // 10% tolerance
 
@@ -635,8 +702,8 @@ export class AnalyticsService {
       currentSpending,
       daysRemaining: 0, // Will be set by caller
       onTrack,
-      baseline: baselinePrediction,
-      trend,
+      baseline: averageSpending,
+      trend: 0, // Trend is less relevant with this sparse data logic
     };
   }
 

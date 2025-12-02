@@ -28,6 +28,7 @@ export const COLLECTIONS = {
   SHARING_AUDIT_LOGS: 'sharing_audit_logs',
   IMPORT_HISTORY: 'import_history',
   RECURRING_RULES: 'recurring_rules',
+  SPENDING_PREDICTIONS: 'spending_predictions',
 } as const;
 
 // Database ID - Configure no Appwrite Console
@@ -1552,4 +1553,43 @@ export interface Notification {
   related_id?: string;
   metadata?: string;
   created_at: string;
+}
+
+// ============================================
+// Collection: spending_predictions
+// ============================================
+export const spendingPredictionsSchema = {
+  collectionId: COLLECTIONS.SPENDING_PREDICTIONS,
+  name: 'Spending Predictions',
+  permissions: ['read("any")', 'write("any")'],
+  rowSecurity: true,
+  attributes: [
+    { key: 'user_id', type: 'string', size: 255, required: true, array: false },
+    { key: 'category', type: 'string', size: 100, required: true, array: false },
+    { key: 'predicted_amount', type: 'float', required: true },
+    { key: 'confidence', type: 'float', required: true },
+    { key: 'month', type: 'string', size: 7, required: true, array: false }, // YYYY-MM
+    { key: 'calculated_at', type: 'datetime', required: true },
+    { key: 'created_at', type: 'datetime', required: true },
+    { key: 'updated_at', type: 'datetime', required: true },
+  ],
+  indexes: [
+    { key: 'idx_user_id', type: 'key', attributes: ['user_id'], orders: ['ASC'] },
+    { key: 'idx_user_month', type: 'key', attributes: ['user_id', 'month'], orders: ['ASC', 'DESC'] },
+    { key: 'idx_user_category', type: 'key', attributes: ['user_id', 'category'], orders: ['ASC', 'ASC'] },
+  ],
+};
+
+export interface SpendingPredictionDB {
+  $id: string;
+  $createdAt: string;
+  $updatedAt: string;
+  user_id: string;
+  category: string;
+  predicted_amount: number;
+  confidence: number;
+  month: string;
+  calculated_at: string;
+  created_at: string;
+  updated_at: string;
 }

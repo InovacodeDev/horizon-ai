@@ -17,6 +17,7 @@ import {
 import { invalidateCache } from '@/lib/utils/cache';
 import { ID, Query } from 'node-appwrite';
 
+import { getAnalyticsService } from './analytics.service';
 import { InvoiceParserError, ParsedInvoice } from './invoice-parser.service';
 import { ProductToCategorize, getProductCategorizationService } from './product-categorization.service';
 import { NormalizedProduct, productNormalizationService } from './product-normalization.service';
@@ -172,6 +173,14 @@ export class InvoiceService {
 
       // Invalidate related caches
       invalidateCache.invoices(userId);
+
+      // Trigger background insights generation to update predictions
+      // This ensures the new prediction logic runs immediately for the new data
+      getAnalyticsService()
+        .generateInsights(userId)
+        .catch((err) => {
+          console.error('Failed to update insights after invoice creation:', err);
+        });
 
       return {
         ...this.formatInvoice(invoiceDoc),
@@ -564,17 +573,6 @@ export class InvoiceService {
   private async findExistingProduct(userId: string, normalizedProduct: NormalizedProduct): Promise<Product | null> {
     try {
       const queries: any[] = [Query.equal('user_id', userId)];
-
-      // Try to find by product code first (most reliable)
-      if (normalizedProduct.productCode) {
-        queries.push(Query.equal('product_code', normalizedProduct.productCode));
-
-        const result = await this.dbAdapter.listDocuments(DATABASE_ID, COLLECTIONS.PRODUCTS, queries);
-
-        if (result.documents && result.documents.length > 0) {
-          return this.formatProduct(result.documents[0]);
-        }
-      }
 
       // Try to find by normalized name
       const nameQueries = [
