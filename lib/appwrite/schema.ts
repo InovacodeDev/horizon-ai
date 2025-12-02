@@ -27,6 +27,7 @@ export const COLLECTIONS = {
   SHARING_INVITATIONS: 'sharing_invitations',
   SHARING_AUDIT_LOGS: 'sharing_audit_logs',
   IMPORT_HISTORY: 'import_history',
+  RECURRING_RULES: 'recurring_rules',
 } as const;
 
 // Database ID - Configure no Appwrite Console
@@ -378,6 +379,45 @@ export interface UserSettings {
 }
 
 // ============================================
+// Collection: recurring_rules
+// ============================================
+export const recurringRulesSchema = {
+  collectionId: COLLECTIONS.RECURRING_RULES,
+  name: 'Recurring Rules',
+  permissions: ['read("any")', 'write("any")'],
+  rowSecurity: true,
+  attributes: [
+    { key: 'user_id', type: 'string', size: 255, required: true, array: false },
+    { key: 'type', type: 'enum', elements: ['income', 'expense'], required: true, array: false },
+    { key: 'frequency', type: 'enum', elements: ['WEEKLY', 'MONTHLY', 'YEARLY'], required: true, array: false },
+    { key: 'interval', type: 'integer', required: true },
+    { key: 'amount', type: 'float', required: true },
+    { key: 'start_date', type: 'datetime', required: true },
+    { key: 'end_date', type: 'datetime', required: false },
+    { key: 'category', type: 'string', size: 100, required: true, array: false },
+    { key: 'created_at', type: 'datetime', required: true },
+    { key: 'updated_at', type: 'datetime', required: true },
+  ],
+  indexes: [{ key: 'idx_user_id', type: 'key', attributes: ['user_id'], orders: ['ASC'] }],
+};
+
+export interface RecurringRule {
+  $id: string;
+  $createdAt: string;
+  $updatedAt: string;
+  user_id: string;
+  type: 'income' | 'expense';
+  frequency: 'WEEKLY' | 'MONTHLY' | 'YEARLY';
+  interval: number;
+  amount: number;
+  start_date: string;
+  end_date?: string;
+  category: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================
 // Collection: transactions
 // ============================================
 export const transactionsSchema = {
@@ -410,6 +450,7 @@ export const transactionsSchema = {
     { key: 'installments', type: 'integer', required: false, min: 1 },
     { key: 'credit_card_transaction_created_at', type: 'datetime', required: false },
     { key: 'direction', type: 'enum', elements: ['in', 'out'], required: true, array: false },
+    { key: 'recurring_rule_id', type: 'string', size: 255, required: false, array: false },
     { key: 'data', type: 'string', size: 16000, required: false, array: false }, // JSON field for remaining data
     { key: 'created_at', type: 'datetime', required: true },
     { key: 'updated_at', type: 'datetime', required: true },
@@ -425,6 +466,7 @@ export const transactionsSchema = {
     { key: 'idx_source', type: 'key', attributes: ['source'] },
     { key: 'idx_merchant', type: 'key', attributes: ['merchant'] },
     { key: 'idx_installments', type: 'key', attributes: ['installments'], orders: ['ASC'] },
+    { key: 'idx_recurring_rule_id', type: 'key', attributes: ['recurring_rule_id'] },
   ],
 };
 
@@ -450,6 +492,7 @@ export interface Transaction {
   installments?: number; // Total number of installments (12 for 12x)
   credit_card_transaction_created_at?: string; // Original purchase date on credit card
   direction: 'in' | 'out'; // Transaction direction: 'in' for income/salary/transfers in, 'out' for expense/transfers out
+  recurring_rule_id?: string;
   data?: string; // JSON string for remaining data (location, receipt_url, recurring_pattern, etc.)
   created_at: string;
   updated_at: string;

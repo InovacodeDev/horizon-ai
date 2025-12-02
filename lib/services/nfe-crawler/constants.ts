@@ -79,7 +79,7 @@ export const DEFAULT_AI_CONFIG: AIConfig = {
   provider: (process.env.AI_PROVIDER as 'anthropic' | 'openai' | 'gemini') || 'gemini',
   model: process.env.AI_MODEL || 'gemini-2.5-flash',
   temperature: 0, // Deterministic output
-  maxTokens: 1000000,
+  maxTokens: 3000000,
   cacheControl: {
     type: 'ephemeral',
   },
