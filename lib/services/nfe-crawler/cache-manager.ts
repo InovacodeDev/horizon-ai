@@ -197,6 +197,8 @@ export class CacheManager implements ICacheManager {
     this.cache.clear();
     this.head = null;
     this.tail = null;
+    this.hits = 0;
+    this.misses = 0;
   }
 
   /**

@@ -186,13 +186,36 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
       setProgress(60);
       setProcessingStep('Processando com IA...');
 
-      const input: CreateInvoiceInput = {
-        invoiceUrl: activeTab === 'url' ? invoiceUrl : undefined,
-        qrCodeData: activeTab === 'qr' ? qrCodeData : undefined,
-        customCategory,
-      };
+      // Dynamic progress messages to keep user informed
+      const aiMessages = [
+        'Analisando itens da nota...',
+        'Agrupando produtos similares...',
+        'Identificando categorias...',
+        'Verificando metadados...',
+        'Finalizando processamento...'
+      ];
+      
+      let msgIndex = 0;
+      const progressInterval = setInterval(() => {
+        if (msgIndex < aiMessages.length) {
+          setProcessingStep(aiMessages[msgIndex]);
+          // Increment progress slightly up to 85% to show activity
+          setProgress((prev) => Math.min(prev + 5, 85));
+          msgIndex++;
+        }
+      }, 2500);
 
-      await onSubmit(input);
+      try {
+        const input: CreateInvoiceInput = {
+          invoiceUrl: activeTab === 'url' ? invoiceUrl : undefined,
+          qrCodeData: activeTab === 'qr' ? qrCodeData : undefined,
+          customCategory,
+        };
+
+        await onSubmit(input);
+      } finally {
+        clearInterval(progressInterval);
+      }
 
       // Step 4: Validation & Storage
       setProgress(90);

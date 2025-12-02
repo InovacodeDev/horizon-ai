@@ -10,9 +10,14 @@
  * - OUTPUT: AI returns standard JSON for reliable parsing and validation
  * - This hybrid approach balances token efficiency with parsing reliability
  */
+import { getAppwriteDatabases } from '@/lib/appwrite/client';
+import { COLLECTIONS, DATABASE_ID } from '@/lib/appwrite/schema';
+import { getCurrentUserId } from '@/lib/auth/session';
 import { encodeToToon } from '@/lib/utils/toon';
 import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import * as cheerio from 'cheerio';
+import { Query } from 'node-appwrite';
 
 import { DEFAULT_AI_CONFIG, MIN_CACHE_TOKENS } from './constants';
 import { AIParseError } from './errors';
@@ -66,89 +71,73 @@ export class AIParserService implements IAIParserServiceExtended {
    * Parse HTML content into structured invoice data
    * Requirement 3.2, 3.7, 3.8
    */
+  /**
+   * Parse HTML content into structured invoice data
+   * Requirement 3.2, 3.7, 3.8
+   */
   async parseInvoiceHtml(html: string, invoiceKey: string): Promise<AIParseResponse> {
     const startTime = loggerService.startPerformanceTracking('ai-parse-html');
 
     try {
-      loggerService.info('ai-parser', 'parse-html', 'Starting AI parsing', {
+      loggerService.info('ai-parser', 'parse-html', 'Starting hybrid parsing', {
         invoiceKey,
         htmlSize: html.length,
         model: this.config.model,
       });
 
-      // Optimize HTML before sending to AI
-      const optimizedHtml = this.optimizeHtml(html);
+      // 1. Extract raw data with Cheerio
+      const $ = cheerio.load(html);
 
-      loggerService.info('ai-parser', 'parse-html', 'HTML optimized', {
-        invoiceKey,
-        originalSize: html.length,
-        optimizedSize: optimizedHtml.length,
-        reduction: `${(((html.length - optimizedHtml.length) / html.length) * 100).toFixed(1)}%`,
+      // Extract basic metadata for duplicate check
+      // Note: Full metadata extraction happens later with AI, but we need enough to identify/validate
+      // Actually, invoiceKey is passed as argument, so we use that.
+
+      // 2. Validate if NF is already imported
+      await this.checkDuplicate(invoiceKey);
+
+      // 3. Extract items via Cheerio
+      const rawItems = this.extractItemsViaCheerio($);
+      loggerService.info('ai-parser', 'extract-items', 'Extracted raw items', {
+        count: rawItems.length,
       });
 
-      // Build optimized prompt with caching (HTML in TOON format for input efficiency)
-      const prompt = this.buildPrompt(optimizedHtml);
+      // 4. Process items with AI in batches
+      const processedItems = await this.processItemsInBatches(rawItems);
 
-      // Estimate input tokens and cost before making the API call
-      const estimatedInputTokens = this.estimateTokenCount(prompt);
-      const estimatedInputCost = this.estimateInputCost(this.config.model, estimatedInputTokens);
+      // 5. Process metadata with AI (excluding items)
+      // Remove items table to save tokens and focus AI on metadata
+      $('#tabResult').remove();
+      $('table').has('.txtTit').remove(); // Remove other potential item tables
+      const htmlWithoutItems = $.html();
 
-      loggerService.info('ai-parser', 'parse-html', 'Sending prompt to AI', {
-        invoiceKey,
-        estimatedInputTokens,
-        estimatedInputCost: `$${estimatedInputCost.toFixed(6)}`,
-        model: this.config.model,
-        promptLength: prompt.length,
-      });
+      const metadata = await this.processMetadataWithAI(htmlWithoutItems);
 
-      // Call AI based on provider
-      let responseText: string;
-
-      if (this.config.provider === 'anthropic' && this.anthropicClient) {
-        responseText = await this.callAnthropic(prompt);
-      } else if (this.config.provider === 'openai' && this.openaiClient) {
-        responseText = await this.callOpenAI(prompt);
-      } else if (this.config.provider === 'gemini' && this.geminiClient) {
-        responseText = await this.callGemini(prompt);
-      } else {
-        throw new AIParseError('AI client not initialized', {
-          provider: this.config.provider,
-        });
-      }
-
-      // Parse JSON response
-      const parsedData = this.parseAIResponse(responseText);
-
-      // Estimate output tokens and cost
-      const estimatedOutputTokens = this.estimateTokenCount(responseText);
-      const estimatedOutputCost = this.estimateOutputCost(this.config.model, estimatedOutputTokens);
-
-      loggerService.info('ai-parser', 'parse-html', 'Received AI response', {
-        invoiceKey,
-        estimatedOutputTokens,
-        estimatedOutputCost: `$${estimatedOutputCost.toFixed(6)}`,
-        responseLength: responseText.length,
-        itemsExtracted: parsedData.items?.length || 0,
-      });
+      // 6. Merge results
+      const result: AIParseResponse = {
+        ...metadata,
+        items: processedItems,
+        // Recalculate totals based on processed items if needed, or trust metadata
+        // For now, we trust metadata totals but ensure items match
+      };
 
       // Validate response structure
-      if (!this.validateAIResponse(parsedData)) {
+      if (!this.validateAIResponse(result)) {
         loggerService.error('ai-parser', 'parse-html', 'AI response validation failed', {
           invoiceKey,
-          response: parsedData,
+          response: result,
         });
         throw new AIParseError('AI response does not match expected schema', {
-          response: parsedData,
+          response: result,
         });
       }
 
       loggerService.info('ai-parser', 'parse-html', 'AI parsing completed successfully', {
         invoiceKey,
-        itemCount: parsedData.items.length,
+        itemCount: result.items.length,
       });
       loggerService.endPerformanceTracking(startTime, true);
 
-      return parsedData;
+      return result;
     } catch (error) {
       loggerService.error('ai-parser', 'parse-html', 'AI parsing failed', {
         invoiceKey,
@@ -168,32 +157,200 @@ export class AIParserService implements IAIParserServiceExtended {
   }
 
   /**
-   * Build optimized prompt with caching
-   * Static section first (cached), variable HTML content last
-   * Requirement 7.1, 7.2, 7.3, 7.4, 7.5, 7.6
+   * Check if invoice already exists
    */
-  buildPrompt(html: string): string {
-    const staticSection = this.getStaticPromptSection();
-    const variableSection = this.getVariablePromptSection(html);
+  private async checkDuplicate(invoiceKey: string): Promise<void> {
+    try {
+      const userId = await getCurrentUserId();
+      if (!userId) {
+        // If no user context (e.g. background job without session), we might skip or throw
+        // Assuming this is called from API context where user is present
+        loggerService.warn('ai-parser', 'check-duplicate', 'No user ID found, skipping duplicate check');
+        return;
+      }
 
-    return staticSection + variableSection;
+      const db = getAppwriteDatabases();
+      const result = await db.listDocuments(DATABASE_ID, COLLECTIONS.INVOICES, [
+        Query.equal('user_id', userId),
+        Query.equal('invoice_key', invoiceKey),
+        Query.limit(1),
+      ]);
+
+      if (result.documents && result.documents.length > 0) {
+        const duplicate = result.documents[0];
+        const date = new Date(duplicate.created_at).toLocaleDateString();
+        throw new AIParseError(`Invoice already exists (registered on ${date})`, {
+          code: 'INVOICE_DUPLICATE',
+          existingInvoiceId: duplicate.$id,
+        });
+      }
+    } catch (error) {
+      if (error instanceof AIParseError) throw error;
+      // Log but don't fail if DB check fails? Or fail?
+      // User requested: "Se já tiver sido, mande um aviso de erro... e termine"
+      // So we should let errors propagate if they are genuine DB errors
+      loggerService.error('ai-parser', 'check-duplicate', 'Failed to check duplicate', { error });
+      // If it's just a DB error, maybe we shouldn't block parsing?
+      // But the requirement is strict.
+      throw error;
+    }
+  }
+
+  /**
+   * Extract raw items using Cheerio
+   */
+  private extractItemsViaCheerio($: cheerio.CheerioAPI): any[] {
+    const items: any[] = [];
+
+    // Try standard NFe layout
+    const rows = $('table#tabResult tr');
+
+    rows.each((_, row) => {
+      const $row = $(row);
+      // Skip header or empty rows
+      if ($row.find('th').length > 0) return;
+
+      const description = $row.find('.txtTit').text().trim() || $row.find('td').first().text().trim();
+      if (!description) return;
+
+      const quantityText = $row.find('.Rqtd').text().trim();
+      const unitPriceText = $row.find('.RvlUnit').text().trim();
+      const totalPriceText = $row.find('.valor').text().trim();
+      const unitText = $row.find('.Runid').text().trim();
+
+      // Extract raw text values to be processed by AI
+      items.push({
+        rawDescription: description,
+        rawQuantity: quantityText,
+        rawUnitPrice: unitPriceText,
+        rawTotalPrice: totalPriceText,
+        rawUnit: unitText,
+        fullText: $row.text().replace(/\s+/g, ' ').trim(),
+      });
+    });
+
+    // Fallback: if no standard table found, try to find any table with item-like structure
+    if (items.length === 0) {
+      $('tr').each((_, row) => {
+        const $row = $(row);
+        const text = $row.text().trim();
+        // Use parseBRL to check if the row contains a valid price
+        // This helps filter out headers, footers, or other non-item rows
+        const hasPrice = this.parseBRL(text) !== null;
+
+        if (text && hasPrice) {
+          items.push({
+            fullText: text.replace(/\s+/g, ' '),
+          });
+        }
+      });
+    }
+
+    return items;
+  }
+
+  /**
+   * Helper to parse Brazilian currency string to float
+   */
+  private parseBRL(value: string): number | null {
+    if (!value) return null;
+
+    // Remove currency symbol and whitespace
+    const cleanValue = value.replace('R$', '').trim();
+
+    // Check if it looks like a number (1.234,56 or 1234,56)
+    // Must have at least one digit
+    if (!/\d/.test(cleanValue)) return null;
+
+    try {
+      // Replace dots (thousand separators) with empty string
+      // Replace comma (decimal separator) with dot
+      const normalized = cleanValue.replace(/\./g, '').replace(',', '.');
+      const number = parseFloat(normalized);
+
+      return isNaN(number) ? null : number;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Process items in batches using AI
+   */
+  private async processItemsInBatches(rawItems: any[]): Promise<any[]> {
+    const BATCH_SIZE = 30;
+    const processedItems: any[] = [];
+
+    for (let i = 0; i < rawItems.length; i += BATCH_SIZE) {
+      const batch = rawItems.slice(i, i + BATCH_SIZE);
+
+      loggerService.info(
+        'ai-parser',
+        'process-batch',
+        `Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(rawItems.length / BATCH_SIZE)}`,
+        {
+          batchSize: batch.length,
+        },
+      );
+
+      const prompt = this.buildItemsBatchPrompt(batch);
+      const responseText = await this.callAI(prompt);
+      const batchResult = this.parseAIResponse(responseText);
+
+      if (Array.isArray(batchResult)) {
+        processedItems.push(...batchResult);
+      } else if (batchResult.items && Array.isArray(batchResult.items)) {
+        processedItems.push(...batchResult.items);
+      }
+    }
+
+    return processedItems;
+  }
+
+  /**
+   * Build prompt for items batch
+   */
+  public buildItemsBatchPrompt(batch: any[]): string {
+    return `You are an expert at extracting structured data from Brazilian fiscal invoices.
+Process the following raw item data extracted from an invoice and return a JSON array of structured items.
+
+INPUT DATA (JSON):
+${JSON.stringify(batch, null, 2)}
+
+REQUIRED OUTPUT FORMAT (JSON Array):
+[
+  {
+    "description": "<string: cleaned product name>",
+    "productCode": "<string or null: EAN/GTIN if found>",
+    "quantity": <number>,
+    "unitPrice": <number>,
+    "totalPrice": <number>,
+    "discountAmount": <number: default 0>
+  }
+]
+
+RULES:
+1. Extract numeric values correctly (convert "1.234,56" to 1234.56).
+2. If quantity is missing, infer from total/unit price or default to 1.
+3. Clean up descriptions (remove unnecessary codes or prefixes if they are not part of the name).
+4. GROUP IDENTICAL ITEMS: If multiple items have the exact same description and unit price, combine them into a single item. Sum their quantities and total prices.
+5. Return ONLY the JSON array.
+`;
   }
 
   /**
    * Get static prompt section (for caching)
-   * This section is at least 1024 tokens and includes all instructions
-   * Requirement 7.1, 7.2, 7.3, 7.5, 7.6
+   * Requirement 7.1
    */
-  getStaticPromptSection(): string {
-    return `You are an expert at extracting structured data from Brazilian fiscal invoices (NFe/NFCe).
+  public getStaticPromptSection(): string {
+    return `You are an expert at extracting structured data from Brazilian fiscal invoices.
+Extract the invoice metadata (Merchant, Invoice Details, Totals) from the following HTML.
+The items table has been removed, so focus only on the header and footer information.
 
-Your task is to extract invoice information from HTML content and return it as a JSON object.
-
-Expected JSON structure:
-
+REQUIRED OUTPUT FORMAT (JSON):
 {
   "merchant": {
-    "cnpj": "<string: 14 digits, numbers only>",
+    "cnpj": "<string: 14 digits only>",
     "name": "<string>",
     "tradeName": "<string or null>",
     "address": "<string>",
@@ -203,18 +360,8 @@ Expected JSON structure:
   "invoice": {
     "number": "<string>",
     "series": "<string>",
-    "issueDate": "<string: ISO 8601 format>"
+    "issueDate": "<string: ISO 8601 YYYY-MM-DDTHH:mm:ss>"
   },
-  "items": [
-    {
-      "description": "<string>",
-      "productCode": "<string or null>",
-      "quantity": <number>,
-      "unitPrice": <number>,
-      "totalPrice": <number>,
-      "discountAmount": <number>
-    }
-  ],
   "totals": {
     "subtotal": <number>,
     "discount": <number>,
@@ -223,271 +370,64 @@ Expected JSON structure:
   }
 }
 
-IMPORTANT RULES:
-1. Extract ALL items from the invoice, do not skip any
-2. Convert all currency values to numbers (remove R$, dots for thousands, use dot for decimal)
-3. Convert dates from DD/MM/YYYY HH:mm:ss to YYYY-MM-DDTHH:mm:ss format (ISO 8601 with time)
-4. If time is not available, use YYYY-MM-DD format
-5. Remove all formatting from CNPJ (dots, slashes, hyphens)
-6. If a field is not found, use null for optional fields or empty string for required fields
-7. Ensure all numeric calculations are correct
-8. Return ONLY valid TOON format (tab-separated), no additional text or explanation
-9. For items without explicit quantity, assume quantity is 1
-10. If discount is not shown, use 0
-11. If tax is not shown separately, use 0
-12. Subtotal should be the sum of all item totalPrice values
-13. Total should equal subtotal - discount + tax
-
-DISCOUNT AND TAX EXTRACTION RULES:
-- Look for "Desconto", "Descontos R$", "Desconto R$" to extract discount value
-- Look for "Valor total R$" for subtotal (before discount)
-- Look for "Valor a pagar R$" for final total (after discount)
-- Look for "Informação dos Tributos" or "Tributos Totais Incidentes" for tax value
-- Common patterns: "Descontos R$: 1,00" or "Valor total R$: 107,81"
-- If "Valor a pagar" is less than "Valor total", the difference is the discount
-- Tax information may appear in footer sections with "Lei Federal 12.741/2012"
-
-EXAMPLE INPUT:
-<html>
-  <div class="txtTopo">SUPERMERCADO EXEMPLO LTDA</div>
-  <div>CNPJ: 12.345.678/0001-90</div>
-  <div>Número: 123456 Série: 1 Emissão: 03/11/2025 14:30:45</div>
-  <table id="tabResult">
-    <tr id="Item + 1">
-      <td><span class="txtTit">ARROZ 5KG</span></td>
-      <td><span class="valor">25,90</span></td>
-    </tr>
-  </table>
-  <div>Valor total R$: 25,90</div>
-</html>
-
-EXAMPLE OUTPUT (JSON):
-{
-  "merchant": {
-    "cnpj": "12345678000190",
-    "name": "SUPERMERCADO EXEMPLO LTDA",
-    "tradeName": null,
-    "address": "",
-    "city": "",
-    "state": ""
-  },
-  "invoice": {
-    "number": "123456",
-    "series": "1",
-    "issueDate": "2025-11-03T14:30:45"
-  },
-  "items": [
-    {
-      "description": "ARROZ 5KG",
-      "productCode": null,
-      "quantity": 1,
-      "unitPrice": 25.90,
-      "totalPrice": 25.90,
-      "discountAmount": 0
-    }
-  ],
-  "totals": {
-    "subtotal": 25.90,
-    "discount": 0,
-    "tax": 0,
-    "total": 25.90
-  }
-}
-
-ADDITIONAL EXAMPLES:
-
-Example 2 - Multiple items with quantities:
-<html>
-  <div>FARMACIA SAUDE LTDA</div>
-  <div>CNPJ: 98.765.432/0001-10</div>
-  <div>NF-e: 789012 Serie: 2 Data: 05/11/2025 09:15:30</div>
-  <table>
-    <tr><td>DIPIRONA 500MG</td><td>Qtd: 2</td><td>Unit: R$ 8,50</td><td>Total: R$ 17,00</td></tr>
-    <tr><td>PARACETAMOL 750MG</td><td>Qtd: 1</td><td>Unit: R$ 12,30</td><td>Total: R$ 12,30</td></tr>
-  </table>
-  <div>Total: R$ 29,30</div>
-</html>
-
-Expected output (JSON):
-{
-  "merchant": {
-    "cnpj": "98765432000110",
-    "name": "FARMACIA SAUDE LTDA",
-    "tradeName": null,
-    "address": "",
-    "city": "",
-    "state": ""
-  },
-  "invoice": {
-    "number": "789012",
-    "series": "2",
-    "issueDate": "2025-11-05T09:15:30"
-  },
-  "items": [
-    {
-      "description": "DIPIRONA 500MG",
-      "productCode": null,
-      "quantity": 2,
-      "unitPrice": 8.50,
-      "totalPrice": 17.00,
-      "discountAmount": 0
-    },
-    {
-      "description": "PARACETAMOL 750MG",
-      "productCode": null,
-      "quantity": 1,
-      "unitPrice": 12.30,
-      "totalPrice": 12.30,
-      "discountAmount": 0
-    }
-  ],
-  "totals": {
-    "subtotal": 29.30,
-    "discount": 0,
-    "tax": 0,
-    "total": 29.30
-  }
-}
-
-Example 3 - With discount and full address:
-<html>
-  <div>LOJA DE ROUPAS FASHION</div>
-  <div>Nome Fantasia: Fashion Store</div>
-  <div>CNPJ: 11.222.333/0001-44</div>
-  <div>Rua das Flores, 123 - Centro - São Paulo - SP</div>
-  <div>Nota: 555666 Serie: 1 Emissao: 10/11/2025 18:45:00</div>
-  <table>
-    <tr><td>CAMISETA BASICA</td><td>Cod: 1001</td><td>R$ 49,90</td></tr>
-    <tr><td>CALCA JEANS</td><td>Cod: 2002</td><td>R$ 129,90</td></tr>
-  </table>
-  <div>Subtotal: R$ 179,80</div>
-  <div>Desconto: R$ 17,98</div>
-  <div>Total: R$ 161,82</div>
-</html>
-
-Expected output (JSON):
-{
-  "merchant": {
-    "cnpj": "11222333000144",
-    "name": "LOJA DE ROUPAS FASHION",
-    "tradeName": "Fashion Store",
-    "address": "Rua das Flores, 123 - Centro",
-    "city": "São Paulo",
-    "state": "SP"
-  },
-  "invoice": {
-    "number": "555666",
-    "series": "1",
-    "issueDate": "2025-11-10T18:45:00"
-  },
-  "items": [
-    {
-      "description": "CAMISETA BASICA",
-      "productCode": "1001",
-      "quantity": 1,
-      "unitPrice": 49.90,
-      "totalPrice": 49.90,
-      "discountAmount": 0
-    },
-    {
-      "description": "CALCA JEANS",
-      "productCode": "2002",
-      "quantity": 1,
-      "unitPrice": 129.90,
-      "totalPrice": 129.90,
-      "discountAmount": 0
-    }
-  ],
-  "totals": {
-    "subtotal": 179.80,
-    "discount": 17.98,
-    "tax": 0,
-    "total": 161.82
-  }
-}
-
-Example 4 - NFe format with discount and taxes (common format):
-<html>
-  <div>MUNDIAL MIX COMERCIO DE ALIMENTOS LTDA</div>
-  <div>CNPJ: 82.956.160/0042-41</div>
-  <div>Número: 4376 Série: 196 Emissão: 07/09/2025</div>
-  <table id="tabResult">
-    <tr><td>ALHO SAO FRANCISCO 1kg</td><td>Qtd: 1</td><td>Vl. Unit.: 11,88</td><td>Vl. Total: 11,88</td></tr>
-    <tr><td>COOKIES NESTLE 60G</td><td>Qtd: 2</td><td>Vl. Unit.: 2,79</td><td>Vl. Total: 5,58</td></tr>
-    <tr><td>BISC GAROTO 78G</td><td>Qtd: 1</td><td>Vl. Unit.: 3,99</td><td>Vl. Total: 3,99</td></tr>
-  </table>
-  <div>Qtd. total de itens: 13</div>
-  <div>Valor total R$: 107,81</div>
-  <div>Descontos R$: 1,00</div>
-  <div>Valor a pagar R$: 106,81</div>
-  <div>Informação dos Tributos Totais Incidentes (Lei Federal 12.741/2012) R$ 22,94</div>
-</html>
-
-Expected output (JSON):
-{
-  "merchant": {
-    "cnpj": "82956160004241",
-    "name": "MUNDIAL MIX COMERCIO DE ALIMENTOS LTDA",
-    "tradeName": null,
-    "address": "",
-    "city": "",
-    "state": ""
-  },
-  "invoice": {
-    "number": "4376",
-    "series": "196",
-    "issueDate": "2025-09-07"
-  },
-  "items": [
-    {
-      "description": "ALHO SAO FRANCISCO 1kg",
-      "productCode": null,
-      "quantity": 1,
-      "unitPrice": 11.88,
-      "totalPrice": 11.88,
-      "discountAmount": 0
-    },
-    {
-      "description": "COOKIES NESTLE 60G",
-      "productCode": null,
-      "quantity": 2,
-      "unitPrice": 2.79,
-      "totalPrice": 5.58,
-      "discountAmount": 0
-    },
-    {
-      "description": "BISC GAROTO 78G",
-      "productCode": null,
-      "quantity": 1,
-      "unitPrice": 3.99,
-      "totalPrice": 3.99,
-      "discountAmount": 0
-    }
-  ],
-  "totals": {
-    "subtotal": 107.81,
-    "discount": 1.00,
-    "tax": 22.94,
-    "total": 106.81
-  }
-}
-
-`;
+RULES:
+1. Extract all fields accurately.
+2. Convert dates to ISO 8601.
+3. Remove formatting from CNPJ.
+4. Return ONLY the JSON object.`;
   }
 
   /**
-   * Get variable prompt section (HTML content in TOON format)
-   * Requirement 7.2, 7.4
+   * Get variable prompt section (HTML content)
+   * Requirement 7.1
    */
-  getVariablePromptSection(html: string): string {
-    // Convert HTML to TOON for token efficiency (reduces input tokens)
+  public getVariablePromptSection(html: string): string {
     const htmlToon = encodeToToon({ html });
+    return `
+HTML CONTENT (TOON format):
+${htmlToon}`;
+  }
 
-    return `Now extract data from this HTML (provided in TOON format for efficiency):
+  /**
+   * Build optimized prompt with caching
+   * Requirement 7.1
+   */
+  public buildPrompt(html: string): string {
+    return `${this.getStaticPromptSection()}
 
-${htmlToon}
+${this.getVariablePromptSection(html)}`;
+  }
 
-CRITICAL: Return ONLY valid JSON in the exact structure shown above. No markdown formatting, no code blocks, no explanations, and no additional text before or after the JSON object. Start directly with the opening brace {.`;
+  /**
+   * Process metadata with AI
+   */
+  private async processMetadataWithAI(html: string): Promise<any> {
+    const prompt = this.buildPrompt(html);
+    const responseText = await this.callAI(prompt);
+    return this.parseAIResponse(responseText);
+  }
+
+  /**
+   * Build prompt for metadata
+   * @deprecated Use buildPrompt instead
+   */
+  public buildMetadataPrompt(html: string): string {
+    return this.buildPrompt(html);
+  }
+
+  /**
+   * Helper to call the configured AI provider
+   */
+  private async callAI(prompt: string): Promise<string> {
+    if (this.config.provider === 'anthropic' && this.anthropicClient) {
+      return this.callAnthropic(prompt);
+    } else if (this.config.provider === 'openai' && this.openaiClient) {
+      return this.callOpenAI(prompt);
+    } else if (this.config.provider === 'gemini' && this.geminiClient) {
+      return this.callGemini(prompt);
+    } else {
+      throw new AIParseError('AI client not initialized');
+    }
   }
 
   /**
