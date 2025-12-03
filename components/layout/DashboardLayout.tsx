@@ -169,7 +169,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, user }) => 
   ];
 
   const intelligenceNav = [
-    { href: '/categories', label: 'Categorias', icon: <PieChartIcon className="w-5 h-5" /> },
+    { href: '/projections', label: 'Projeções', icon: <PieChartIcon className="w-5 h-5" /> },
     // { href: '/warranties', label: 'Garantias', icon: <ShieldCheckIcon className="w-5 h-5" /> }, // TODO: Implementar
   ];
 

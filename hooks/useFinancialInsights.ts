@@ -49,7 +49,7 @@ export function useFinancialInsights(transactions: Transaction[]): FinancialInsi
 
     // Current month spending
     currentMonthTransactions.forEach((tx) => {
-      const category = tx.category || 'Uncategorized';
+      const category = tx.category || 'Sem Categoria';
       if (!categorySpending[category]) {
         categorySpending[category] = {
           category,
@@ -75,7 +75,7 @@ export function useFinancialInsights(transactions: Transaction[]): FinancialInsi
 
     // Previous months spending
     previousMonthsTransactions.forEach((tx) => {
-      const category = tx.category || 'Uncategorized';
+      const category = tx.category || 'Sem Categoria';
       if (!categorySpending[category]) {
         categorySpending[category] = {
           category,
@@ -127,9 +127,9 @@ export function useFinancialInsights(transactions: Transaction[]): FinancialInsi
       insights.push({
         $id: `unusual-${spending.category}`,
         type: 'UNUSUAL_SPENDING',
-        title: `Higher than usual spending in "${categoryName}"`,
-        description: `Your spending in this category is up ${percentRounded}% this month compared to your average. You've spent ${formatCurrency(spending.currentMonth)} vs. average of ${formatCurrency(spending.avgPrevious)}. Keeping an eye on this can help you stay on budget.`,
-        actionText: 'View Transactions',
+        title: `Gastos acima do normal em "${categoryName}"`,
+        description: `Seus gastos nesta categoria aumentaram ${percentRounded}% este mês em comparação com a sua média. Você gastou ${formatCurrency(spending.currentMonth)} vs. média de ${formatCurrency(spending.avgPrevious)}. Ficar de olho nisso pode ajudar você a manter o orçamento.`,
+        actionText: 'Ver Transações',
       });
     });
 
@@ -172,17 +172,17 @@ export function useFinancialInsights(transactions: Transaction[]): FinancialInsi
         insights.push({
           $id: 'cashflow-positive',
           type: 'CASH_FLOW_FORECAST',
-          title: 'Positive Cash Flow Forecast',
-          description: `Based on your income and spending patterns, you're on track to have a surplus of ~${formatCurrency(estimatedSurplus)} this month. A great opportunity to save or invest!`,
-          actionText: 'View Transactions',
+          title: 'Previsão de Fluxo de Caixa Positivo',
+          description: `Com base em seus padrões de renda e gastos, você está no caminho para ter um excedente de ~${formatCurrency(estimatedSurplus)} este mês. Uma ótima oportunidade para economizar ou investir!`,
+          actionText: 'Ver Transações',
         });
       } else if (estimatedSurplus < -100) {
         insights.push({
           $id: 'cashflow-negative',
           type: 'CASH_FLOW_FORECAST',
-          title: 'Watch Your Cash Flow',
-          description: `Your projected expenses may exceed your income by ~${formatCurrency(Math.abs(estimatedSurplus))} this month. Consider reviewing your spending to stay on track.`,
-          actionText: 'View Transactions',
+          title: 'Atenção ao Fluxo de Caixa',
+          description: `Suas despesas projetadas podem exceder sua renda em ~${formatCurrency(Math.abs(estimatedSurplus))} este mês. Considere rever seus gastos para manter o controle.`,
+          actionText: 'Ver Transações',
         });
       }
     }
@@ -191,7 +191,38 @@ export function useFinancialInsights(transactions: Transaction[]): FinancialInsi
   }, [transactions]);
 }
 
+const CATEGORY_TRANSLATIONS: Record<string, string> = {
+  food: 'Alimentação',
+  dining: 'Restaurantes',
+  transport: 'Transporte',
+  transportation: 'Transporte',
+  utilities: 'Contas',
+  housing: 'Moradia',
+  entertainment: 'Lazer',
+  health: 'Saúde',
+  shopping: 'Compras',
+  groceries: 'Mercado',
+  education: 'Educação',
+  travel: 'Viagem',
+  salary: 'Salário',
+  income: 'Renda',
+  personal: 'Pessoal',
+  investments: 'Investimentos',
+  general: 'Geral',
+  subscriptions: 'Assinaturas',
+  clothing: 'Roupas',
+  gifts: 'Presentes',
+  services: 'Serviços',
+  credit_card_bill: 'Fatura do Cartão',
+  uncategorized: 'Sem Categoria',
+};
+
 function formatCategoryName(category: string): string {
+  const normalizedKey = category.toLowerCase();
+  if (CATEGORY_TRANSLATIONS[normalizedKey]) {
+    return CATEGORY_TRANSLATIONS[normalizedKey];
+  }
+
   // Convert "food" -> "Food", "dining" -> "Dining", etc.
   return category
     .split('_')

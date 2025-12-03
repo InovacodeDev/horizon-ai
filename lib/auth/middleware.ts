@@ -15,7 +15,7 @@ export const PROTECTED_ROUTE_PREFIX = [
   '/overview',
   '/accounts',
   '/transactions',
-  '/categories',
+  '/projections',
   '/analytics',
   '/credit',
   '/invoices',

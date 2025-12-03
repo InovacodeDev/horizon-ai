@@ -1570,6 +1570,8 @@ export const spendingPredictionsSchema = {
     { key: 'confidence', type: 'float', required: true },
     { key: 'month', type: 'string', size: 7, required: true, array: false }, // YYYY-MM
     { key: 'calculated_at', type: 'datetime', required: true },
+    { key: 'reasoning', type: 'string', size: 1000, required: false, array: false },
+    { key: 'metadata', type: 'string', size: 4000, required: false, array: false }, // JSON field for detailed analysis
     { key: 'created_at', type: 'datetime', required: true },
     { key: 'updated_at', type: 'datetime', required: true },
   ],
@@ -1590,6 +1592,8 @@ export interface SpendingPredictionDB {
   confidence: number;
   month: string;
   calculated_at: string;
+  reasoning?: string;
+  metadata?: string;
   created_at: string;
   updated_at: string;
 }

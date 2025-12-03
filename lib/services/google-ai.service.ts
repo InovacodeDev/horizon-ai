@@ -593,52 +593,54 @@ ${formattedHistory}
       }
 
       // Validate and sanitize each item
-      const sanitizedItems = items.map((item, index) => {
-        // Validate and convert product_name
-        if (!item.product_name || typeof item.product_name !== 'string') {
-          // Skip invalid items instead of throwing
-          return null;
-        }
+      const sanitizedItems = items
+        .map((item, index) => {
+          // Validate and convert product_name
+          if (!item.product_name || typeof item.product_name !== 'string') {
+            // Skip invalid items instead of throwing
+            return null;
+          }
 
-        // Validate and convert quantity (handle string numbers)
-        let quantity = item.quantity;
-        if (typeof quantity === 'string') {
-          quantity = parseFloat(quantity);
-        }
-        if (typeof quantity !== 'number' || isNaN(quantity) || quantity <= 0) {
-          quantity = 1;
-        }
-        quantity = Math.max(1, Math.round(quantity)); // Ensure positive integer
+          // Validate and convert quantity (handle string numbers)
+          let quantity = item.quantity;
+          if (typeof quantity === 'string') {
+            quantity = parseFloat(quantity);
+          }
+          if (typeof quantity !== 'number' || isNaN(quantity) || quantity <= 0) {
+            quantity = 1;
+          }
+          quantity = Math.max(1, Math.round(quantity)); // Ensure positive integer
 
-        // Validate and convert estimated_price
-        let estimatedPrice = item.estimated_price;
-        if (typeof estimatedPrice === 'string') {
-          estimatedPrice = parseFloat(estimatedPrice);
-        }
-        if (typeof estimatedPrice !== 'number' || isNaN(estimatedPrice) || estimatedPrice < 0) {
-          estimatedPrice = 0;
-        }
+          // Validate and convert estimated_price
+          let estimatedPrice = item.estimated_price;
+          if (typeof estimatedPrice === 'string') {
+            estimatedPrice = parseFloat(estimatedPrice);
+          }
+          if (typeof estimatedPrice !== 'number' || isNaN(estimatedPrice) || estimatedPrice < 0) {
+            estimatedPrice = 0;
+          }
 
-        // Validate and convert ai_confidence
-        let confidence = item.ai_confidence;
-        if (typeof confidence === 'string') {
-          confidence = parseFloat(confidence);
-        }
-        if (typeof confidence !== 'number' || isNaN(confidence) || confidence < 0 || confidence > 1) {
-          confidence = 0.5;
-        }
+          // Validate and convert ai_confidence
+          let confidence = item.ai_confidence;
+          if (typeof confidence === 'string') {
+            confidence = parseFloat(confidence);
+          }
+          if (typeof confidence !== 'number' || isNaN(confidence) || confidence < 0 || confidence > 1) {
+            confidence = 0.5;
+          }
 
-        return {
-          product_name: item.product_name.trim(),
-          quantity,
-          unit: item.unit || 'unidades',
-          estimated_price: estimatedPrice,
-          category: item.category || '',
-          subcategory: item.subcategory || '',
-          ai_confidence: confidence,
-          ai_reasoning: item.ai_reasoning || 'Baseado no histórico de compras',
-        };
-      }).filter(item => item !== null) as any[];
+          return {
+            product_name: item.product_name.trim(),
+            quantity,
+            unit: item.unit || 'unidades',
+            estimated_price: estimatedPrice,
+            category: item.category || '',
+            subcategory: item.subcategory || '',
+            ai_confidence: confidence,
+            ai_reasoning: item.ai_reasoning || 'Baseado no histórico de compras',
+          };
+        })
+        .filter((item) => item !== null) as any[];
 
       return sanitizedItems;
     } catch (error) {
@@ -650,6 +652,121 @@ ${formattedHistory}
 
       // Graceful degradation
       return [];
+    }
+  }
+
+  /**
+   * Generate spending projection for a specific category based on history
+   * @param category - The category name (e.g., 'Saúde', 'Mercado')
+   * @param history - Array of past transactions/invoices for this category
+   * @returns Projection for the next 2 months with reasoning
+   */
+  async generateCategorySpendingProjection(
+    category: string,
+    history: Array<{
+      date: string;
+      amount: number;
+      description: string;
+      items?: Array<{ name: string; quantity: number; price: number }>;
+    }>,
+  ): Promise<{
+    nextMonth: { amount: number; reasoning: string };
+    monthAfter: { amount: number; reasoning: string };
+    confidence: number;
+    detectedPatterns: string[];
+  }> {
+    try {
+      if (!history || history.length === 0) {
+        return {
+          nextMonth: { amount: 0, reasoning: 'Sem dados históricos suficientes.' },
+          monthAfter: { amount: 0, reasoning: 'Sem dados históricos suficientes.' },
+          confidence: 0,
+          detectedPatterns: [],
+        };
+      }
+
+      // Format history for AI
+      const formattedHistory = formatForAIPrompt({ transactions: history }, `History for ${category}`);
+      const currentMonth = new Date().toLocaleString('pt-BR', { month: 'long' });
+
+      const prompt = `
+            You are a financial analyst AI. Your task is to project spending for the category "${category}" for the NEXT TWO MONTHS.
+            
+            Current Month: ${currentMonth}
+            
+            INSTRUCTIONS:
+            1. Analyze the transaction history for patterns (recurring bills, bi-monthly purchases, seasonal trends).
+            2. Pay special attention to "items" if available (e.g., medicine bought every 2 months).
+            3. Calculate a projected amount for Next Month and the Month After.
+            4. Provide a short reasoning for each projection IN PORTUGUESE (PT-BR).
+            5. List any specific patterns you detected (e.g., "Remédio X a cada 60 dias") IN PORTUGUESE (PT-BR).
+            
+            IMPORTANT:
+            - If a large expense happens every 2 months and happened last month, do NOT project it for next month.
+            - If data is sparse, use a weighted average or reasonable estimate.
+            - Return amounts as numbers.
+            - ALL TEXT OUTPUT MUST BE IN PORTUGUESE (PT-BR).
+            
+            RESPONSE FORMAT (JSON):
+            {
+              "nextMonth": { "amount": 123.45, "reasoning": "..." },
+              "monthAfter": { "amount": 123.45, "reasoning": "..." },
+              "confidence": 0.85,
+              "detectedPatterns": ["Padrão 1", "Padrão 2"]
+            }
+            
+            DATA:
+            ${formattedHistory}
+        `;
+
+      const responseText = await this.callAI(prompt, {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            nextMonth: {
+              type: Type.OBJECT,
+              properties: {
+                amount: { type: Type.NUMBER },
+                reasoning: { type: Type.STRING },
+              },
+              required: ['amount', 'reasoning'],
+            },
+            monthAfter: {
+              type: Type.OBJECT,
+              properties: {
+                amount: { type: Type.NUMBER },
+                reasoning: { type: Type.STRING },
+              },
+              required: ['amount', 'reasoning'],
+            },
+            confidence: { type: Type.NUMBER },
+            detectedPatterns: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+            },
+          },
+          required: ['nextMonth', 'monthAfter', 'confidence', 'detectedPatterns'],
+        },
+        operationName: 'generateCategorySpendingProjection',
+      });
+
+      if (!responseText) {
+        throw new GoogleAIServiceError('Empty response from AI', 'EMPTY_RESPONSE');
+      }
+
+      return JSON.parse(responseText);
+    } catch (error) {
+      console.error('Error generating projection:', error);
+      // Fallback to simple average if AI fails
+      const total = history.reduce((sum, item) => sum + item.amount, 0);
+      const avg = total / (history.length || 1); // Very rough approximation if months aren't distinct
+      return {
+        nextMonth: { amount: avg, reasoning: 'Fallback: Média simples (Erro na IA)' },
+        monthAfter: { amount: avg, reasoning: 'Fallback: Média simples (Erro na IA)' },
+        confidence: 0.1,
+        detectedPatterns: ['Erro na análise avançada'],
+      };
     }
   }
 

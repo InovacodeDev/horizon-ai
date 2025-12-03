@@ -49,6 +49,7 @@ import { migration as deleteCreditCardBillsTable } from './20251117_000045_delet
 import { migration as createImportHistoryTable } from './20251201_000046_create_import_history_table';
 import { migration as createRecurringRulesTable } from './20251201_000047_create_recurring_rules_table';
 import { migration as createSpendingPredictionsTable } from './20251202_000048_create_spending_predictions_table';
+import { migration as addReasoningAndMetadataToPredictions } from './20251202_000049_add_reasoning_and_metadata_to_predictions';
 import { Migration } from './migration.interface';
 
 /**
@@ -104,4 +105,5 @@ export const migrations: Migration[] = [
   createImportHistoryTable,
   createRecurringRulesTable,
   createSpendingPredictionsTable,
+  addReasoningAndMetadataToPredictions,
 ];

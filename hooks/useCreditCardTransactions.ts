@@ -104,7 +104,7 @@ export function useCreditCardTransactions(options: UseCreditCardTransactionsOpti
         }
 
         // IMPORTANTE: Usar limit alto para pegar todas as transações (seguindo guideline)
-        queries.push(Query.limit(10000));
+        queries.push(Query.limit(5000));
         // Order by purchase date descending
         queries.push(Query.orderDesc('purchase_date'));
 
@@ -118,7 +118,7 @@ export function useCreditCardTransactions(options: UseCreditCardTransactionsOpti
       } catch (err: any) {
         console.error('❌ useCreditCardTransactions: Error fetching transactions:', err);
         console.error('   Message:', err.message);
-        console.error('   Code:', err.code);
+        console.error('   Code:', err.code || 'N/A');
         setError(err.message || 'Failed to fetch transactions');
         setTransactions([]);
         setInitialized(true);

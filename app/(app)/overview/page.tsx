@@ -27,8 +27,7 @@ import type { Transaction, FinancialInsight, InsightType } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useUser } from "@/lib/contexts/UserContext";
-import CashFlowProjection from "@/components/CashFlowProjection";
-import { useProjections } from "@/hooks/useProjections";
+import { getCategoryProjectionsAction } from "@/actions/projection.actions";
 import { ProcessDueTransactions } from "@/components/ProcessDueTransactions";
 import { BillingLimitBanner } from "@/components/BillingLimitBanner";
 
@@ -99,8 +98,9 @@ const formatCurrencyForChart = (value: number) => {
 const BarChart: React.FC<{ data: ChartData[] }> = ({ data }) => {
     const maxValue = React.useMemo(() => {
         const allValues = data.flatMap((d) => [d.income, d.expenses]);
+        if (allValues.length === 0) return 5000;
         const max = Math.max(...allValues);
-        return Math.ceil(max / 5000) * 5000;
+        return max > 0 ? Math.ceil(max / 5000) * 5000 : 5000;
     }, [data]);
 
     const yAxisLabels = Array.from({ length: 5 }, (_, i) => {
@@ -444,11 +444,25 @@ export default function OverviewPage() {
     } = useTransactionsWithSharing({ enableRealtime: true });
     
     // Use appropriate data based on toggle
-    // When showSharedData is true, use the shared data which already includes own + shared
-    const accounts = showSharedData ? sharedAccounts : ownAccounts;
-    const apiTransactions = showSharedData ? sharedTransactions : ownTransactions;
-    const isLoadingTransactions = showSharedData ? loadingSharedTransactions : isLoadingOwnTransactions;
-    const loadingAccounts = showSharedData ? loadingSharedAccounts : loadingOwnAccounts;
+    // When showSharedData is true, we merge own and shared data to ensure everything is visible
+    const accounts = useMemo(() => {
+        if (!showSharedData) return ownAccounts;
+        const all = [...ownAccounts, ...sharedAccounts];
+        const uniqueMap = new Map();
+        all.forEach(acc => uniqueMap.set(acc.$id, acc));
+        return Array.from(uniqueMap.values());
+    }, [showSharedData, ownAccounts, sharedAccounts]);
+
+    const apiTransactions = useMemo(() => {
+        if (!showSharedData) return ownTransactions;
+        const all = [...ownTransactions, ...sharedTransactions];
+        const uniqueMap = new Map();
+        all.forEach(tx => uniqueMap.set(tx.$id, tx));
+        return Array.from(uniqueMap.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [showSharedData, ownTransactions, sharedTransactions]);
+
+    const isLoadingTransactions = showSharedData ? (loadingSharedTransactions || isLoadingOwnTransactions) : isLoadingOwnTransactions;
+    const loadingAccounts = showSharedData ? (loadingSharedAccounts || loadingOwnAccounts) : loadingOwnAccounts;
     const refetch = useMemo(() => 
         showSharedData ? () => {} : refetchOwnTransactions,
     [showSharedData, refetchOwnTransactions]);
@@ -466,12 +480,14 @@ export default function OverviewPage() {
         return new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
     }, []);
 
+    const startDateObj = useMemo(() => new Date(currentMonthStart), [currentMonthStart]);
+
     const { 
         transactions: creditCardTransactions, 
         loading: loadingCreditCardTransactions 
     } = useCreditCardTransactions({
         creditCardId: undefined,
-        startDate: new Date(currentMonthStart),
+        startDate: startDateObj,
         enableRealtime: true,
     });
 
@@ -486,8 +502,80 @@ export default function OverviewPage() {
     
     const loadingBalance = loadingAccounts;
 
-    // Get projections for next month
-    const { projectedTransactions, loading: loadingProjections } = useProjections();
+    // Projections State
+    const [aggregatedProjections, setAggregatedProjections] = React.useState<{
+        income: { currentMonth: number; nextMonth: number; monthAfter: number; history: any[] };
+        expense: { currentMonth: number; nextMonth: number; monthAfter: number; history: any[] };
+    }>({
+        income: { currentMonth: 0, nextMonth: 0, monthAfter: 0, history: [] },
+        expense: { currentMonth: 0, nextMonth: 0, monthAfter: 0, history: [] }
+    });
+    const [loadingProjections, setLoadingProjections] = React.useState(true);
+    const [isProjectionModalOpen, setIsProjectionModalOpen] = React.useState(false);
+    const [selectedProjectionType, setSelectedProjectionType] = React.useState<'income' | 'expense' | null>(null);
+
+    useEffect(() => {
+        const fetchProjections = async () => {
+            setLoadingProjections(true);
+            try {
+                const result = await getCategoryProjectionsAction();
+                if (result.success) {
+                    const income = result.projections.filter(p => p.type === 'income');
+                    const expense = result.projections.filter(p => p.type === 'expense');
+
+                    const aggregate = (items: typeof result.projections) => {
+                        const currentMonth = items.reduce((sum, item) => sum + item.currentMonth, 0);
+                        const nextMonth = items.reduce((sum, item) => sum + item.projectionNextMonth, 0);
+                        const monthAfter = items.reduce((sum, item) => sum + item.projectionMonthAfter, 0);
+                        
+                        // Aggregate history
+                        const historyMap = new Map<string, number>();
+                        items.forEach(item => {
+                            item.history.forEach(h => {
+                                historyMap.set(h.month, (historyMap.get(h.month) || 0) + h.amount);
+                            });
+                        });
+                        const history = Array.from(historyMap.entries())
+                            .map(([month, amount]) => ({ month, amount }))
+                            .sort((a, b) => a.month.localeCompare(b.month));
+
+                        return { currentMonth, nextMonth, monthAfter, history };
+                    };
+
+                    setAggregatedProjections({
+                        income: aggregate(income),
+                        expense: aggregate(expense)
+                    });
+                }
+            } catch (error) {
+                console.error("Failed to fetch projections", error);
+            } finally {
+                setLoadingProjections(false);
+            }
+        };
+
+        fetchProjections();
+    }, []);
+
+    const handleProjectionClick = (type: 'income' | 'expense') => {
+        setSelectedProjectionType(type);
+        setIsProjectionModalOpen(true);
+    };
+
+    const selectedProjectionData = useMemo(() => {
+        if (!selectedProjectionType) return null;
+        const data = aggregatedProjections[selectedProjectionType];
+        return {
+            category: selectedProjectionType === 'income' ? 'Receitas Totais' : 'Despesas Totais',
+            currentMonth: data.currentMonth,
+            projectionNextMonth: data.nextMonth,
+            projectionMonthAfter: data.monthAfter,
+            history: data.history,
+            reasoningNextMonth: 'Projeção consolidada de todas as categorias.',
+            reasoningMonthAfter: 'Projeção consolidada de todas as categorias.',
+            detectedPatterns: []
+        };
+    }, [selectedProjectionType, aggregatedProjections]);
 
     const aiInsights = useFinancialInsights(apiTransactions);
 
@@ -530,6 +618,50 @@ export default function OverviewPage() {
         });
     }, [apiTransactions, accounts]);
 
+    // Calculate credit card bills by month (including open bills)
+    const creditCardBillsByMonth = useMemo(() => {
+        const billsMap = new Map<string, number>();
+        
+        // Add transactions grouped by bill month
+        creditCards.forEach(card => {
+            const closingDay = card.closing_day || 10;
+            
+            creditCardTransactions
+                .filter(tx => (tx as any).credit_card_id === card.$id)
+                .forEach(tx => {
+                    const txDate = new Date(tx.date);
+                    const txDay = txDate.getDate();
+                    let billMonth = txDate.getMonth();
+                    let billYear = txDate.getFullYear();
+                    
+                    // If transaction is on or after closing day, it belongs to next month's bill
+                    if (txDay >= closingDay) {
+                        billMonth += 1;
+                        if (billMonth > 11) {
+                            billMonth = 0;
+                            billYear += 1;
+                        }
+                    }
+                    
+                    const billKey = `${billYear}-${String(billMonth + 1).padStart(2, '0')}`;
+                    billsMap.set(billKey, (billsMap.get(billKey) || 0) + tx.amount);
+                });
+        });
+        
+        // Add open bills (faturas em aberto)
+        openBills.forEach(bill => {
+            const dueDate = new Date(bill.due_date);
+            const billKey = getMonthKey(dueDate);
+            const unpaidAmount = bill.total_amount - bill.paid_amount;
+            
+            if (unpaidAmount > 0) {
+                billsMap.set(billKey, (billsMap.get(billKey) || 0) + unpaidAmount);
+            }
+        });
+        
+        return billsMap;
+    }, [creditCardTransactions, creditCards, openBills]);
+
     const monthlyMetrics = useMemo(() => {
         const currentMonthKey = getCurrentMonthKey();
         const previousMonthKey = getPreviousMonthKey();
@@ -560,50 +692,6 @@ export default function OverviewPage() {
             
             return acc;
         }, {} as Record<string, { income: number; expenses: 0 }>);
-
-        // Calculate credit card bills by month (including open bills)
-        const creditCardBillsByMonth = useMemo(() => {
-            const billsMap = new Map<string, number>();
-            
-            // Add transactions grouped by bill month
-            creditCards.forEach(card => {
-                const closingDay = card.closing_day || 10;
-                
-                creditCardTransactions
-                    .filter(tx => (tx as any).credit_card_id === card.$id)
-                    .forEach(tx => {
-                        const txDate = new Date(tx.date);
-                        const txDay = txDate.getDate();
-                        let billMonth = txDate.getMonth();
-                        let billYear = txDate.getFullYear();
-                        
-                        // If transaction is on or after closing day, it belongs to next month's bill
-                        if (txDay >= closingDay) {
-                            billMonth += 1;
-                            if (billMonth > 11) {
-                                billMonth = 0;
-                                billYear += 1;
-                            }
-                        }
-                        
-                        const billKey = `${billYear}-${String(billMonth + 1).padStart(2, '0')}`;
-                        billsMap.set(billKey, (billsMap.get(billKey) || 0) + tx.amount);
-                    });
-            });
-            
-            // Add open bills (faturas em aberto)
-            openBills.forEach(bill => {
-                const dueDate = new Date(bill.due_date);
-                const billKey = getMonthKey(dueDate);
-                const unpaidAmount = bill.total_amount - bill.paid_amount;
-                
-                if (unpaidAmount > 0) {
-                    billsMap.set(billKey, (billsMap.get(billKey) || 0) + unpaidAmount);
-                }
-            });
-            
-            return billsMap;
-        }, [creditCardTransactions, creditCards, openBills]);
         
         const currentMonth = transactionsByMonth[currentMonthKey] || { income: 0, expenses: 0 };
         const currentIncome = currentMonth.income;
@@ -629,7 +717,7 @@ export default function OverviewPage() {
             transactionsByMonth,
             creditCardBillsByMonth,
         };
-    }, [apiTransactions, creditCardTransactions, accounts, creditCards, openBills, showSharedData]);
+    }, [apiTransactions, creditCardBillsByMonth, showSharedData]);
 
     const chartData = useMemo(() => {
         // Get all unique month keys from transactions
@@ -712,82 +800,118 @@ export default function OverviewPage() {
             </header>
 
             <main className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                    <StatCard
-                        label="Receitas do mês"
-                        value={monthlyMetrics.currentIncome}
-                        previousValue={monthlyMetrics.previousIncome}
-                        icon={<ArrowUpCircleIcon className="text-secondary" />}
-                    />
-                    <StatCard
-                        label="Despesas do mês"
-                        value={monthlyMetrics.currentExpenses}
-                        previousValue={monthlyMetrics.previousExpenses}
-                        icon={<ArrowDownCircleIcon className="text-error" />}
-                    />
-                    <StatCard
-                        label="Fatura do mês"
-                        value={monthlyMetrics.currentCreditCardBill}
-                        previousValue={monthlyMetrics.previousCreditCardBill}
-                        icon={<TrendingUpIcon className={monthlyMetrics.currentCreditCardBill > 0 ? "text-secondary" : "text-error"} />}
-                        isNet
-                    />
-                    <StatCard
-                        label="Saldo do mês"
-                        value={monthlyMetrics.currentNet}
-                        previousValue={monthlyMetrics.previousNet}
-                        icon={<TrendingUpIcon className={monthlyMetrics.currentNet > 0 ? "text-secondary" : "text-error"} />}
-                        isNet
-                    />
-                </div>
-
-                {hasTransactions && chartData.some(d => d.income > 0 || d.expenses > 0) && (
-                    <Card className="p-6">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                            <div>
-                                <h3 className="text-xl font-medium text-on-surface">Fluxo de Caixa</h3>
-                                <p className="text-sm text-on-surface-variant mt-1">
-                                    Despesas incluem transações e faturas de cartão em aberto
-                                </p>
+                {/* Projections Section */}
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                        <h3 className="text-xl font-medium text-on-surface">Projeções para o Próximo Mês</h3>
+                        <Button
+                            variant="ghost"
+                            onClick={() => router.push('/projections')}
+                            className="text-primary hover:text-primary-dark"
+                        >
+                            Ver projeções detalhadas
+                        </Button>
+                    </div>
+                    
+                    {loadingProjections ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <Skeleton className="h-48 w-full rounded-2xl" />
+                            <Skeleton className="h-48 w-full rounded-2xl" />
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Income Projection Card */}
+                            <div 
+                                onClick={() => handleProjectionClick('income')}
+                                className="rounded-2xl p-6 shadow-sm border hover:shadow-md transition-all cursor-pointer group bg-green-500/10 dark:bg-green-500/10 border-green-200 dark:border-green-800 hover:border-green-300 dark:hover:border-green-700"
+                            >
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-3 rounded-xl transition-colors bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                                            <TrendingUpIcon className="w-6 h-6" />
+                                        </div>
+                                        <h3 className="font-semibold text-lg text-gray-900 dark:text-white">Receitas</h3>
+                                    </div>
+                                </div>
+                                
+                                <div className="space-y-4">
+                                    <div>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+                                            Receita Atual ({new Date().toLocaleString('pt-BR', { month: 'short' })})
+                                        </p>
+                                        <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                                            {aggregatedProjections.income.currentMonth.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                        </p>
+                                    </div>
+                                    
+                                    <div className="pt-4 border-t border-gray-200/50 dark:border-gray-700/50 grid grid-cols-2 gap-4">
+                                        <div>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                                                Projeção {new Date(new Date().setMonth(new Date().getMonth() + 1)).toLocaleString('pt-BR', { month: 'short' })}
+                                            </p>
+                                            <p className="font-medium text-gray-700 dark:text-gray-300">
+                                                {aggregatedProjections.income.nextMonth.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                                                Projeção {new Date(new Date().setMonth(new Date().getMonth() + 2)).toLocaleString('pt-BR', { month: 'short' })}
+                                            </p>
+                                            <p className="font-medium text-gray-700 dark:text-gray-300">
+                                                {aggregatedProjections.income.monthAfter.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-2 bg-surface-variant/30 rounded-lg p-1">
-                                <Button
-                                    variant={chartPeriod === '3m' ? 'primary' : 'ghost'}
-                                    size="sm"
-                                    onClick={() => setChartPeriod('3m')}
-                                    className="!h-8 !px-3 !text-sm"
-                                >
-                                    3 meses
-                                </Button>
-                                <Button
-                                    variant={chartPeriod === '6m' ? 'primary' : 'ghost'}
-                                    size="sm"
-                                    onClick={() => setChartPeriod('6m')}
-                                    className="!h-8 !px-3 !text-sm"
-                                >
-                                    6 meses
-                                </Button>
-                                <Button
-                                    variant={chartPeriod === '12m' ? 'primary' : 'ghost'}
-                                    size="sm"
-                                    onClick={() => setChartPeriod('12m')}
-                                    className="!h-8 !px-3 !text-sm"
-                                >
-                                    12 meses
-                                </Button>
-                                <Button
-                                    variant={chartPeriod === 'all' ? 'primary' : 'ghost'}
-                                    size="sm"
-                                    onClick={() => setChartPeriod('all')}
-                                    className="!h-8 !px-3 !text-sm"
-                                >
-                                    Tudo
-                                </Button>
+
+                            {/* Expense Projection Card */}
+                            <div 
+                                onClick={() => handleProjectionClick('expense')}
+                                className="rounded-2xl p-6 shadow-sm border hover:shadow-md transition-all cursor-pointer group bg-red-500/10 dark:bg-red-500/10 border-red-200 dark:border-red-800 hover:border-red-300 dark:hover:border-red-700"
+                            >
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-3 rounded-xl transition-colors bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
+                                            <TrendingDownIcon className="w-6 h-6" />
+                                        </div>
+                                        <h3 className="font-semibold text-lg text-gray-900 dark:text-white">Despesas</h3>
+                                    </div>
+                                </div>
+                                
+                                <div className="space-y-4">
+                                    <div>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+                                            Gasto Atual ({new Date().toLocaleString('pt-BR', { month: 'short' })})
+                                        </p>
+                                        <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                                            {aggregatedProjections.expense.currentMonth.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                        </p>
+                                    </div>
+                                    
+                                    <div className="pt-4 border-t border-gray-200/50 dark:border-gray-700/50 grid grid-cols-2 gap-4">
+                                        <div>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                                                Projeção {new Date(new Date().setMonth(new Date().getMonth() + 1)).toLocaleString('pt-BR', { month: 'short' })}
+                                            </p>
+                                            <p className="font-medium text-gray-700 dark:text-gray-300">
+                                                {aggregatedProjections.expense.nextMonth.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                                                Projeção {new Date(new Date().setMonth(new Date().getMonth() + 2)).toLocaleString('pt-BR', { month: 'short' })}
+                                            </p>
+                                            <p className="font-medium text-gray-700 dark:text-gray-300">
+                                                {aggregatedProjections.expense.monthAfter.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <BarChart data={chartData} />
-                    </Card>
-                )}
+                    )}
+                </div>
 
                 {aiInsights.length > 0 && (
                     <div>
@@ -804,16 +928,51 @@ export default function OverviewPage() {
                     </div>
                 )}
 
-                {/* Cash Flow Projection Section */}
-                {!loadingProjections && projectedTransactions.length > 0 && (
-                    <CashFlowProjection
-                        currentBalance={totalBalance}
-                        projectedTransactions={projectedTransactions}
-                        includeSharedData={showSharedData}
-                        onToggleSharedData={setShowSharedData}
-                    />
-                )}
-
+                <Card className="p-6">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                        <div>
+                            <h3 className="text-xl font-medium text-on-surface">Fluxo de Caixa</h3>
+                            <p className="text-sm text-on-surface-variant mt-1">
+                                Despesas incluem transações e faturas de cartão em aberto
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-2 bg-surface-variant/30 rounded-lg p-1">
+                            <Button
+                                variant={chartPeriod === '3m' ? 'primary' : 'ghost'}
+                                size="sm"
+                                onClick={() => setChartPeriod('3m')}
+                                className="!h-8 !px-3 !text-sm"
+                            >
+                                3 meses
+                            </Button>
+                            <Button
+                                variant={chartPeriod === '6m' ? 'primary' : 'ghost'}
+                                size="sm"
+                                onClick={() => setChartPeriod('6m')}
+                                className="!h-8 !px-3 !text-sm"
+                            >
+                                6 meses
+                            </Button>
+                            <Button
+                                variant={chartPeriod === '12m' ? 'primary' : 'ghost'}
+                                size="sm"
+                                onClick={() => setChartPeriod('12m')}
+                                className="!h-8 !px-3 !text-sm"
+                            >
+                                12 meses
+                            </Button>
+                            <Button
+                                variant={chartPeriod === 'all' ? 'primary' : 'ghost'}
+                                size="sm"
+                                onClick={() => setChartPeriod('all')}
+                                className="!h-8 !px-3 !text-sm"
+                            >
+                                Tudo
+                            </Button>
+                        </div>
+                    </div>
+                    <BarChart data={chartData} />
+                </Card>
             </main>
         </>
     );
