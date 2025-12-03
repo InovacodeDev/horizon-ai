@@ -7,6 +7,8 @@
  * Updated to use NFE Web Crawler with AI Extraction services for improved parsing.
  */
 import { cacheManager, getCacheKey } from '@/lib/utils/cache';
+import * as cheerio from 'cheerio';
+import { XMLParser } from 'fast-xml-parser';
 
 import {
   AIParseError,
@@ -36,6 +38,14 @@ export enum InvoiceCategory {
   FUEL = 'fuel',
   RETAIL = 'retail',
   SERVICES = 'services',
+  HOME = 'home',
+  ELECTRONICS = 'electronics',
+  CLOTHING = 'clothing',
+  ENTERTAINMENT = 'entertainment',
+  TRANSPORT = 'transport',
+  HEALTH = 'health',
+  EDUCATION = 'education',
+  PETS = 'pets',
   OTHER = 'other',
 }
 
@@ -122,8 +132,83 @@ const CATEGORY_KEYWORDS: Record<InvoiceCategory, string[]> = {
     'sorveteria',
   ],
   [InvoiceCategory.FUEL]: ['posto', 'combustivel', 'combustível', 'gasolina', 'etanol', 'diesel', 'gnv'],
-  [InvoiceCategory.RETAIL]: ['loja', 'magazine', 'varejo', 'comercio', 'comércio'],
+  [InvoiceCategory.RETAIL]: ['loja', 'magazine', 'varejo', 'comercio', 'comércio', 'shopping'],
   [InvoiceCategory.SERVICES]: ['servico', 'serviço', 'manutencao', 'manutenção', 'conserto', 'reparo'],
+  [InvoiceCategory.HOME]: [
+    'casa',
+    'decoracao',
+    'decoração',
+    'moveis',
+    'móveis',
+    'cama',
+    'mesa',
+    'banho',
+    'construcao',
+    'construção',
+  ],
+  [InvoiceCategory.ELECTRONICS]: [
+    'eletronico',
+    'eletrônico',
+    'celular',
+    'smartphone',
+    'computador',
+    'notebook',
+    'informatica',
+    'informática',
+    'tech',
+  ],
+  [InvoiceCategory.CLOTHING]: [
+    'roupa',
+    'vestuario',
+    'vestuário',
+    'moda',
+    'confeccao',
+    'confecção',
+    'calcado',
+    'calçado',
+    'tenis',
+    'tênis',
+    'sapato',
+  ],
+  [InvoiceCategory.ENTERTAINMENT]: ['cinema', 'teatro', 'show', 'ingresso', 'lazer', 'parque', 'jogo', 'game'],
+  [InvoiceCategory.TRANSPORT]: [
+    'uber',
+    '99',
+    'taxi',
+    'táxi',
+    'transporte',
+    'passagem',
+    'onibus',
+    'ônibus',
+    'metro',
+    'metrô',
+  ],
+  [InvoiceCategory.HEALTH]: [
+    'saude',
+    'saúde',
+    'medico',
+    'médico',
+    'clinica',
+    'clínica',
+    'hospital',
+    'exame',
+    'laboratorio',
+    'laboratório',
+  ],
+  [InvoiceCategory.EDUCATION]: [
+    'escola',
+    'colegio',
+    'colégio',
+    'faculdade',
+    'universidade',
+    'curso',
+    'ensino',
+    'educacao',
+    'educação',
+    'livraria',
+    'papelaria',
+  ],
+  [InvoiceCategory.PETS]: ['pet', 'veterinario', 'veterinário', 'racao', 'ração', 'banho e tosa'],
   [InvoiceCategory.OTHER]: [],
 };
 
@@ -274,6 +359,209 @@ export class InvoiceParserService {
         url,
         invoiceKey,
         step,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  /**
+   * Parse invoice from XML file content
+   */
+  async parseFromXmlFile(xmlContent: string): Promise<ParsedInvoice> {
+    const startTime = loggerService.startPerformanceTracking('parse-invoice-from-xml');
+
+    try {
+      // 1. Parse XML to get basic structure
+      // We reuse the existing parseXml logic but we need to enhance it with AI processing
+      // to match the "URL da Nota" output format exactly
+      const basicParsed = this.parseXml(xmlContent, 'XML_UPLOAD_' + Date.now());
+
+      // 2. Process items through AI to ensure consistency (normalization, categorization)
+      // The AI service expects raw items, so we pass the items extracted from XML
+      const processedItems = await aiParserService.processItemsInBatches(basicParsed.items);
+
+      // 3. Update the parsed invoice with AI-processed items
+      const finalInvoice: ParsedInvoice = {
+        ...basicParsed,
+        items: processedItems.map((item) => ({
+          description: item.description,
+          productCode: item.productCode,
+          ncmCode: item.ncmCode,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice,
+          discountAmount: item.discountAmount || 0,
+        })),
+        metadata: {
+          parsedAt: new Date(),
+          fromCache: false,
+          parsingMethod: 'xml',
+        },
+      };
+
+      // 4. Re-calculate category based on refined items
+      finalInvoice.category = this.identifyMerchantCategory(finalInvoice.merchant, finalInvoice.items);
+
+      loggerService.endPerformanceTracking(startTime, true);
+      return finalInvoice;
+    } catch (error) {
+      loggerService.endPerformanceTracking(startTime, false, error instanceof Error ? error.message : String(error));
+      throw new InvoiceParserError('Failed to parse XML file', 'XML_PARSE_ERROR', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  /**
+   * Parse invoice from PDF file buffer
+   */
+  async parseFromPdfFile(pdfBuffer: ArrayBuffer | Buffer | any): Promise<ParsedInvoice> {
+    const startTime = loggerService.startPerformanceTracking('parse-invoice-from-pdf');
+
+    try {
+      const { PDFParser } = await import('./parsers/pdf.parser');
+      const parser = new PDFParser();
+
+      // 1. Extract text from PDF
+      let buffer: Buffer;
+      if (Buffer.isBuffer(pdfBuffer)) {
+        buffer = pdfBuffer;
+      } else if (typeof pdfBuffer === 'string') {
+        // Assume base64 if string
+        buffer = Buffer.from(pdfBuffer, 'base64');
+      } else if (Array.isArray(pdfBuffer)) {
+        buffer = Buffer.from(pdfBuffer);
+      } else if (
+        typeof pdfBuffer === 'object' &&
+        pdfBuffer !== null &&
+        'data' in pdfBuffer &&
+        Array.isArray(pdfBuffer.data)
+      ) {
+        // Handle serialized Buffer object { type: 'Buffer', data: [...] }
+        buffer = Buffer.from(pdfBuffer.data);
+      } else {
+        // Try standard conversion, might throw if invalid
+        buffer = Buffer.from(pdfBuffer);
+      }
+      const text = await parser.parseText(buffer);
+
+      // 2. Extract raw items using heuristics
+      const rawItems = parser.extractItemsFromText(text);
+
+      if (rawItems.length === 0) {
+        // Fallback: use AI to parse the full text
+        // We wrap text in <pre> to preserve formatting
+        const aiResult = await aiParserService.parseInvoiceHtml(`<pre>${text}</pre>`, '');
+
+        // Map AI result to ParsedInvoice
+        return {
+          invoiceKey: '', // No key in PDF usually
+          invoiceNumber: String(aiResult.invoice.number),
+          series: String(aiResult.invoice.series),
+          issueDate: new Date(aiResult.invoice.issueDate),
+          merchant: {
+            cnpj: String(aiResult.merchant.cnpj || '').slice(0, 20),
+            name: String(aiResult.merchant.name || ''),
+            tradeName: aiResult.merchant.tradeName ? String(aiResult.merchant.tradeName) : undefined,
+            address: String(aiResult.merchant.address || ''),
+            city: String(aiResult.merchant.city || ''),
+            state: String(aiResult.merchant.state || ''),
+          },
+          items: aiResult.items.map((item: any) => ({
+            description: String(item.description || ''),
+            productCode: item.productCode ? String(item.productCode) : undefined,
+            ncmCode: item.ncmCode ? String(item.ncmCode) : undefined,
+            quantity: Number(item.quantity || 0),
+            unitPrice: Number(item.unitPrice || 0),
+            totalPrice: Number(item.totalPrice || 0),
+            discountAmount: Number(item.discountAmount || 0),
+          })),
+          totals: {
+            subtotal: Number(aiResult.totals.subtotal || 0),
+            discount: Number(aiResult.totals.discount || 0),
+            tax: Number(aiResult.totals.tax || 0),
+            total: Number(aiResult.totals.total || 0),
+          },
+          xmlData: text, // Store original text
+          category: (aiResult as any).category || 'other',
+          metadata: {
+            parsingMethod: 'ai', // Use 'ai' as it matches the type
+            parsedAt: new Date(),
+            fromCache: false,
+          },
+        };
+      }
+
+      // 3. Process items through AI
+      const processedItems = await aiParserService.processItemsInBatches(rawItems);
+
+      // 4. Extract metadata (Merchant, Date, Totals)
+      const metadata = parser.extractMetadata(text);
+
+      // Calculate total from items as requested by user
+      // "Pegar apenas o valor dos itens da NF e somar para ter o valor total"
+      const itemsTotal = processedItems.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
+
+      // Use extracted total if available and close to items total (within 10% margin), otherwise use items total
+      // This handles cases where items might be missing or parsed incorrectly
+      let finalTotal = itemsTotal;
+      if (metadata.totalAmount && Math.abs(metadata.totalAmount - itemsTotal) < itemsTotal * 0.1) {
+        finalTotal = metadata.totalAmount;
+      }
+
+      // Construct Invoice Key
+      // Priority: 1. Extracted Access Key, 2. Synthetic Key (CNPJ + Number + Series), 3. Random fallback
+      let invoiceKey = metadata.accessKey;
+      if (!invoiceKey) {
+        if (metadata.merchantCNPJ && metadata.invoiceNumber) {
+          // Create a deterministic key for duplicate detection
+          invoiceKey = `SYNTH-${metadata.merchantCNPJ}-${metadata.invoiceNumber}-${metadata.series || '0'}`;
+        } else {
+          invoiceKey = 'PDF_UPLOAD_' + Date.now();
+        }
+      }
+
+      const finalInvoice: ParsedInvoice = {
+        invoiceKey,
+        invoiceNumber: metadata.invoiceNumber || '000',
+        series: metadata.series || '0',
+        issueDate: metadata.issueDate || new Date(),
+        merchant: {
+          cnpj: metadata.merchantCNPJ || '',
+          name: metadata.merchantName || 'Unknown Merchant',
+          address: '',
+          city: '',
+          state: '',
+        },
+        items: processedItems.map((item) => ({
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice,
+          discountAmount: 0,
+        })),
+        totals: {
+          subtotal: finalTotal,
+          discount: 0,
+          tax: 0,
+          total: finalTotal,
+        },
+        xmlData: '', // No XML data
+        metadata: {
+          parsedAt: new Date(),
+          fromCache: false,
+          parsingMethod: 'ai', // Treated as AI since we used AI for items
+        },
+        category: InvoiceCategory.OTHER, // Will be updated
+      };
+
+      finalInvoice.category = this.identifyMerchantCategory(finalInvoice.merchant, finalInvoice.items);
+
+      loggerService.endPerformanceTracking(startTime, true);
+      return finalInvoice;
+    } catch (error) {
+      loggerService.endPerformanceTracking(startTime, false, error instanceof Error ? error.message : String(error));
+      throw new InvoiceParserError('Failed to parse PDF file', 'PDF_PARSE_ERROR', {
         error: error instanceof Error ? error.message : String(error),
       });
     }
@@ -536,13 +824,12 @@ export class InvoiceParserService {
    * Parse HTML and extract invoice data (for portals that don't provide XML)
    */
   private parseHtml(htmlData: string, invoiceKey: string): ParsedInvoice {
-    const parser = new DOMParser();
-    const htmlDoc = parser.parseFromString(htmlData, 'text/html');
+    const $ = cheerio.load(htmlData);
 
     // Extract merchant info from HTML
-    const merchantName = htmlDoc.querySelector('.txtTopo')?.textContent?.trim() || '';
+    const merchantName = $('.txtTopo').first().text().trim() || '';
     const cnpjMatch = htmlData.match(/CNPJ:\s*([\d./-]+)/);
-    const cnpj = cnpjMatch ? cnpjMatch[1].replace(/[.\/-]/g, '') : '';
+    const cnpj = cnpjMatch ? cnpjMatch[1].replace(/[.\/-]/g, '').slice(0, 20) : '';
 
     // Extract invoice number and date
     const numeroMatch = htmlData.match(/Número:\s*(\d+)/);
@@ -554,21 +841,21 @@ export class InvoiceParserService {
 
     // Extract items from table
     const items: ParsedInvoiceItem[] = [];
-    const itemRows = htmlDoc.querySelectorAll('table#tabResult tr[id^="Item"]');
+    const itemRows = $('table#tabResult tr[id^="Item"]');
 
-    itemRows.forEach((row) => {
-      const descElement = row.querySelector('.txtTit');
-      const valorElement = row.querySelector('.valor');
-      const qtdElement = row.querySelector('.Rqtd');
-      const vlUnitElement = row.querySelector('.RvlUnit');
+    itemRows.each((_: number, row: any) => {
+      const descElement = $(row).find('.txtTit');
+      const valorElement = $(row).find('.valor');
+      const qtdElement = $(row).find('.Rqtd');
+      const vlUnitElement = $(row).find('.RvlUnit');
 
-      if (descElement && valorElement) {
-        const description = descElement.textContent?.trim() || '';
-        const totalPrice = parseFloat(valorElement.textContent?.replace(',', '.') || '0');
-        const qtdText = qtdElement?.textContent || '';
+      if (descElement.length && valorElement.length) {
+        const description = descElement.text().trim();
+        const totalPrice = parseFloat(valorElement.text().replace(',', '.') || '0');
+        const qtdText = qtdElement.text() || '';
         const qtdMatch = qtdText.match(/Qtde\.:([0-9,]+)/);
         const quantity = qtdMatch ? parseFloat(qtdMatch[1].replace(',', '.')) : 1;
-        const vlUnitText = vlUnitElement?.textContent || '';
+        const vlUnitText = vlUnitElement.text() || '';
         const vlUnitMatch = vlUnitText.match(/Vl\. Unit\.:.*?([0-9,]+)/);
         const unitPrice = vlUnitMatch ? parseFloat(vlUnitMatch[1].replace(',', '.')) : totalPrice / quantity;
 
@@ -631,30 +918,76 @@ export class InvoiceParserService {
         return this.parseHtml(xmlData, invoiceKey);
       }
 
-      // Parse XML using DOMParser (browser) or xml2js (Node.js)
-      const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(xmlData, 'text/xml');
-
-      // Check for parsing errors
-      const parserError = xmlDoc.querySelector('parsererror');
-      if (parserError) {
-        throw new InvoiceParserError('Invalid XML format', 'INVOICE_PARSE_ERROR', { error: parserError.textContent });
-      }
+      // Parse XML using fast-xml-parser
+      const parser = new XMLParser({
+        ignoreAttributes: false,
+        attributeNamePrefix: '',
+      });
+      const xmlDoc = parser.parse(xmlData);
 
       // Extract invoice information
-      const invoiceNumber = this.getXmlValue(xmlDoc, 'nNF') || '';
-      const series = this.getXmlValue(xmlDoc, 'serie') || '1';
-      const issueDateStr = this.getXmlValue(xmlDoc, 'dhEmi') || this.getXmlValue(xmlDoc, 'dEmi') || '';
+      // Adjust path based on XML structure (nfeProc > NFe > infNFe or just NFe > infNFe)
+      const nfeProc = xmlDoc.nfeProc;
+      const NFe = nfeProc ? nfeProc.NFe : xmlDoc.NFe;
+      const infNFe = NFe ? NFe.infNFe : null;
+
+      if (!infNFe) {
+        throw new InvoiceParserError('Invalid XML structure', 'INVOICE_PARSE_ERROR');
+      }
+
+      const ide = infNFe.ide;
+      const invoiceNumber = String(ide?.nNF || '');
+      const series = String(ide?.serie || '1');
+      const issueDateStr = ide?.dhEmi || ide?.dEmi || '';
       const issueDate = issueDateStr ? new Date(issueDateStr) : new Date();
 
       // Extract merchant information
-      const merchant = this.extractMerchantInfo(xmlDoc);
+      const emit = infNFe.emit;
+      const merchant: MerchantInfo = {
+        cnpj: String(emit?.CNPJ || '').slice(0, 20),
+        name: String(emit?.xNome || ''),
+        tradeName: emit?.xFant ? String(emit?.xFant) : undefined,
+        address: String(emit?.enderEmit?.xLgr || ''),
+        city: String(emit?.enderEmit?.xMun || ''),
+        state: String(emit?.enderEmit?.UF || ''),
+      };
 
       // Extract line items
-      const items = this.extractProducts(xmlDoc);
+      const items: ParsedInvoiceItem[] = [];
+      const dets = Array.isArray(infNFe.det) ? infNFe.det : [infNFe.det];
+
+      dets.forEach((det: any) => {
+        if (!det) return;
+        const prod = det.prod;
+
+        items.push({
+          description: prod.xProd || '',
+          productCode: prod.cEAN || prod.cEANTrib ? String(prod.cEAN || prod.cEANTrib) : undefined,
+          ncmCode: prod.NCM ? String(prod.NCM) : undefined,
+          quantity: parseFloat(prod.qCom || '1'),
+          unitPrice: parseFloat(prod.vUnCom || '0'),
+          totalPrice: parseFloat(prod.vProd || '0'),
+          discountAmount: parseFloat(prod.vDesc || '0'),
+        });
+      });
 
       // Calculate totals
-      const totals = this.calculateTotals(xmlDoc, items);
+      const totalNode = infNFe.total;
+      const icmsTot = totalNode?.ICMSTot;
+
+      const totals: InvoiceTotals = {
+        subtotal: parseFloat(icmsTot?.vProd || '0'),
+        discount: parseFloat(icmsTot?.vDesc || '0'),
+        tax: parseFloat(icmsTot?.vTotTrib || '0'),
+        total: parseFloat(icmsTot?.vNF || '0'),
+      };
+
+      // Fallback: calculate from items if not in XML
+      if (totals.total === 0 && items.length > 0) {
+        totals.subtotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
+        totals.discount = items.reduce((sum, item) => sum + item.discountAmount, 0);
+        totals.total = totals.subtotal - totals.discount;
+      }
 
       // Detect category
       const category = this.identifyMerchantCategory(merchant, items);
@@ -690,19 +1023,20 @@ export class InvoiceParserService {
       throw new InvoiceParserError('Merchant information not found in XML', 'INVOICE_PARSE_ERROR');
     }
 
-    const cnpj = this.getXmlValue(xmlDoc, 'CNPJ', emitNode) || '';
-    const name = this.getXmlValue(xmlDoc, 'xNome', emitNode) || '';
-    const tradeName = this.getXmlValue(xmlDoc, 'xFant', emitNode) || undefined;
+    const cnpj = String(this.getXmlValue(xmlDoc, 'CNPJ', emitNode) || '').slice(0, 20);
+    const name = String(this.getXmlValue(xmlDoc, 'xNome', emitNode) || '');
+    const tradeName = this.getXmlValue(xmlDoc, 'xFant', emitNode);
+    const tradeNameStr = tradeName ? String(tradeName) : undefined;
 
     const enderNode = emitNode.querySelector('enderEmit');
-    const address = enderNode ? this.getXmlValue(xmlDoc, 'xLgr', enderNode) || '' : '';
-    const city = enderNode ? this.getXmlValue(xmlDoc, 'xMun', enderNode) || '' : '';
-    const state = enderNode ? this.getXmlValue(xmlDoc, 'UF', enderNode) || '' : '';
+    const address = enderNode ? String(this.getXmlValue(xmlDoc, 'xLgr', enderNode) || '') : '';
+    const city = enderNode ? String(this.getXmlValue(xmlDoc, 'xMun', enderNode) || '') : '';
+    const state = enderNode ? String(this.getXmlValue(xmlDoc, 'UF', enderNode) || '') : '';
 
     return {
       cnpj,
       name,
-      tradeName,
+      tradeName: tradeNameStr,
       address,
       city,
       state,
@@ -712,45 +1046,35 @@ export class InvoiceParserService {
   /**
    * Extract products from XML
    */
-  extractProducts(xmlDoc: Document | string): ParsedInvoiceItem[] {
-    // Handle string input (for testing)
-    let doc: Document;
+  extractProducts(xmlDoc: any): ParsedInvoiceItem[] {
+    // This method was designed for DOMParser.
+    // If we switch to fast-xml-parser, we should update this to accept the parsed object or string.
+    // For now, I'll implement it to parse string using fast-xml-parser if passed string.
     if (typeof xmlDoc === 'string') {
-      const parser = new DOMParser();
-      doc = parser.parseFromString(xmlDoc, 'text/xml');
-    } else {
-      doc = xmlDoc;
-    }
+      const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '' });
+      const doc = parser.parse(xmlDoc);
+      const infNFe = doc.nfeProc?.NFe?.infNFe || doc.NFe?.infNFe;
+      if (!infNFe) return [];
 
-    const items: ParsedInvoiceItem[] = [];
-    const detNodes = doc.querySelectorAll('det');
+      const items: ParsedInvoiceItem[] = [];
+      const dets = Array.isArray(infNFe.det) ? infNFe.det : [infNFe.det];
 
-    detNodes.forEach((detNode, index) => {
-      const prodNode = detNode.querySelector('prod');
-
-      if (!prodNode) return;
-
-      const description = this.getXmlValue(doc, 'xProd', prodNode) || '';
-      const productCode =
-        this.getXmlValue(doc, 'cEAN', prodNode) || this.getXmlValue(doc, 'cEANTrib', prodNode) || undefined;
-      const ncmCode = this.getXmlValue(doc, 'NCM', prodNode) || undefined;
-      const quantity = parseFloat(this.getXmlValue(doc, 'qCom', prodNode) || '1');
-      const unitPrice = parseFloat(this.getXmlValue(doc, 'vUnCom', prodNode) || '0');
-      const totalPrice = parseFloat(this.getXmlValue(doc, 'vProd', prodNode) || '0');
-      const discountAmount = parseFloat(this.getXmlValue(doc, 'vDesc', prodNode) || '0');
-
-      items.push({
-        description,
-        productCode,
-        ncmCode,
-        quantity,
-        unitPrice,
-        totalPrice,
-        discountAmount,
+      dets.forEach((det: any) => {
+        if (!det) return;
+        const prod = det.prod;
+        items.push({
+          description: prod.xProd || '',
+          productCode: prod.cEAN || prod.cEANTrib ? String(prod.cEAN || prod.cEANTrib) : undefined,
+          ncmCode: prod.NCM ? String(prod.NCM) : undefined,
+          quantity: parseFloat(prod.qCom || '1'),
+          unitPrice: parseFloat(prod.vUnCom || '0'),
+          totalPrice: parseFloat(prod.vProd || '0'),
+          discountAmount: parseFloat(prod.vDesc || '0'),
+        });
       });
-    });
-
-    return items;
+      return items;
+    }
+    return [];
   }
 
   /**
@@ -844,30 +1168,30 @@ export class InvoiceParserService {
     // Map to ParsedInvoice format
     const parsed: ParsedInvoice = {
       invoiceKey,
-      invoiceNumber: aiResponse.invoice.number,
-      series: aiResponse.invoice.series,
+      invoiceNumber: String(aiResponse.invoice.number),
+      series: String(aiResponse.invoice.series),
       issueDate,
       merchant: {
-        cnpj: aiResponse.merchant.cnpj,
-        name: aiResponse.merchant.name,
-        tradeName: aiResponse.merchant.tradeName || undefined,
-        address: aiResponse.merchant.address,
-        city: aiResponse.merchant.city,
-        state: aiResponse.merchant.state,
+        cnpj: String(aiResponse.merchant.cnpj || '').slice(0, 20),
+        name: String(aiResponse.merchant.name || ''),
+        tradeName: aiResponse.merchant.tradeName ? String(aiResponse.merchant.tradeName) : undefined,
+        address: String(aiResponse.merchant.address || ''),
+        city: String(aiResponse.merchant.city || ''),
+        state: String(aiResponse.merchant.state || ''),
       },
       items: aiResponse.items.map((item: any) => ({
         description: item.description,
-        productCode: item.productCode || undefined,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        totalPrice: item.totalPrice,
-        discountAmount: item.discountAmount,
+        productCode: item.productCode ? String(item.productCode) : undefined,
+        quantity: Number(item.quantity || 0),
+        unitPrice: Number(item.unitPrice || 0),
+        totalPrice: Number(item.totalPrice || 0),
+        discountAmount: Number(item.discountAmount || 0),
       })),
       totals: {
-        subtotal: aiResponse.totals.subtotal,
-        discount: aiResponse.totals.discount,
-        tax: aiResponse.totals.tax,
-        total: aiResponse.totals.total,
+        subtotal: Number(aiResponse.totals.subtotal || 0),
+        discount: Number(aiResponse.totals.discount || 0),
+        tax: Number(aiResponse.totals.tax || 0),
+        total: Number(aiResponse.totals.total || 0),
       },
       xmlData: html, // Store original HTML for reference
       metadata: {

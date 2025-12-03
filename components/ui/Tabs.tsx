@@ -19,32 +19,40 @@ const useTabs = () => {
 
 interface TabsProps {
   defaultValue: string;
+  value?: string;
   children: React.ReactNode;
   onValueChange?: (value: string) => void;
+  className?: string;
 }
 
-export const Tabs: React.FC<TabsProps> = ({ defaultValue, children, onValueChange }) => {
-  const [activeTab, setActiveTab] = useState(defaultValue);
+export const Tabs: React.FC<TabsProps> = ({ defaultValue, value, children, onValueChange, className }) => {
+  const [internalActiveTab, setInternalActiveTab] = useState(defaultValue);
   
-  const handleSetActiveTab = (value: string) => {
-    setActiveTab(value);
-    onValueChange?.(value);
+  const isControlled = value !== undefined;
+  const activeTab = isControlled ? value : internalActiveTab;
+  
+  const handleSetActiveTab = (newValue: string) => {
+    if (!isControlled) {
+      setInternalActiveTab(newValue);
+    }
+    onValueChange?.(newValue);
   };
   
   return (
     <TabsContext.Provider value={{ activeTab, setActiveTab: handleSetActiveTab }}>
-      <div>{children}</div>
+      <div className={className}>{children}</div>
     </TabsContext.Provider>
   );
 };
 
 interface TabsListProps {
   children: React.ReactNode;
+  className?: string;
 }
 
-export const TabsList: React.FC<TabsListProps> = ({ children }) => {
+export const TabsList: React.FC<TabsListProps> = ({ children, className }) => {
   return (
-    <div className="border-b border-outline flex items-center" role="tablist">
+    <div className={`border-b border-outline flex items-center ${className || ''}`} role="tablist">
       {children}
     </div>
   );

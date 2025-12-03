@@ -319,6 +319,14 @@ export enum InvoiceCategory {
   FUEL = 'fuel',
   RETAIL = 'retail',
   SERVICES = 'services',
+  HOME = 'home',
+  ELECTRONICS = 'electronics',
+  CLOTHING = 'clothing',
+  ENTERTAINMENT = 'entertainment',
+  TRANSPORT = 'transport',
+  HEALTH = 'health',
+  EDUCATION = 'education',
+  PETS = 'pets',
   OTHER = 'other',
 }
 

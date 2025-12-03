@@ -19,6 +19,8 @@ import {
 } from '@/components/assets/Icons';
 import { DATABASE_ID } from '@/lib/appwrite/schema';
 
+import { InvoiceCategory } from '@/lib/services/nfe-crawler/types';
+
 interface ShoppingList {
   $id: string;
   title: string;
@@ -58,17 +60,25 @@ export default function ListsPage() {
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
 
   // Selected category for AI generation
-  const [selectedCategory, setSelectedCategory] = useState<string>('supermarket');
+  const [selectedCategory, setSelectedCategory] = useState<string>(InvoiceCategory.SUPERMARKET);
   const [historicalMonths, setHistoricalMonths] = useState<number>(12);
   const [generating, setGenerating] = useState(false);
 
   const categories = [
-    { value: 'supermarket', label: 'Supermercado' },
-    { value: 'pharmacy', label: 'Farmácia' },
-    { value: 'groceries', label: 'Mercearia' },
-    { value: 'restaurant', label: 'Restaurante' },
-    { value: 'retail', label: 'Varejo' },
-    { value: 'other', label: 'Outros' },
+    { value: InvoiceCategory.SUPERMARKET, label: 'Supermercado' },
+    { value: InvoiceCategory.PHARMACY, label: 'Farmácia' },
+    { value: InvoiceCategory.GROCERIES, label: 'Mercearia' },
+    { value: InvoiceCategory.RESTAURANT, label: 'Restaurante' },
+    { value: InvoiceCategory.RETAIL, label: 'Varejo' },
+    { value: InvoiceCategory.HOME, label: 'Casa e Decoração' },
+    { value: InvoiceCategory.ELECTRONICS, label: 'Eletrônicos' },
+    { value: InvoiceCategory.CLOTHING, label: 'Vestuário' },
+    { value: InvoiceCategory.ENTERTAINMENT, label: 'Entretenimento' },
+    { value: InvoiceCategory.TRANSPORT, label: 'Transporte' },
+    { value: InvoiceCategory.HEALTH, label: 'Saúde' },
+    { value: InvoiceCategory.EDUCATION, label: 'Educação' },
+    { value: InvoiceCategory.PETS, label: 'Pets' },
+    { value: InvoiceCategory.OTHER, label: 'Outros' },
   ];
 
   const monthOptions = [

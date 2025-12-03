@@ -277,7 +277,7 @@ export class AIParserService implements IAIParserServiceExtended {
   /**
    * Process items in batches using AI
    */
-  private async processItemsInBatches(rawItems: any[]): Promise<any[]> {
+  public async processItemsInBatches(rawItems: any[]): Promise<any[]> {
     const BATCH_SIZE = 30;
     const processedItems: any[] = [];
 

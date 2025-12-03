@@ -1,29 +1,23 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { Scanner } from '@yudiel/react-qr-scanner';
 
+import { useMediaQuery } from '@/hooks/use-media-query';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 
 // ============================================
 // Types and Interfaces
 // ============================================
 
-export enum InvoiceCategory {
-  PHARMACY = 'pharmacy',
-  GROCERIES = 'groceries',
-  SUPERMARKET = 'supermarket',
-  RESTAURANT = 'restaurant',
-  FUEL = 'fuel',
-  RETAIL = 'retail',
-  SERVICES = 'services',
-  OTHER = 'other',
-}
+import { InvoiceCategory } from '@/lib/services/nfe-crawler/types';
 
 export interface CreateInvoiceInput {
   invoiceUrl?: string;
   qrCodeData?: string;
+  xmlContent?: string;
+  pdfBuffer?: ArrayBuffer | number[];
   customCategory?: InvoiceCategory;
   transactionId?: string;
   accountId?: string;
@@ -47,6 +41,14 @@ const CATEGORY_LABELS: Record<InvoiceCategory, string> = {
   [InvoiceCategory.FUEL]: 'Posto de Combustível',
   [InvoiceCategory.RETAIL]: 'Varejo',
   [InvoiceCategory.SERVICES]: 'Serviços',
+  [InvoiceCategory.HOME]: 'Casa e Decoração',
+  [InvoiceCategory.ELECTRONICS]: 'Eletrônicos',
+  [InvoiceCategory.CLOTHING]: 'Vestuário',
+  [InvoiceCategory.ENTERTAINMENT]: 'Entretenimento',
+  [InvoiceCategory.TRANSPORT]: 'Transporte',
+  [InvoiceCategory.HEALTH]: 'Saúde',
+  [InvoiceCategory.EDUCATION]: 'Educação',
+  [InvoiceCategory.PETS]: 'Pets',
   [InvoiceCategory.OTHER]: 'Outro',
 };
 
@@ -106,9 +108,11 @@ function validateInvoiceKey(key: string): { valid: boolean; error?: string } {
 // ============================================
 
 export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalProps) {
-  const [activeTab, setActiveTab] = useState<'url' | 'qr'>('url');
+  const [activeTab, setActiveTab] = useState<'url' | 'qr' | 'xml' | 'pdf'>('url');
   const [invoiceUrl, setInvoiceUrl] = useState('');
   const [qrCodeData, setQrCodeData] = useState('');
+  const [xmlFile, setXmlFile] = useState<File | null>(null);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [customCategory, setCustomCategory] = useState<InvoiceCategory | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -117,10 +121,25 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
   const [processingStep, setProcessingStep] = useState<string>('');
   const [progress, setProgress] = useState(0);
 
+  // Check if mobile (md breakpoint is usually 768px)
+  const isDesktop = useMediaQuery('(min-width: 768px)');
+  
+  // Effect to handle tab visibility changes
+  useEffect(() => {
+    if (isOpen) {
+      // If on desktop and QR tab is active, switch to URL
+      if (isDesktop && activeTab === 'qr') {
+        setActiveTab('url');
+      }
+    }
+  }, [isOpen, isDesktop, activeTab]);
+
   // Reset form state
   const resetForm = () => {
     setInvoiceUrl('');
     setQrCodeData('');
+    setXmlFile(null);
+    setPdfFile(null);
     setCustomCategory(undefined);
     setLoading(false);
     setError(null);
@@ -147,10 +166,20 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
         setValidationError(validation.error || 'URL inválida');
         return false;
       }
-    } else {
+    } else if (activeTab === 'qr') {
       const validation = validateInvoiceKey(qrCodeData);
       if (!validation.valid) {
         setValidationError(validation.error || 'Chave de acesso inválida');
+        return false;
+      }
+    } else if (activeTab === 'xml') {
+      if (!xmlFile) {
+        setValidationError('Selecione um arquivo XML');
+        return false;
+      }
+    } else if (activeTab === 'pdf') {
+      if (!pdfFile) {
+        setValidationError('Selecione um arquivo PDF');
         return false;
       }
     }
@@ -172,19 +201,43 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
     setProcessingStep('Iniciando processamento...');
 
     try {
-      // Step 1: Extract key
+      // Step 1: Extract key / Read file
       setProgress(20);
-      setProcessingStep('Extraindo chave de acesso...');
+      
+      let input: CreateInvoiceInput = {
+        customCategory,
+      };
+
+      if (activeTab === 'url') {
+        setProcessingStep('Extraindo chave de acesso...');
+        input.invoiceUrl = invoiceUrl;
+      } else if (activeTab === 'qr') {
+        setProcessingStep('Processando QR Code...');
+        input.qrCodeData = qrCodeData;
+      } else if (activeTab === 'xml' && xmlFile) {
+        setProcessingStep('Lendo arquivo XML...');
+        const text = await xmlFile.text();
+        input.xmlContent = text;
+      } else if (activeTab === 'pdf' && pdfFile) {
+        setProcessingStep('Lendo arquivo PDF...');
+        const buffer = await pdfFile.arrayBuffer();
+        console.log({
+          buffer,
+          pdfFile,
+          uint8Array: new Uint8Array(buffer),
+        })
+        input.pdfBuffer = Array.from(new Uint8Array(buffer));
+      }
+
       await new Promise((resolve) => setTimeout(resolve, 300));
 
-      // Step 2: Fetch HTML
+      // Step 2: Processing
       setProgress(40);
-      setProcessingStep('Buscando dados da nota fiscal...');
-      await new Promise((resolve) => setTimeout(resolve, 300));
-
-      // Step 3: AI Parsing
+      setProcessingStep('Processando dados...');
+      
+      // Step 3: AI Parsing (if applicable)
       setProgress(60);
-      setProcessingStep('Processando com IA...');
+      setProcessingStep('Analisando com IA...');
 
       // Dynamic progress messages to keep user informed
       const aiMessages = [
@@ -206,12 +259,6 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
       }, 2500);
 
       try {
-        const input: CreateInvoiceInput = {
-          invoiceUrl: activeTab === 'url' ? invoiceUrl : undefined,
-          qrCodeData: activeTab === 'qr' ? qrCodeData : undefined,
-          customCategory,
-        };
-
         await onSubmit(input);
       } finally {
         clearInterval(progressInterval);
@@ -228,7 +275,33 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
       resetForm();
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Falha ao registrar nota fiscal');
+      console.error('Erro ao adicionar nota:', err);
+      
+      let errorMessage = 'Falha ao registrar nota fiscal. Tente novamente.';
+      
+      // Tratamento de erros específicos
+      if (err.message) {
+        if (err.message.includes('Invoice already exists')) {
+          errorMessage = 'Esta nota fiscal já foi registrada anteriormente.';
+        } else if (err.message.includes('Invalid invoice URL')) {
+          errorMessage = 'A URL fornecida não é válida ou não pertence a um portal suportado.';
+        } else if (err.message.includes('Could not extract invoice key')) {
+          errorMessage = 'Não foi possível identificar a chave de acesso na URL ou arquivo fornecido.';
+        } else if (err.message.includes('Failed to fetch invoice')) {
+          errorMessage = 'Não foi possível acessar os dados da nota fiscal. O portal da SEFAZ pode estar indisponível.';
+        } else if (err.message.includes('Empty response')) {
+          errorMessage = 'O portal da SEFAZ retornou uma resposta vazia. Tente novamente mais tarde.';
+        } else if (err.message.includes('PDF_PARSE_ERROR')) {
+          errorMessage = 'Erro ao ler o arquivo PDF. Verifique se o arquivo não está corrompido.';
+        } else if (err.message.includes('XML_PARSE_ERROR')) {
+          errorMessage = 'Erro ao ler o arquivo XML. O formato pode estar incorreto.';
+        } else {
+          // Se for uma mensagem genérica em inglês, tenta traduzir ou usa a original se não mapeada
+          errorMessage = err.message;
+        }
+      }
+      
+      setError(errorMessage);
       setProgress(0);
       setProcessingStep('');
     } finally {
@@ -249,7 +322,7 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
   // Handle QR code error
   const handleQrError = (error: any) => {
     console.error('QR Scanner error:', error);
-    setError('Erro ao acessar a câmera. Verifique as permissões.');
+    setError('Não foi possível acessar a câmera. Verifique se você concedeu permissão de acesso à câmera no seu navegador.');
   };
 
   if (!isOpen) return null;
@@ -336,17 +409,26 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
 
               <Tabs 
                 defaultValue='url'
+                value={activeTab}
                 onValueChange={(value) => {
-                  setActiveTab(value as 'url' | 'qr');
+                  setActiveTab(value as any);
                   setValidationError(null);
                 }}
               >
-                <TabsList>
+                <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value='url'>
-                    URL da Nota
+                    URL
                   </TabsTrigger>
-                  <TabsTrigger value='qr'>
-                    QR Code
+                  {!isDesktop && (
+                    <TabsTrigger value='qr'>
+                      QR Code
+                    </TabsTrigger>
+                  )}
+                  <TabsTrigger value='xml'>
+                    XML
+                  </TabsTrigger>
+                  <TabsTrigger value='pdf'>
+                    PDF
                   </TabsTrigger>
                 </TabsList>
 
@@ -358,7 +440,7 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
                       </label>
                       <input
                         type='text'
-                        required
+                        required={activeTab === 'url'}
                         value={invoiceUrl}
                         onChange={(e) => {
                           setInvoiceUrl(e.target.value);
@@ -387,7 +469,7 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
                         </label>
                         <input
                           type='text'
-                          required
+                          required={activeTab === 'qr'}
                           value={qrCodeData}
                           onChange={(e) => {
                             setQrCodeData(e.target.value);
@@ -464,6 +546,84 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
                     )}
                   </div>
                 </TabsContent>
+
+                <TabsContent value='xml'>
+                  <div className='space-y-4'>
+                    <div>
+                      <label className='block text-sm font-medium text-text-primary mb-2'>
+                        Arquivo XML *
+                      </label>
+                      <div className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                        validationError ? 'border-red-border bg-red-bg/10' : 'border-border-primary hover:border-blue-primary/50'
+                      }`}>
+                        <input
+                          type='file'
+                          accept='.xml'
+                          required={activeTab === 'xml'}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0] || null;
+                            setXmlFile(file);
+                            setValidationError(null);
+                          }}
+                          className='hidden'
+                          id='xml-upload'
+                          disabled={loading}
+                        />
+                        <label htmlFor='xml-upload' className='cursor-pointer flex flex-col items-center gap-2'>
+                          <svg className="w-8 h-8 text-text-tertiary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          <span className='text-sm font-medium text-blue-primary'>
+                            {xmlFile ? xmlFile.name : 'Clique para selecionar o arquivo XML'}
+                          </span>
+                          <span className='text-xs text-text-tertiary'>
+                            Suporta apenas arquivos .xml de NFe/NFCe
+                          </span>
+                        </label>
+                      </div>
+                      {validationError && <p className='text-sm text-red-text mt-1.5'>{validationError}</p>}
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value='pdf'>
+                  <div className='space-y-4'>
+                    <div>
+                      <label className='block text-sm font-medium text-text-primary mb-2'>
+                        Arquivo PDF *
+                      </label>
+                      <div className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                        validationError ? 'border-red-border bg-red-bg/10' : 'border-border-primary hover:border-blue-primary/50'
+                      }`}>
+                        <input
+                          type='file'
+                          accept='.pdf'
+                          required={activeTab === 'pdf'}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0] || null;
+                            setPdfFile(file);
+                            setValidationError(null);
+                          }}
+                          className='hidden'
+                          id='pdf-upload'
+                          disabled={loading}
+                        />
+                        <label htmlFor='pdf-upload' className='cursor-pointer flex flex-col items-center gap-2'>
+                          <svg className="w-8 h-8 text-text-tertiary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                          </svg>
+                          <span className='text-sm font-medium text-blue-primary'>
+                            {pdfFile ? pdfFile.name : 'Clique para selecionar o arquivo PDF'}
+                          </span>
+                          <span className='text-xs text-text-tertiary'>
+                            Suporta apenas arquivos .pdf
+                          </span>
+                        </label>
+                      </div>
+                      {validationError && <p className='text-sm text-red-text mt-1.5'>{validationError}</p>}
+                    </div>
+                  </div>
+                </TabsContent>
               </Tabs>
 
               {/* Optional Category Override */}
@@ -504,7 +664,7 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
                 <button
                   type='submit'
                   className='h-10 px-4 rounded-md text-sm font-medium bg-blue-primary text-white hover:bg-blue-hover shadow-soft-xs hover:shadow-soft-sm transition-smooth focus:outline-none focus:ring-2 focus:ring-border-focus disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2'
-                  disabled={loading || (activeTab === 'url' && !invoiceUrl) || (activeTab === 'qr' && !qrCodeData)}
+                  disabled={loading || (activeTab === 'url' && !invoiceUrl) || (activeTab === 'qr' && !qrCodeData) || (activeTab === 'xml' && !xmlFile) || (activeTab === 'pdf' && !pdfFile)}
                 >
                   {loading && (
                     <svg

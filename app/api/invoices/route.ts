@@ -29,10 +29,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     // Validate input
-    if (!body.invoiceUrl && !body.qrCodeData) {
+    if (!body.invoiceUrl && !body.qrCodeData && !body.xmlContent && !body.pdfBuffer) {
       return NextResponse.json(
         {
-          error: 'Either invoiceUrl or qrCodeData is required',
+          error: 'Either invoiceUrl, qrCodeData, xmlContent or pdfBuffer is required',
           code: 'INVALID_INPUT',
         },
         { status: 400 },
@@ -44,8 +44,14 @@ export async function POST(request: NextRequest) {
     try {
       if (body.invoiceUrl) {
         parsedInvoice = await invoiceParserService.parseFromUrl(body.invoiceUrl, forceRefresh);
-      } else {
+      } else if (body.qrCodeData) {
         parsedInvoice = await invoiceParserService.parseFromQRCode(body.qrCodeData, forceRefresh);
+      } else if (body.xmlContent) {
+        parsedInvoice = await invoiceParserService.parseFromXmlFile(body.xmlContent);
+      } else if (body.pdfBuffer) {
+        parsedInvoice = await invoiceParserService.parseFromPdfFile(body.pdfBuffer);
+      } else {
+        throw new Error('No valid input provided');
       }
     } catch (error) {
       if (error instanceof InvoiceParserError) {

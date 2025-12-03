@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import Modal from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 
+import { InvoiceCategory } from '@/lib/services/nfe-crawler/types';
+
 export interface ExportOptions {
   format: 'csv' | 'pdf';
   startDate?: string;
@@ -34,14 +36,22 @@ export function ExportInvoicesModal({ isOpen, onClose, onExport, currentFilters 
   const [error, setError] = useState<string | null>(null);
 
   const categories = [
-    { value: 'pharmacy', label: 'Farmácia' },
-    { value: 'groceries', label: 'Hortifruti' },
-    { value: 'supermarket', label: 'Supermercado' },
-    { value: 'restaurant', label: 'Restaurante' },
-    { value: 'fuel', label: 'Combustível' },
-    { value: 'retail', label: 'Varejo' },
-    { value: 'services', label: 'Serviços' },
-    { value: 'other', label: 'Outro' },
+    { value: InvoiceCategory.PHARMACY, label: 'Farmácia' },
+    { value: InvoiceCategory.GROCERIES, label: 'Hortifruti' },
+    { value: InvoiceCategory.SUPERMARKET, label: 'Supermercado' },
+    { value: InvoiceCategory.RESTAURANT, label: 'Restaurante' },
+    { value: InvoiceCategory.FUEL, label: 'Combustível' },
+    { value: InvoiceCategory.RETAIL, label: 'Varejo' },
+    { value: InvoiceCategory.SERVICES, label: 'Serviços' },
+    { value: InvoiceCategory.HOME, label: 'Casa e Decoração' },
+    { value: InvoiceCategory.ELECTRONICS, label: 'Eletrônicos' },
+    { value: InvoiceCategory.CLOTHING, label: 'Vestuário' },
+    { value: InvoiceCategory.ENTERTAINMENT, label: 'Entretenimento' },
+    { value: InvoiceCategory.TRANSPORT, label: 'Transporte' },
+    { value: InvoiceCategory.HEALTH, label: 'Saúde' },
+    { value: InvoiceCategory.EDUCATION, label: 'Educação' },
+    { value: InvoiceCategory.PETS, label: 'Pets' },
+    { value: InvoiceCategory.OTHER, label: 'Outro' },
   ];
 
   const handleCategoryToggle = (category: string) => {

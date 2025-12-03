@@ -99,15 +99,25 @@ interface InsightsResponse {
 // Constants
 // ============================================
 
+import { InvoiceCategory } from '@/lib/services/nfe-crawler/types';
+
 const CATEGORY_LABELS: Record<string, string> = {
-  pharmacy: 'Farmácia',
-  groceries: 'Hortifruti',
-  supermarket: 'Supermercado',
-  restaurant: 'Restaurante',
-  fuel: 'Combustível',
-  retail: 'Varejo',
-  services: 'Serviços',
-  other: 'Outro',
+  [InvoiceCategory.PHARMACY]: 'Farmácia',
+  [InvoiceCategory.GROCERIES]: 'Hortifruti',
+  [InvoiceCategory.SUPERMARKET]: 'Supermercado',
+  [InvoiceCategory.RESTAURANT]: 'Restaurante',
+  [InvoiceCategory.FUEL]: 'Combustível',
+  [InvoiceCategory.RETAIL]: 'Varejo',
+  [InvoiceCategory.SERVICES]: 'Serviços',
+  [InvoiceCategory.HOME]: 'Casa e Decoração',
+  [InvoiceCategory.ELECTRONICS]: 'Eletrônicos',
+  [InvoiceCategory.CLOTHING]: 'Vestuário',
+  [InvoiceCategory.ENTERTAINMENT]: 'Entretenimento',
+  [InvoiceCategory.TRANSPORT]: 'Transporte',
+  [InvoiceCategory.HEALTH]: 'Saúde',
+  [InvoiceCategory.EDUCATION]: 'Educação',
+  [InvoiceCategory.PETS]: 'Pets',
+  [InvoiceCategory.OTHER]: 'Outro',
 };
 
 
@@ -141,6 +151,7 @@ export default function InsightsPage() {
   const [hasMinimumData, setHasMinimumData] = useState(false);
   const [insufficientDataMessage, setInsufficientDataMessage] = useState<string>('');
   const [dismissedAnomalies, setDismissedAnomalies] = useState<Set<string>>(new Set());
+  const [isAnomaliesCollapsed, setIsAnomaliesCollapsed] = useState(false);
   
   // Budget management state
   const [budgets, setBudgets] = useState<BudgetLimit[]>([]);
@@ -624,62 +635,90 @@ export default function InsightsPage() {
       {/* Anomaly Alerts Section */}
       {visibleAnomalies.length > 0 && (
         <Card className="p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-medium text-on-surface">Alertas e Anomalias</h2>
-            <span className="text-sm text-on-surface-variant">
-              {visibleAnomalies.length} {visibleAnomalies.length === 1 ? 'alerta' : 'alertas'}
-            </span>
+          <div 
+            className="flex items-center justify-between cursor-pointer"
+            onClick={() => setIsAnomaliesCollapsed(!isAnomaliesCollapsed)}
+          >
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-medium text-on-surface">Alertas e Anomalias</h2>
+              <span className="text-sm text-on-surface-variant bg-surface-variant px-2 py-0.5 rounded-full">
+                {visibleAnomalies.length}
+              </span>
+            </div>
+            <button
+              className="p-1 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50 rounded-full transition-colors"
+            >
+              <svg
+                className={`w-6 h-6 transform transition-transform duration-200 ${isAnomaliesCollapsed ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 15l7-7 7 7"
+                />
+              </svg>
+            </button>
           </div>
-          <div className="space-y-3">
-            {visibleAnomalies.map((anomaly, index) => {
-              const config = getSeverityConfig(anomaly.severity);
-              return (
-                <div
-                  key={index}
-                  className={`flex items-start gap-3 p-4 rounded-lg border ${config.bgColor} ${config.borderColor}`}
-                >
-                  <div className={`flex-shrink-0 ${config.color}`}>
-                    {config.icon}
-                  </div>
-                  <div className="flex-grow min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded ${config.color} ${config.bgColor}`}>
-                        {getAnomalyTypeLabel(anomaly.type)}
-                      </span>
-                      <span className="text-xs text-on-surface-variant">
-                        {new Date(anomaly.detectedAt).toLocaleDateString('pt-BR')}
-                      </span>
-                    </div>
-                    <p className="text-sm text-on-surface">{anomaly.description}</p>
-                    {anomaly.category && (
-                      <p className="text-xs text-on-surface-variant mt-1">
-                        Categoria: {formatCategory(anomaly.category)}
-                      </p>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => handleDismissAnomaly(anomaly)}
-                    className="flex-shrink-0 p-1 text-on-surface-variant hover:text-on-surface hover:bg-white/50 rounded transition-colors"
-                    title="Dispensar alerta"
+          
+          {!isAnomaliesCollapsed && (
+            <div className="space-y-3 mt-4 animate-slide-down">
+              {visibleAnomalies.map((anomaly, index) => {
+                const config = getSeverityConfig(anomaly.severity);
+                return (
+                  <div
+                    key={index}
+                    className={`flex items-start gap-3 p-4 rounded-lg border ${config.bgColor} ${config.borderColor}`}
                   >
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
+                    <div className={`flex-shrink-0 ${config.color}`}>
+                      {config.icon}
+                    </div>
+                    <div className="flex-grow min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded ${config.color} ${config.bgColor}`}>
+                          {getAnomalyTypeLabel(anomaly.type)}
+                        </span>
+                        <span className="text-xs text-on-surface-variant">
+                          {new Date(anomaly.detectedAt).toLocaleDateString('pt-BR')}
+                        </span>
+                      </div>
+                      <p className="text-sm text-on-surface">{anomaly.description}</p>
+                      {anomaly.category && (
+                        <p className="text-xs text-on-surface-variant mt-1">
+                          Categoria: {formatCategory(anomaly.category)}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDismissAnomaly(anomaly);
+                      }}
+                      className="flex-shrink-0 p-1 text-on-surface-variant hover:text-on-surface hover:bg-white/50 rounded transition-colors"
+                      title="Dispensar alerta"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              );
-            })}
-          </div>
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </Card>
       )}
 
