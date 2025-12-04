@@ -661,12 +661,6 @@ export default function TransactionsPage() {
                             Pesquise e filtre todo seu histórico de transações.
                         </p>
                     </div>
-                    <div className="text-right">
-                        <p className="text-sm font-medium text-on-surface-variant">Total Filtrado</p>
-                        <p className={`text-3xl font-medium ${totalSum >= 0 ? "text-secondary" : "text-error"}`}>
-                            {totalSum.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                        </p>
-                    </div>
                 </div>
                 <div className="mt-6 flex items-center gap-3">
                     <div className="flex-grow max-w-md">
