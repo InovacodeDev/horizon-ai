@@ -48,7 +48,7 @@ export class AccountService {
         user_id: userId,
         name: data.name,
         account_type: data.account_type,
-        balance: 0, // Balance sempre começa em 0 e é calculado pelas transações
+        balance: 0,
         is_manual: data.is_manual ?? true,
         bank_id: data.bank_id,
         last_digits: data.last_digits,
@@ -59,8 +59,6 @@ export class AccountService {
 
       const account = this.deserializeAccount(document);
 
-      // Create initial transaction if there's an initial balance
-      // Balance will be automatically synced by Appwrite Function via database event trigger
       if (data.initial_balance && data.initial_balance > 0) {
         try {
           const { TransactionService } = await import('./transaction.service');
@@ -78,7 +76,6 @@ export class AccountService {
           });
         } catch (error: any) {
           console.error('Failed to create initial balance transaction:', error);
-          // Don't fail the account creation if transaction fails
         }
       }
 
@@ -95,7 +92,6 @@ export class AccountService {
    */
   async getAccountsByUserId(userId: string, includeShared: boolean = false): Promise<Account[]> {
     try {
-      // If includeShared is false, return only user's own accounts
       if (!includeShared) {
         const result = await this.dbAdapter.listDocuments(DATABASE_ID, COLLECTIONS.ACCOUNTS, [
           Query.equal('user_id', userId),
@@ -105,17 +101,13 @@ export class AccountService {
         const documents = result.documents || [];
         const accounts = documents.map((doc: any) => this.deserializeAccount(doc));
 
-        // Balance is automatically synced by Appwrite Function via database event triggers
-        // No need to recalculate here
         return accounts;
       }
 
-      // If includeShared is true, use DataAccessService to get all accessible accounts
       const { DataAccessService } = await import('./data-access.service');
       const dataAccessService = new DataAccessService();
       const accountsWithOwnership = await dataAccessService.getAccessibleAccounts(userId);
 
-      // Strip ownership metadata to return plain Account objects
       return accountsWithOwnership.map((account) => {
         const { ownerId, ownerName, isOwn, ...plainAccount } = account;
         return plainAccount;
@@ -147,7 +139,6 @@ export class AccountService {
     try {
       const document = await this.dbAdapter.getDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, accountId);
 
-      // Verify the account belongs to the user
       if (document?.user_id !== userId) {
         throw new Error(`Account not found`);
       }
@@ -163,7 +154,6 @@ export class AccountService {
    */
   async updateAccount(accountId: string, userId: string, data: UpdateAccountData): Promise<Account> {
     try {
-      // First verify the account exists and belongs to the user
       const existingAccount = await this.getAccountById(accountId, userId);
 
       const { dateToUserTimezone } = await import('@/lib/utils/timezone');
@@ -181,7 +171,6 @@ export class AccountService {
         updateData.account_type = data.account_type;
       }
 
-      // Update individual columns if any data fields changed
       if (data.bank_id !== undefined) {
         updateData.bank_id = data.bank_id;
       }
@@ -207,7 +196,6 @@ export class AccountService {
    */
   async deleteAccount(accountId: string, userId: string): Promise<void> {
     try {
-      // First verify the account exists and belongs to the user
       await this.getAccountById(accountId, userId);
 
       await this.dbAdapter.deleteDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, accountId);
@@ -254,8 +242,6 @@ export class AccountService {
     );
 
     try {
-      // Just return the current balance from the database
-      // The Appwrite Function handles actual synchronization
       const document = await this.dbAdapter.getDocument(DATABASE_ID, COLLECTIONS.ACCOUNTS, accountId);
       return document?.balance;
     } catch (error: any) {
@@ -276,22 +262,15 @@ export class AccountService {
     },
   ): Promise<void> {
     try {
-      // Verify both accounts exist and belong to the user
       const fromAccount = await this.getAccountById(data.fromAccountId, userId);
       const toAccount = await this.getAccountById(data.toAccountId, userId);
 
-      // Check if source account has sufficient balance
       if (fromAccount.balance < data.amount) {
         throw new Error('Saldo insuficiente na conta de origem');
       }
 
-      const { dateToUserTimezone } = await import('@/lib/utils/timezone');
-      const now = dateToUserTimezone(new Date().toISOString().split('T')[0]);
+      const now = new Date().toISOString();
 
-      // Criar duas transações tipo "transfer" (uma para cada conta)
-      // Essas transações não aparecem na UI, apenas afetam o saldo
-
-      // Transação de saída (diminui saldo da conta origem)
       await this.dbAdapter.createDocument(DATABASE_ID, COLLECTIONS.TRANSACTIONS, ID.unique(), {
         user_id: userId,
         account_id: data.fromAccountId,
@@ -305,7 +284,6 @@ export class AccountService {
         updated_at: now,
       });
 
-      // Transação de entrada (aumenta saldo da conta destino)
       await this.dbAdapter.createDocument(DATABASE_ID, COLLECTIONS.TRANSACTIONS, ID.unique(), {
         user_id: userId,
         account_id: data.toAccountId,
@@ -320,10 +298,6 @@ export class AccountService {
       });
 
       console.log('Transfer transactions created');
-
-      // Balance sync removed - now handled automatically by Appwrite Function via database event triggers
-      // The Balance Sync Function will detect the new transfer transactions and update both account balances
-      // UI will update automatically via Appwrite Realtime subscriptions
 
       console.log('Transfer completed - balances will be updated automatically by Appwrite Function');
     } catch (error: any) {
