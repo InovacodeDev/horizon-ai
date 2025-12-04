@@ -24,15 +24,16 @@ export async function POST(request: NextRequest) {
     // Parse query parameters
     const { searchParams } = new URL(request.url);
     const forceRefresh = searchParams.get('forceRefresh') === 'true';
+    const parseOnly = searchParams.get('parseOnly') === 'true';
 
     // Parse request body
     const body = await request.json();
 
     // Validate input
-    if (!body.invoiceUrl && !body.qrCodeData && !body.xmlContent && !body.pdfBuffer) {
+    if (!body.invoiceUrl && !body.qrCodeData && !body.xmlContent && !body.pdfBuffer && !body.parsedInvoice) {
       return NextResponse.json(
         {
-          error: 'Either invoiceUrl, qrCodeData, xmlContent or pdfBuffer is required',
+          error: 'Either invoiceUrl, qrCodeData, xmlContent, pdfBuffer or parsedInvoice is required',
           code: 'INVALID_INPUT',
         },
         { status: 400 },
@@ -41,30 +42,56 @@ export async function POST(request: NextRequest) {
 
     // Parse invoice data with force refresh option
     let parsedInvoice;
-    try {
-      if (body.invoiceUrl) {
-        parsedInvoice = await invoiceParserService.parseFromUrl(body.invoiceUrl, forceRefresh);
-      } else if (body.qrCodeData) {
-        parsedInvoice = await invoiceParserService.parseFromQRCode(body.qrCodeData, forceRefresh);
-      } else if (body.xmlContent) {
-        parsedInvoice = await invoiceParserService.parseFromXmlFile(body.xmlContent);
-      } else if (body.pdfBuffer) {
-        parsedInvoice = await invoiceParserService.parseFromPdfFile(body.pdfBuffer);
-      } else {
-        throw new Error('No valid input provided');
+
+    // If parsedInvoice is provided in body, use it (for saving edited invoices)
+    if (body.parsedInvoice) {
+      parsedInvoice = body.parsedInvoice;
+      // Ensure issueDate is a Date object (it comes as string from JSON)
+      if (typeof parsedInvoice.issueDate === 'string') {
+        parsedInvoice.issueDate = new Date(parsedInvoice.issueDate);
       }
-    } catch (error) {
-      if (error instanceof InvoiceParserError) {
-        return NextResponse.json(
-          {
-            error: error.message,
-            code: error.code,
-            details: error.details,
-          },
-          { status: 400 },
-        );
+      // Ensure CNPJ is numbers only
+      if (parsedInvoice.merchant?.cnpj) {
+        parsedInvoice.merchant.cnpj = parsedInvoice.merchant.cnpj.replace(/\D/g, '');
       }
-      throw error;
+    } else {
+      // Otherwise parse from source
+      try {
+        if (body.invoiceUrl) {
+          parsedInvoice = await invoiceParserService.parseFromUrl(body.invoiceUrl, forceRefresh);
+        } else if (body.qrCodeData) {
+          parsedInvoice = await invoiceParserService.parseFromQRCode(body.qrCodeData, forceRefresh);
+        } else if (body.xmlContent) {
+          parsedInvoice = await invoiceParserService.parseFromXmlFile(body.xmlContent);
+        } else if (body.pdfBuffer) {
+          parsedInvoice = await invoiceParserService.parseFromPdfFile(body.pdfBuffer);
+        } else {
+          throw new Error('No valid input provided');
+        }
+      } catch (error) {
+        if (error instanceof InvoiceParserError) {
+          return NextResponse.json(
+            {
+              error: error.message,
+              code: error.code,
+              details: error.details,
+            },
+            { status: 400 },
+          );
+        }
+        throw error;
+      }
+    }
+
+    // If parseOnly is true, return the parsed data without saving
+    if (parseOnly) {
+      return NextResponse.json(
+        {
+          success: true,
+          data: parsedInvoice,
+        },
+        { status: 200 },
+      );
     }
 
     // Store invoice

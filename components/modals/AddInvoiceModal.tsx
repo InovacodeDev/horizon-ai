@@ -11,7 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 // Types and Interfaces
 // ============================================
 
-import { InvoiceCategory } from '@/lib/services/nfe-crawler/types';
+import { InvoiceCategory, ParsedInvoice } from '@/lib/services/invoice-types';
+import { InvoiceReviewStep } from './InvoiceReviewStep';
 
 export interface CreateInvoiceInput {
   invoiceUrl?: string;
@@ -21,6 +22,7 @@ export interface CreateInvoiceInput {
   customCategory?: InvoiceCategory;
   transactionId?: string;
   accountId?: string;
+  parsedInvoice?: ParsedInvoice;
 }
 
 interface AddInvoiceModalProps {
@@ -120,6 +122,7 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
   const [showScanner, setShowScanner] = useState(false);
   const [processingStep, setProcessingStep] = useState<string>('');
   const [progress, setProgress] = useState(0);
+  const [parsedData, setParsedData] = useState<ParsedInvoice | null>(null);
 
   // Check if mobile (md breakpoint is usually 768px)
   const isDesktop = useMediaQuery('(min-width: 768px)');
@@ -148,6 +151,7 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
     setActiveTab('url');
     setProcessingStep('');
     setProgress(0);
+    setParsedData(null);
   };
 
   // Handle close
@@ -259,21 +263,27 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
       }, 2500);
 
       try {
-        await onSubmit(input);
+        // Call API with parseOnly=true
+        const response = await fetch('/api/invoices?parseOnly=true', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(input),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to parse invoice');
+        }
+
+        const result = await response.json();
+        setParsedData(result.data);
       } finally {
         clearInterval(progressInterval);
       }
 
-      // Step 4: Validation & Storage
-      setProgress(90);
-      setProcessingStep('Validando e salvando...');
-      await new Promise((resolve) => setTimeout(resolve, 300));
-
+      // Step 4: Validation & Storage (Moved to handleSave)
       setProgress(100);
       setProcessingStep('Concluído!');
-
-      resetForm();
-      onClose();
     } catch (err: any) {
       console.error('Erro ao adicionar nota:', err);
       
@@ -325,38 +335,57 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
     setError('Não foi possível acessar a câmera. Verifique se você concedeu permissão de acesso à câmera no seu navegador.');
   };
 
+  const handleSave = async (data: ParsedInvoice) => {
+    setLoading(true);
+    try {
+      await onSubmit({
+        parsedInvoice: data,
+        customCategory
+      });
+      resetForm();
+      onClose();
+    } catch (err: any) {
+      console.error('Error saving invoice:', err);
+      setError(err.message || 'Failed to save invoice');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in'>
       <div className='bg-surface-new-primary rounded-lg shadow-soft-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto transform transition-smooth-200 animate-slide-up'>
-        <div className='flex justify-between items-center p-6 border-b border-border-primary sticky top-0 bg-surface-new-primary z-10'>
-          <h2 className='text-lg font-semibold text-text-primary'>Adicionar Nota Fiscal</h2>
-          <button
-            onClick={handleClose}
-            className='p-2 rounded-md text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors-smooth focus:outline-none focus:ring-2 focus:ring-border-focus'
-            type='button'
-            aria-label='Fechar modal'
-          >
-            <svg
-              className='w-5 h-5'
-              fill='none'
-              stroke='currentColor'
-              viewBox='0 0 24 24'
+        {!parsedData && (
+          <div className='flex justify-between items-center p-6 border-b border-border-primary sticky top-0 bg-surface-new-primary z-10'>
+            <h2 className='text-lg font-semibold text-text-primary'>Adicionar Nota Fiscal</h2>
+            <button
+              onClick={handleClose}
+              className='p-2 rounded-md text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors-smooth focus:outline-none focus:ring-2 focus:ring-border-focus'
+              type='button'
+              aria-label='Fechar modal'
             >
-              <path
-                strokeLinecap='round'
-                strokeLinejoin='round'
-                strokeWidth={2}
-                d='M6 18L18 6M6 6l12 12'
-              />
-            </svg>
-          </button>
-        </div>
+              <svg
+                className='w-5 h-5'
+                fill='none'
+                stroke='currentColor'
+                viewBox='0 0 24 24'
+              >
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  strokeWidth={2}
+                  d='M6 18L18 6M6 6l12 12'
+                />
+              </svg>
+            </button>
+          </div>
+        )}
 
         <div className='p-6'>
           {/* Progress Bar - Show during processing */}
-          {loading && (
+          {loading && !parsedData && (
             <div className='mb-6 p-4 bg-blue-light rounded-lg border border-blue-border'>
               <div className='flex items-center justify-between mb-2'>
                 <span className='text-sm font-medium text-blue-primary'>{processingStep}</span>
@@ -374,8 +403,14 @@ export function AddInvoiceModal({ isOpen, onClose, onSubmit }: AddInvoiceModalPr
             </div>
           )}
 
-          {/* Input Form */}
-          {true && (
+          {parsedData ? (
+            <InvoiceReviewStep
+              initialData={parsedData}
+              onSave={handleSave}
+              onCancel={() => setParsedData(null)}
+              loading={loading}
+            />
+          ) : (
             <form
               onSubmit={handleSubmit}
               className='space-y-5'
