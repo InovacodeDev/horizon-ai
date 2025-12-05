@@ -100,6 +100,31 @@ export function InvoiceReviewStep({ initialData, onSave, onCancel, loading }: In
     };
   };
 
+  const handleTotalChange = (newTotal: number) => {
+    if (isNaN(newTotal)) return;
+    
+    const subtotal = invoice.items.reduce((sum, item) => sum + item.totalPrice, 0);
+    let discount = 0;
+    let tax = 0;
+
+    // Adjust discount or tax to match the new total
+    if (newTotal < subtotal) {
+      discount = subtotal - newTotal;
+    } else {
+      tax = newTotal - subtotal;
+    }
+
+    setInvoice(prev => ({
+      ...prev,
+      totals: {
+        ...prev.totals,
+        discount,
+        tax,
+        total: newTotal
+      }
+    }));
+  };
+
   useEffect(() => {
     setInvoice(prev => ({
       ...prev,
@@ -238,9 +263,19 @@ export function InvoiceReviewStep({ initialData, onSave, onCancel, loading }: In
               <span className="text-on-surface-variant">Descontos:</span>
               <span className="text-on-surface text-success">-{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(invoice.totals.discount)}</span>
             </div>
-            <div className="flex justify-between w-full md:w-1/3 text-lg font-bold border-t border-outline pt-2 mt-1">
+            <div className="flex justify-between items-end w-full md:w-1/3 text-lg font-bold border-t border-outline pt-2 mt-1">
               <span className="text-on-surface">Total:</span>
-              <span className="text-primary">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(invoice.totals.total)}</span>
+              <div className="flex items-center justify-end">
+                <span className="text-primary mr-1">R$</span>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  value={invoice.totals.total}
+                  onChange={(e) => handleTotalChange(parseFloat(e.target.value))}
+                  className="w-24 px-0 py-0 text-lg font-bold text-primary bg-transparent border-b border-primary/30 focus:border-primary outline-none text-right placeholder-primary/50"
+                  style={{ MozAppearance: 'textfield' }} // Removes spinner on Firefox
+                />
+              </div>
             </div>
           </div>
         </Card>
