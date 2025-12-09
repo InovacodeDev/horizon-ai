@@ -511,8 +511,8 @@ ${this.getVariablePromptSection(html)}`;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        // Use gemini-2.5-flash or gemini-2.5-pro
-        const modelName = this.config.model || 'gemini-2.5-flash';
+        // Use configured model or default
+        const modelName = this.config.model || 'gemini-2.0-flash';
         const model = this.geminiClient.getGenerativeModel({
           model: modelName,
         });
@@ -593,21 +593,45 @@ ${this.getVariablePromptSection(html)}`;
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
 
-        // Check if it's a 503 Service Unavailable error (model overloaded)
+        // Check if it's a 503 Service Unavailable or 429 Too Many Requests
         const errorMessage = lastError.message.toLowerCase();
         const is503Error =
           errorMessage.includes('503') ||
           errorMessage.includes('service unavailable') ||
           errorMessage.includes('overloaded');
+        const is429Error =
+          errorMessage.includes('429') ||
+          errorMessage.includes('too many requests') ||
+          errorMessage.includes('quota exceeded');
 
-        // Only retry on 503 errors
-        if (is503Error && attempt < maxRetries) {
-          const delay = baseDelay * Math.pow(2, attempt); // Exponential backoff: 2s, 4s, 8s
-          loggerService.warn('ai-parser', 'call-gemini', `Gemini API overloaded (503), retrying in ${delay}ms`, {
-            attempt: attempt + 1,
-            maxRetries,
-            error: lastError.message,
-          });
+        // Retry on 503 or 429 errors
+        if ((is503Error || is429Error) && attempt < maxRetries) {
+          let delay = baseDelay * Math.pow(2, attempt); // Exponential backoff: 2s, 4s, 8s
+
+          // If 429, try to extract retry delay from error message "Please retry in X s"
+          // Example: "Please retry in 12.448341037s."
+          if (is429Error) {
+            const match = errorMessage.match(/retry in ([0-9.]+)\s?s/);
+            if (match && match[1]) {
+              // Add 1 second buffer to be safe
+              delay = parseFloat(match[1]) * 1000 + 1000;
+            } else {
+              // Default to a higher backoff for 429 if parsing fails
+              delay = 15000; // 15 seconds default for rate limits
+            }
+          }
+
+          loggerService.warn(
+            'ai-parser',
+            'call-gemini',
+            `Gemini API error (${is429Error ? '429' : '503'}), retrying in ${delay}ms`,
+            {
+              attempt: attempt + 1,
+              maxRetries,
+              error: lastError.message,
+              delay,
+            },
+          );
 
           // Wait before retrying
           await new Promise((resolve) => setTimeout(resolve, delay));
@@ -619,7 +643,7 @@ ${this.getVariablePromptSection(html)}`;
           throw error;
         }
 
-        // For non-503 errors or after max retries, throw immediately
+        // For non-retryable errors or after max retries, throw immediately
         throw new AIParseError(`Gemini API error: ${lastError.message}`, {
           originalError: lastError.name,
           attempt: attempt + 1,
