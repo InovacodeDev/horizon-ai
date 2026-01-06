@@ -29,6 +29,7 @@ export const COLLECTIONS = {
   IMPORT_HISTORY: 'import_history',
   RECURRING_RULES: 'recurring_rules',
   SPENDING_PREDICTIONS: 'spending_predictions',
+  FINANCIAL_PROJECTIONS: 'financial_projections',
 } as const;
 
 // Database ID - Configure no Appwrite Console
@@ -1594,6 +1595,46 @@ export interface SpendingPredictionDB {
   calculated_at: string;
   reasoning?: string;
   metadata?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================
+// Collection: financial_projections
+// ============================================
+export const financialProjectionsSchema = {
+  collectionId: COLLECTIONS.FINANCIAL_PROJECTIONS,
+  name: 'Financial Projections',
+  permissions: ['read("any")', 'write("any")'],
+  rowSecurity: true,
+  attributes: [
+    { key: 'user_id', type: 'string', size: 255, required: true, array: false },
+    { key: 'month', type: 'string', size: 7, required: true, array: false }, // YYYY-MM
+    { key: 'total_income', type: 'float', required: true },
+    { key: 'committed_expenses', type: 'float', required: true },
+    { key: 'variable_expenses', type: 'float', required: true },
+    { key: 'safe_to_spend', type: 'float', required: true },
+    { key: 'virtual_transactions', type: 'string', size: 1000000, required: false, array: false }, // JSON array of virtual transactions (large text)
+    { key: 'created_at', type: 'datetime', required: true },
+    { key: 'updated_at', type: 'datetime', required: true },
+  ],
+  indexes: [
+    { key: 'idx_user_id', type: 'key', attributes: ['user_id'], orders: ['ASC'] },
+    { key: 'idx_user_month', type: 'unique', attributes: ['user_id', 'month'] },
+  ],
+};
+
+export interface FinancialProjection {
+  $id: string;
+  $createdAt: string;
+  $updatedAt: string;
+  user_id: string;
+  month: string;
+  total_income: number;
+  committed_expenses: number;
+  variable_expenses: number;
+  safe_to_spend: number;
+  virtual_transactions?: string; // JSON string
   created_at: string;
   updated_at: string;
 }

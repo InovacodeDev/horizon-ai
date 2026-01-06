@@ -51,6 +51,7 @@ import { migration as createRecurringRulesTable } from './20251201_000047_create
 import { migration as createSpendingPredictionsTable } from './20251202_000048_create_spending_predictions_table';
 import { migration as addReasoningAndMetadataToPredictions } from './20251202_000049_add_reasoning_and_metadata_to_predictions';
 import { migration as updateInvoiceCategories } from './20251203_000050_update_invoice_categories';
+import { migration as createFinancialProjectionsTable } from './20251208_000051_create_financial_projections_table';
 import { Migration } from './migration.interface';
 
 /**
@@ -108,4 +109,5 @@ export const migrations: Migration[] = [
   createSpendingPredictionsTable,
   addReasoningAndMetadataToPredictions,
   updateInvoiceCategories,
+  createFinancialProjectionsTable,
 ];

@@ -1,17 +1,19 @@
 import { getAppwriteDatabases } from '@/lib/appwrite/client';
-import { COLLECTIONS, DATABASE_ID, RecurringRule, Transaction } from '@/lib/appwrite/schema';
+import { COLLECTIONS, DATABASE_ID, FinancialProjection, RecurringRule, Transaction } from '@/lib/appwrite/schema';
 import {
   addMonths,
   addWeeks,
   addYears,
   differenceInCalendarMonths,
+  differenceInHours,
   endOfMonth,
+  format,
   isAfter,
   isBefore,
   isSameMonth,
   startOfMonth,
 } from 'date-fns';
-import { Query } from 'node-appwrite';
+import { ID, Query } from 'node-appwrite';
 
 import AppwriteDBAdapter from '../appwrite/adapter';
 
@@ -42,19 +44,53 @@ export class ProjectionService {
   }
 
   async getMonthlyProjection(userId: string, targetDate: Date): Promise<ProjectionResult> {
+    const monthKey = format(targetDate, 'yyyy-MM');
     const start = startOfMonth(targetDate);
     const end = endOfMonth(targetDate);
 
-    // 1. Fetch Actual Transactions
+    // 1. Fetch live Actual Transactions (Always fresh for the view)
     const actualTransactions = await this.fetchActualTransactions(userId, start, end);
 
-    // 2. Fetch Recurring Rules
-    const recurringRules = await this.fetchRecurringRules(userId);
+    // 2. Handle Projection Cache (Virtuals + Snapshot)
+    let virtualTransactions: VirtualTransaction[] = [];
+    let storedProjection: FinancialProjection | null = null;
+    let shouldUpdateDB = false;
 
-    // 3. Generate Virtual Transactions
-    const virtualTransactions = await this.generateVirtualTransactions(recurringRules, actualTransactions, start, end);
+    try {
+      storedProjection = await this.getStoredProjection(userId, monthKey);
 
-    // 4. Calculate Metrics
+      if (storedProjection) {
+        const lastUpdate = new Date(storedProjection.updated_at);
+        const hoursDiff = differenceInHours(new Date(), lastUpdate);
+
+        if (hoursDiff < 24) {
+          // Cache is valid (< 24h)
+          // Use stored virtuals
+          if (storedProjection.virtual_transactions) {
+            virtualTransactions = JSON.parse(storedProjection.virtual_transactions);
+          }
+        } else {
+          // Cache is old (> 24h)
+          shouldUpdateDB = true;
+        }
+      } else {
+        // No cache exists
+        shouldUpdateDB = true;
+      }
+
+      if (shouldUpdateDB) {
+        // Regenerate Virtual Transactions from Rules
+        const recurringRules = await this.fetchRecurringRules(userId);
+        virtualTransactions = await this.generateVirtualTransactions(recurringRules, actualTransactions, start, end);
+      }
+    } catch (error) {
+      console.error('Error handling projection cache:', error);
+      // Fallback: generate mostly fresh if cache fails
+      const recurringRules = await this.fetchRecurringRules(userId);
+      virtualTransactions = await this.generateVirtualTransactions(recurringRules, actualTransactions, start, end);
+    }
+
+    // 3. Calculate Totals (Live Actuals + Selected Virtuals)
     const allTransactions: (Transaction | VirtualTransaction)[] = [...actualTransactions, ...virtualTransactions];
 
     let totalIncome = 0;
@@ -68,10 +104,6 @@ export class ProjectionService {
       if (type === 'income' || type === 'salary') {
         totalIncome += amount;
       } else if (type === 'expense' || type === 'transfer') {
-        // Expense
-        // Check if committed (recurring or installment)
-        // Virtual transactions are always recurring (generated from rules)
-        // Actual transactions: check is_recurring or installment
         const isVirtual = 'isVirtual' in tx && tx.isVirtual;
         const isRecurring =
           isVirtual || ('is_recurring' in tx && tx.is_recurring) || ('installment' in tx && !!tx.installment);
@@ -84,8 +116,23 @@ export class ProjectionService {
       }
     }
 
-    // Safe-to-Spend: Total Income - Committed Expenses
     const safeToSpend = totalIncome - committedExpenses;
+
+    // 4. Update DB if needed (Background-ish or inline)
+    if (shouldUpdateDB) {
+      // We assume this doesn't block the UI significantly, or we could fire-and-forget
+      // For safety, we await it to ensure consistency
+      await this.saveProjectionSnapshot(
+        userId,
+        monthKey,
+        totalIncome,
+        committedExpenses,
+        variableExpenses,
+        safeToSpend,
+        virtualTransactions,
+        storedProjection?.$id,
+      );
+    }
 
     return {
       totalIncome,
@@ -94,6 +141,60 @@ export class ProjectionService {
       safeToSpend,
       transactions: allTransactions,
     };
+  }
+
+  private async getStoredProjection(userId: string, monthKey: string): Promise<FinancialProjection | null> {
+    try {
+      const result = await this.dbAdapter.listDocuments(DATABASE_ID, COLLECTIONS.FINANCIAL_PROJECTIONS, [
+        Query.equal('user_id', userId),
+        Query.equal('month', monthKey),
+        Query.limit(1),
+      ]);
+
+      if (result.documents.length > 0) {
+        return result.documents[0] as unknown as FinancialProjection;
+      }
+    } catch (error) {
+      // Collection might not exist yet during migration
+      console.warn('Failed to fetch stored projection:', error);
+    }
+    return null;
+  }
+
+  private async saveProjectionSnapshot(
+    userId: string,
+    month: string,
+    totalIncome: number,
+    committedExpenses: number,
+    variableExpenses: number,
+    safeToSpend: number,
+    virtualTransactions: VirtualTransaction[],
+    existingId?: string,
+  ): Promise<void> {
+    const data = {
+      user_id: userId,
+      month,
+      total_income: totalIncome,
+      committed_expenses: committedExpenses,
+      variable_expenses: variableExpenses,
+      safe_to_spend: safeToSpend,
+      virtual_transactions: JSON.stringify(virtualTransactions),
+      updated_at: new Date().toISOString(),
+    };
+
+    try {
+      if (existingId) {
+        await this.dbAdapter.updateDocument(DATABASE_ID, COLLECTIONS.FINANCIAL_PROJECTIONS, existingId, data);
+      } else {
+        await this.dbAdapter.createDocument(DATABASE_ID, COLLECTIONS.FINANCIAL_PROJECTIONS, ID.unique(), {
+          ...data,
+          created_at: new Date().toISOString(),
+        });
+      }
+    } catch (error) {
+      console.error('Failed to save projection snapshot:', error);
+      // Don't throw, just log. UI got the data anyway.
+    }
   }
 
   private async fetchActualTransactions(userId: string, start: Date, end: Date): Promise<Transaction[]> {
